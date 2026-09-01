@@ -5,6 +5,9 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 import { CHANNEL } from "./constants"
 import { getStore } from "./store"
+// fork_change start
+import { forkTauriMigrationEnabled } from "./fork-policy"
+// fork_change end
 
 const TAURI_MIGRATED_KEY = "tauriMigrated"
 
@@ -67,6 +70,13 @@ function migrateFile(datPath: string, filename: string) {
 }
 
 export function migrate() {
+  // fork_change start - not applicable to this fork; see ./fork-policy
+  if (!forkTauriMigrationEnabled()) {
+    getStore().set(TAURI_MIGRATED_KEY, true)
+    log.log("tauri migration: not applicable to this build, skipping")
+    return
+  }
+  // fork_change end
   if (getStore().get(TAURI_MIGRATED_KEY)) {
     log.log("tauri migration: already done, skipping")
     return

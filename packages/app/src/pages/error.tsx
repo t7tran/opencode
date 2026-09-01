@@ -1,6 +1,9 @@
 import { TextField } from "@opencode-ai/ui/text-field"
 import * as Sentry from "@sentry/solid"
 import { Logo } from "@opencode-ai/ui/logo"
+// fork_change start
+import { forkSupportURL } from "@/fork/policy"
+// fork_change end
 import { Button } from "@opencode-ai/ui/button"
 import { Component, createSignal, onMount, Show } from "solid-js"
 import { createStore } from "solid-js/store"
@@ -349,17 +352,26 @@ export const ErrorPage: Component<ErrorPageProps> = (props) => {
           {(message) => <p class="text-xs text-text-danger-base text-center max-w-2xl">{message()}</p>}
         </Show>
         <div class="flex flex-col items-center gap-2">
-          <div class="flex items-center justify-center gap-1">
-            {language.t("error.page.report.prefix")}
-            <button
-              type="button"
-              class="flex items-center text-text-interactive-base gap-1"
-              onClick={() => platform.openExternal("https://opencode.ai/desktop-feedback")}
-            >
-              <div>{language.t("error.page.report.discord")}</div>
-              <Icon name="discord" class="text-text-interactive-base" />
-            </button>
-          </div>
+          {/* fork_change start - upstream invites the user to report the crash on its
+              own Discord. An internal build must not send Genix failure reports to a
+              public upstream channel, and there is no fork destination to offer
+              instead, so the whole invitation is hidden. See @/fork/policy. */}
+          <Show when={forkSupportURL()}>
+            {(url) => (
+              <div class="flex items-center justify-center gap-1">
+                {language.t("error.page.report.prefix")}
+                <button
+                  type="button"
+                  class="flex items-center text-text-interactive-base gap-1"
+                  onClick={() => platform.openExternal(url())}
+                >
+                  <div>{language.t("error.page.report.discord")}</div>
+                  <Icon name="discord" class="text-text-interactive-base" />
+                </button>
+              </div>
+            )}
+          </Show>
+          {/* fork_change end */}
           <Show when={platform.version}>
             {(version) => (
               <p class="text-xs text-text-weak">{language.t("error.page.version", { version: version() })}</p>

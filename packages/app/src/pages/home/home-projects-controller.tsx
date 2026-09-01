@@ -1,4 +1,7 @@
 import { useDirectoryPicker } from "@/components/directory-picker"
+// fork_change start
+import { forkSupportURL } from "@/fork/policy"
+// fork_change end
 import { useServerManagementController } from "@/components/dialog-select-server"
 import { useSettingsCommand } from "@/components/settings-dialog"
 import { DialogServerV2 } from "@/components/settings-v2/dialog-server-v2"
@@ -120,7 +123,12 @@ export function createHomeProjectsController(home: HomeController) {
     },
     utility: {
       settings: openSettings,
-      help: () => platform.openExternal("https://opencode.ai/desktop-feedback"),
+      // fork_change start - no upstream feedback page; see @/fork/policy
+      help: () => {
+        const url = forkSupportURL()
+        if (url) platform.openExternal(url)
+      },
+      // fork_change end
     },
   }
 }

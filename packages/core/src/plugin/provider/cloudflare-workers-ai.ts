@@ -64,7 +64,7 @@ function sdkOptions(options: Record<string, any>) {
     baseURL: expandAccountId(options.baseURL),
     apiKey: process.env.CLOUDFLARE_API_KEY ?? options.apiKey,
     headers: {
-      "User-Agent": `opencode/${InstallationVersion} cloudflare-workers-ai (${os.platform()} ${os.release()}; ${os.arch()})`,
+      "User-Agent": `genixcode/${InstallationVersion} cloudflare-workers-ai (${os.platform()} ${os.release()}; ${os.arch()})`, // fork_change - renamed binary
       ...options.headers,
     },
     name: providerID,

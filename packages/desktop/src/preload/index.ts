@@ -10,7 +10,22 @@ const updaterHandler = (_: unknown, state: UpdaterState) => {
   updaterCallbacks.forEach((callback) => callback(state))
 }
 
+// fork_change start - resolved once, synchronously, so the settings pane can
+// branch on it while rendering. The channel is served by
+// src/main/fork-policy.ts, which owns the name as FORK_MANAGED_KEY_CHANNEL; it is
+// repeated here rather than imported because importing a main-process module
+// would drag ipcMain into the preload bundle.
+const forkManagedKey = ((): boolean => {
+  try {
+    return ipcRenderer.sendSync("fork-managed-key") === true
+  } catch {
+    return false
+  }
+})()
+// fork_change end
+
 const api: ElectronAPI = {
+  forkManagedKey, // fork_change
   killSidecar: () => ipcRenderer.invoke("kill-sidecar"),
   installCli: () => ipcRenderer.invoke("install-cli"),
   awaitInitialization: () => ipcRenderer.invoke("await-initialization"),

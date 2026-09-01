@@ -3,6 +3,8 @@ import { For, type JSX } from "solid-js"
 import { tint, useTheme } from "../context/theme"
 import { logo } from "../logo"
 
+const BRAND = RGBA.fromHex("#0186CD") // fork_change - Genix blue (was theme.text)
+
 export function Logo() {
   const { theme } = useTheme()
 
@@ -52,7 +54,9 @@ export function Logo() {
         {(line, index) => (
           <box flexDirection="row" gap={1}>
             <box flexDirection="row">{renderLine(line, theme.textMuted, false)}</box>
-            <box flexDirection="row">{renderLine(logo.right[index()], theme.text, true)}</box>
+            {/* fork_change start */}
+            <box flexDirection="row">{renderLine(logo.right[index()], BRAND, true)}</box>
+            {/* fork_change end */}
           </box>
         )}
       </For>

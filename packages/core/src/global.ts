@@ -6,8 +6,13 @@ import { Context, Effect, Layer } from "effect"
 import { Flock } from "./util/flock"
 import { Flag } from "./flag/flag"
 import { makeGlobalNode } from "./effect/app-node"
+import { APP_DIRNAME } from "./fork/brand" // fork_change
 
-const app = "opencode"
+// fork_change start - this fork stores its per-user state under `genixcode`
+// rather than upstream's `opencode`, so a GenixCode install never reads or
+// writes an OpenCode install's config, database, credentials or logs.
+const app = APP_DIRNAME
+// fork_change end
 const data = path.join(xdgData!, app)
 const cache = path.join(xdgCache!, app)
 const config = path.join(xdgConfig!, app)

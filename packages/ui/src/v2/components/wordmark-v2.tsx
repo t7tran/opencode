@@ -1,5 +1,12 @@
 import { createUniqueId, type ComponentProps } from "solid-js"
 
+// fork_change start - "genixcode" replaces "opencode". The letterforms are the
+// same block glyphs as the primary wordmark (Logo, in ../../components/logo.tsx)
+// scaled up from its 246x42 viewBox into this component's larger 720x123 canvas,
+// since hand-tracing new outlines at this size would drift from that font. See
+// packages/core/src/fork/brand.ts.
+const SCALE = 720 / 246
+
 export function WordmarkV2(props: Pick<ComponentProps<"svg">, "class">) {
   const mask = createUniqueId()
   const maskGradient = createUniqueId()
@@ -7,61 +14,39 @@ export function WordmarkV2(props: Pick<ComponentProps<"svg">, "class">) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 720 129"
+      viewBox="0 0 720 123"
       fill="none"
       classList={{ [props.class ?? ""]: !!props.class }}
     >
       <g opacity="0.6">
         <g mask={`url(#${mask})`}>
           <g opacity="0.16">
-            <path
-              opacity="0.7"
-              d="M55.3846 36.4286H18.4615V91.7143H55.3846V36.4286ZM73.8462 110.143H0V18H73.8462V110.143Z"
-              fill="currentColor"
-            />
-            <path
-              opacity="0.7"
-              d="M110.462 91.7143H147.385V36.4286H110.462V91.7143ZM165.846 110.143H110.462V128.571H92V18H165.846V110.143Z"
-              fill="currentColor"
-            />
-            <path
-              opacity="0.7"
-              d="M258.846 73.2857H203.462V91.7143H258.846V110.143H185V18H258.846V73.2857ZM203.462 54.8571H240.385V36.4286H203.462V54.8571Z"
-              fill="currentColor"
-            />
-            <path
-              opacity="0.7"
-              d="M332.385 36.4286H295.462V110.143H277V18H332.385V36.4286ZM350.846 110.143H332.385V36.4286H350.846V110.143Z"
-              fill="currentColor"
-            />
-            <path
-              opacity="0.7"
-              d="M442.846 36.4286H387.462V91.7143H442.846V110.143H369V18H442.846V36.4286Z"
-              fill="currentColor"
-            />
-            <path
-              opacity="0.7"
-              d="M517.385 36.4286H480.462V91.7143H517.385V36.4286ZM535.846 110.143H462V18H535.846V110.143Z"
-              fill="currentColor"
-            />
-            <path
-              opacity="0.7"
-              d="M609.385 36.8571H572.462V92.1429H609.385V36.8571ZM627.846 110.571H554V18.4286H609.385V0H627.846V110.571Z"
-              fill="currentColor"
-            />
-            <path
-              opacity="0.7"
-              d="M664.462 36.4286V54.8571H701.385V36.4286H664.462ZM719.846 73.2857H664.462V91.7143H719.846V110.143H646V18H719.846V73.2857Z"
-              fill="currentColor"
-            />
+            <g transform={`scale(${SCALE})`} fill="currentColor" opacity="0.7">
+              <path d="M6 18H18V24H6V18Z" />
+              <path d="M0 6H24V12H0V6ZM0 12H6V24H0V12ZM18 12H24V24H18V12ZM0 24H24V30H0V24ZM18 30H24V36H18V30ZM0 36H24V42H0V36Z" />
+              <path d="M54 24V30H36V24H54Z" />
+              <path d="M54 24H36V30H54V36H30V6H54V24ZM36 18H48V12H36V18Z" />
+              <path d="M78 36H66V18H78V36Z" />
+              <path d="M78 12H66V36H60V6H78V12ZM84 36H78V12H84V36Z" />
+              <path d="M90 6H96V12H90V6ZM90 18H96V36H90V18Z" />
+              <path d="M102 6H108V18H102V6ZM120 6H126V18H120V6ZM108 18H120V24H108V18ZM102 24H108V36H102V24ZM120 24H126V36H120V24Z" />
+              <path d="M156 30H138V18H156V30Z" />
+              <path d="M156 12H138V30H156V36H132V6H156V12Z" />
+              <path d="M180 30H168V18H180V30Z" />
+              <path d="M180 12H168V30H180V12ZM186 36H162V6H186V36Z" />
+              <path d="M210 30H198V18H210V30Z" />
+              <path d="M210 12H198V30H210V12ZM216 36H192V6H210V0H216V36Z" />
+              <path d="M246 24V30H228V24H246Z" />
+              <path d="M246 24H228V30H246V36H222V6H246V24ZM228 18H240V12H228V18Z" />
+            </g>
           </g>
         </g>
       </g>
       <defs>
-        <mask id={mask} style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="720" height="129">
-          <rect width="720" height="129" fill={`url(#${maskGradient})`} />
+        <mask id={mask} style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="720" height="123">
+          <rect width="720" height="123" fill={`url(#${maskGradient})`} />
         </mask>
-        <linearGradient id={maskGradient} x1="360" y1="68" x2="360" y2="129" gradientUnits="userSpaceOnUse">
+        <linearGradient id={maskGradient} x1="360" y1="65" x2="360" y2="123" gradientUnits="userSpaceOnUse">
           <stop stop-color="white" stop-opacity="0.7" />
           <stop offset="1" stop-color="white" stop-opacity="0" />
         </linearGradient>
@@ -69,3 +54,4 @@ export function WordmarkV2(props: Pick<ComponentProps<"svg">, "class">) {
     </svg>
   )
 }
+// fork_change end

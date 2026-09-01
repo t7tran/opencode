@@ -28,9 +28,11 @@ test("starts every configured WSL server on initialization", () => {
 
 test("rejects an update that did not install the desktop version", () => {
   expect(() => expectOpencodeVersion("1.16.2", "1.16.2")).not.toThrow()
+  // fork_change start - native copy is rebranded on the way out of nativeT(); see packages/core/src/fork/brand.ts
   expect(() => expectOpencodeVersion("1.14.35", "1.16.2")).toThrow(
-    "OpenCode update finished but Debian still reports 1.14.35; expected 1.16.2",
+    "GenixCode update finished but Debian still reports 1.14.35; expected 1.16.2",
   )
+  // fork_change end
 })
 
 test("restarts an existing distro server after updating OpenCode", () => {

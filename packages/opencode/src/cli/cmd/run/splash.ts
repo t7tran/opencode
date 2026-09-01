@@ -177,6 +177,7 @@ function build(input: SplashWriterInput, kind: "entry" | "exit", ctx: Scrollback
   const lines: Array<{ left: number; top: number; text: string; fg: ColorInput; bg?: ColorInput; attrs?: number }> = []
   const left = input.theme.left
   const right = input.theme.right
+  const logo = input.theme.logo // fork_change - Genix-blue wordmark colour
   const leftShadow = input.theme.leftShadow
   let height = 1
 
@@ -194,7 +195,7 @@ function build(input: SplashWriterInput, kind: "entry" | "exit", ctx: Scrollback
       })
     }
 
-    push(lines, body_left, top, "OpenCode", right, undefined, TextAttributes.BOLD)
+    push(lines, body_left, top, "GenixCode", logo, undefined, TextAttributes.BOLD) // fork_change
     if (input.detail) {
       push(
         lines,

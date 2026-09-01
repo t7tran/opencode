@@ -5,6 +5,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, wri
 import { ZipWriter, BlobWriter, BlobReader } from "@zip.js/zip.js"
 import { dirname, join } from "node:path"
 import { homedir } from "node:os"
+import { APP_DIRNAME } from "@opencode-ai/core/fork/brand" // fork_change
 
 const MAX_LOG_AGE_DAYS = 7
 const TAIL_LINES = 1000
@@ -151,7 +152,9 @@ function manifest() {
 
 function serverLogRoots() {
   const xdgData = process.env.XDG_DATA_HOME || join(homedir(), ".local", "share")
-  return [...new Set([join(xdgData, "opencode", "log"), join(app.getPath("userData"), "opencode", "log")])]
+  // fork_change - the sidecar writes to Global.Path.log, which is keyed on the
+  // fork's app directory name; a literal "opencode" here would collect nothing.
+  return [...new Set([join(xdgData, APP_DIRNAME, "log"), join(app.getPath("userData"), APP_DIRNAME, "log")])]
 }
 
 type Entry = { name: string; path?: string; data?: Buffer }

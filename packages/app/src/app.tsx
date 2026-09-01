@@ -274,6 +274,7 @@ declare global {
     api?: {
       setTitlebar?: (theme: { mode: "light" | "dark"; scheme?: "system" | "light" | "dark" }) => Promise<void>
       exportDebugLogs?: () => Promise<string>
+      forkManagedKey?: boolean // fork_change - see src/fork/policy.ts
     }
   }
 }

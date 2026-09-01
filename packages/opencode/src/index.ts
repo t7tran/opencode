@@ -1,3 +1,4 @@
+import "@/fork/preload" // fork_change - must be first; forces models.dev fetch off
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 import { RunCommand } from "./cli/cmd/run"
@@ -28,13 +29,14 @@ import { SessionCommand } from "./cli/cmd/session"
 import { DbCommand } from "./cli/cmd/db"
 import { errorMessage } from "./util/error"
 import { PluginCommand } from "./cli/cmd/plug"
+import { KeyCommand } from "./cli/cmd/key" // fork_change - managed API key file tools
 import { Heap } from "./cli/heap"
 
 const args = hideBin(process.argv)
 
 function show(out: string) {
   const text = out.trimStart()
-  if (!text.startsWith("opencode ")) {
+  if (!text.startsWith("genixcode ")) { // fork_change - renamed binary
     process.stderr.write(UI.logo() + EOL + EOL)
     process.stderr.write(text + EOL)
     return
@@ -44,7 +46,7 @@ function show(out: string) {
 
 const cli = yargs(args)
   .parserConfiguration({ "populate--": true })
-  .scriptName("opencode")
+  .scriptName("genixcode") // fork_change - renamed binary
   .wrap(100)
   .help("help", "show help")
   .alias("help", "h")
@@ -101,6 +103,7 @@ const cli = yargs(args)
   .command(SessionCommand)
   .command(PluginCommand)
   .command(DbCommand)
+  .command(KeyCommand) // fork_change - `genixcode key seal` / `key status`
   .fail((msg, err) => {
     if (
       msg?.startsWith("Unknown argument") ||

@@ -17,8 +17,24 @@ import { Process } from "@/util/process"
 import { errorMessage } from "@/util/error"
 import { text } from "node:stream/consumers"
 import { Effect, Option } from "effect"
+// fork_change start
+import { lockActive, lockedProvider, lockedProviderManaged } from "@opencode-ai/core/fork/lock"
+import { managedKeyRefusal } from "@opencode-ai/core/fork/key-file"
+import { fetchGatewayModels } from "@opencode-ai/core/fork/gateway"
+// fork_change end
 
 type PluginAuth = NonNullable<Hooks["auth"]>
+
+// fork_change start - fetch the locked provider's model list from its OpenAI-compatible
+// /models endpoint so the CLI login can persist it to config. Without models in config the
+// locked provider has zero models and is dropped from the provider map (see provider.ts),
+// so it never appears connected. See FORK.md.
+const fetchLockedModels = (baseURL: string, apiKey: string) =>
+  Effect.tryPromise({
+    try: () => fetchGatewayModels(baseURL, apiKey),
+    catch: (error) => new CliError({ message: "Failed to fetch models: " + errorMessage(error) }),
+  })
+// fork_change end
 
 const promptValue = <Value>(value: Option.Option<Value>) => {
   if (Option.isNone(value)) return Effect.die(new UI.CancelledError())
@@ -270,6 +286,15 @@ export const ProvidersListCommand = effectCmd({
 
     yield* Prompt.outro(`${results.length} credentials`)
 
+    // fork_change start - the embedded key is not in auth.json, so list it separately.
+    if (lockedProviderManaged()) {
+      UI.empty()
+      yield* Prompt.intro("Managed key")
+      yield* Prompt.log.info(`${lockedProvider().name} ${UI.Style.TEXT_DIM}embedded`)
+      yield* Prompt.outro("Connected")
+    }
+    // fork_change end
+
     const activeEnvVars: Array<{ provider: string; envVar: string }> = []
 
     for (const [providerID, provider] of Object.entries(database)) {
@@ -352,6 +377,47 @@ export const ProvidersLoginCommand = effectCmd({
     }
 
     const cfgSvc = yield* Config.Service
+
+    // fork_change start - this build is locked to a single provider (Genix). Skip provider
+    // selection entirely: prompt for the API key, store it, then fetch and persist the model
+    // list so the provider shows as connected. Storing the key alone leaves zero models in
+    // config, so the provider is dropped from the map and never connects. See FORK.md.
+    if (lockActive()) {
+      const locked = lockedProvider()
+      // The managed key file owns the credential — there is nothing to log in to.
+      if (lockedProviderManaged()) return yield* fail(managedKeyRefusal("log in"))
+      const cfg = yield* cfgSvc.get()
+
+      const key = yield* Prompt.password({
+        message: `Enter your ${locked.name} API key`,
+        validate: (x) => (x && x.length > 0 ? undefined : "Required"),
+      })
+      const apiKey = yield* promptValue(key)
+      yield* Effect.orDie(authSvc.set(locked.id, { type: "api", key: apiKey }))
+
+      const spinner = Prompt.spinner()
+      yield* spinner.start("Fetching models")
+      const models = yield* fetchLockedModels(locked.baseURL, apiKey).pipe(
+        Effect.tapError(() => spinner.stop("Failed to fetch models", 1)),
+      )
+      if (Object.keys(models).length === 0) {
+        yield* spinner.stop("No models returned", 1)
+        return yield* fail(`${locked.name} returned no models. Check the API key and try again.`)
+      }
+
+      const stillDisabled = new Set(cfg.disabled_providers ?? [])
+      stillDisabled.delete(locked.id)
+      yield* cfgSvc.updateGlobal({
+        provider: { [locked.id]: { models } },
+        disabled_providers: [...stillDisabled],
+      })
+
+      yield* spinner.stop(`Loaded ${Object.keys(models).length} models`)
+      yield* Prompt.outro("Login successful")
+      return
+    }
+    // fork_change end
+
     const pluginSvc = yield* Plugin.Service
     const modelsDev = yield* ModelsDev.Service
     yield* Effect.ignore(modelsDev.refresh(true))
@@ -503,6 +569,10 @@ export const ProvidersLogoutCommand = effectCmd({
     const modelsDev = yield* ModelsDev.Service
 
     UI.empty()
+    // fork_change start - the managed key file owns the credential; it cannot be removed
+    // from the CLI. Deleting the file is the only way to disconnect.
+    if (lockedProviderManaged()) return yield* fail(managedKeyRefusal("log out"))
+    // fork_change end
     const credentials: Array<[string, Auth.Info]> = Object.entries(yield* Effect.orDie(authSvc.all()))
     yield* Prompt.intro("Remove credential")
     if (credentials.length === 0) {

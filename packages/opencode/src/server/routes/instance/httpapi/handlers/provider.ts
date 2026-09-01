@@ -4,7 +4,11 @@ import { ModelsDev } from "@opencode-ai/core/models-dev"
 import { Provider } from "@/provider/provider"
 import { Auth } from "@/auth"
 
-import { mapValues } from "remeda"
+// fork_change start
+import { assertLockedProvider, isLockedProvider, lockedProviderManaged } from "@opencode-ai/core/fork/lock"
+import { ForkProviderLockedError } from "@opencode-ai/core/fork/lock"
+// fork_change end
+import { mapValues, omit } from "remeda" // fork_change - omit redacts the managed apiKey
 import { Effect, Schema } from "effect"
 import { HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
@@ -32,6 +36,16 @@ function mapProviderAuthError<A, R>(self: Effect.Effect<A, ProviderAuth.Error, R
   )
 }
 
+// fork_change start
+function mapForkLockError<A, R>(self: Effect.Effect<A, ForkProviderLockedError, R>) {
+  return self.pipe(
+    Effect.mapError(
+      (err) => new ProviderAuthApiError({ name: "BadRequest", data: { field: "providerID", message: err.message } }),
+    ),
+  )
+}
+// fork_change end
+
 export const providerHandlers = HttpApiBuilder.group(InstanceHttpApi, "provider", (handlers) =>
   Effect.gen(function* () {
     const cfg = yield* Config.Service
@@ -54,11 +68,29 @@ export const providerHandlers = HttpApiBuilder.group(InstanceHttpApi, "provider"
         mapValues(filtered, (item) => Provider.fromModelsDevProvider(item)),
         connected,
       )
-      return {
+      const result = { // fork_change - changed from return to feed into the lock filter
         all: Object.values(providers).map(Provider.toPublicInfo),
         default: Provider.defaultModelIDs(providers),
         connected: Object.keys(providers).filter((id) => id in connected || credentials[id]),
       }
+      // fork_change start - hard lock: strip every provider except the locked one
+      // from the catalog and connected list. Even if the underlying state was
+      // mutated, the API response must never advertise another provider.
+      //
+      // `options` is part of the public provider shape, so it would otherwise
+      // carry the API key to every client (webview, TUI, JetBrains). Redact it
+      // when the key came from the managed key file — nothing downstream needs
+      // the secret, and the clients that used to read it can no longer act on
+      // the credential anyway.
+      const redact = lockedProviderManaged()
+      return {
+        all: result.all
+          .filter((item) => isLockedProvider(item.id))
+          .map((item) => (redact && item.options?.apiKey ? { ...item, options: omit(item.options, ["apiKey"]) } : item)),
+        default: Object.fromEntries(Object.entries(result.default).filter(([id]) => isLockedProvider(id))),
+        connected: result.connected.filter((id) => isLockedProvider(id)),
+      }
+      // fork_change end
     })
 
     const auth = Effect.fn("ProviderHttpApi.auth")(function* () {
@@ -69,6 +101,9 @@ export const providerHandlers = HttpApiBuilder.group(InstanceHttpApi, "provider"
       params: { providerID: ProviderV2.ID }
       payload: ProviderAuth.AuthorizeInput
     }) {
+      // fork_change start
+      yield* mapForkLockError(assertLockedProvider(ctx.params.providerID))
+      // fork_change end
       return yield* mapProviderAuthError(
         svc.authorize({
           providerID: ctx.params.providerID,
@@ -97,6 +132,9 @@ export const providerHandlers = HttpApiBuilder.group(InstanceHttpApi, "provider"
       params: { providerID: ProviderV2.ID }
       payload: ProviderAuth.CallbackInput
     }) {
+      // fork_change start
+      yield* mapForkLockError(assertLockedProvider(ctx.params.providerID))
+      // fork_change end
       yield* mapProviderAuthError(
         svc.callback({
           providerID: ctx.params.providerID,

@@ -3,6 +3,11 @@ import { createEffect, createMemo, createResource } from "solid-js"
 import { createStore } from "solid-js/store"
 import { createSimpleContext } from "@opencode-ai/ui/context"
 import { pluralCategory, type UiI18nPluralKey } from "@opencode-ai/ui/context/i18n"
+// fork_change start - this fork ships as GenixCode, not OpenCode. The rename is
+// applied to translated copy at the dictionary seam rather than by editing ~65
+// locale files per package; see packages/core/src/fork/brand.ts.
+import { rebrandDict } from "@opencode-ai/core/fork/brand"
+// fork_change end
 import { Persist, persisted } from "@/utils/persist"
 import { dict as en } from "@/i18n/en"
 import { dict as uiEn } from "@opencode-ai/ui/i18n/en"
@@ -43,11 +48,17 @@ const LOCALES: readonly Locale[] = DESKTOP_NATIVE_LOCALES
 
 const INTL = DESKTOP_NATIVE_LOCALE_TAGS
 
-const base = i18n.flatten({ ...en, ...uiEn })
+// fork_change start
+const brand = <T,>(dict: T): T => rebrandDict(dict as Record<string, unknown>) as T
+
+const base = brand(i18n.flatten({ ...en, ...uiEn }))
+// fork_change end
 const dicts = new Map<Locale, Dictionary>([["en", base]])
 
+// fork_change start - rebrand each locale as it loads
 const merge = (app: Promise<Source>, ui: Promise<Source>) =>
-  Promise.all([app, ui]).then(([a, b]) => ({ ...base, ...i18n.flatten({ ...a.dict, ...b.dict }) }) as Dictionary)
+  Promise.all([app, ui]).then(([a, b]) => ({ ...base, ...brand(i18n.flatten({ ...a.dict, ...b.dict })) }) as Dictionary)
+// fork_change end
 
 const loaders: Record<Exclude<Locale, "en">, () => Promise<Dictionary>> = {
   zh: () => merge(import("@/i18n/zh"), import("@opencode-ai/ui/i18n/zh")),

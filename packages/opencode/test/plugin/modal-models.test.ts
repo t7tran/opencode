@@ -76,13 +76,14 @@ function makeProvider(baseURL: string): Provider {
 }
 
 test("discovers Modal workspace models", async () => {
-  const requests: Array<{ authorization: string | null; path: string }> = []
+  const requests: Array<{ authorization: string | null; path: string; userAgent: string | null }> = []
   using server = Bun.serve({
     port: 0,
     fetch(request) {
       requests.push({
         authorization: request.headers.get("authorization"),
         path: new URL(request.url).pathname,
+        userAgent: request.headers.get("user-agent"),
       })
       return Response.json({
         data: [
@@ -134,6 +135,7 @@ test("discovers Modal workspace models", async () => {
     {
       authorization: "Bearer test-token",
       path: "/v1/models",
+      userAgent: expect.stringMatching(/^genixcode\//), // fork_change - renamed binary
     },
   ])
   expect(Object.keys(models)).toEqual([RUNTIME_MODEL_ID, FALLBACK_RUNTIME_MODEL_ID])

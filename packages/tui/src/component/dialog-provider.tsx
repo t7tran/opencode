@@ -14,6 +14,9 @@ import { useToast } from "../ui/toast"
 import { isConsoleManagedProvider } from "../util/provider-origin"
 import { useConnected } from "./use-connected"
 import { useBindings } from "../keymap"
+// fork_change start - the managed key file owns the Genix credential
+import { lockedProviderManaged } from "@opencode-ai/core/fork/lock"
+// fork_change end
 import { useClipboard } from "../context/clipboard"
 
 const PROVIDER_PRIORITY: Record<string, number> = {
@@ -113,6 +116,20 @@ export function createDialogProviderOptions() {
     return promptCustomProviderID()
   }
 
+  // fork_change start - when /etc/kilo.key supplies the API key, the provider is
+  // already connected and its credential cannot be changed from here. The server refuses
+  // auth.set outright; this keeps the TUI from walking the user into that error.
+  function refuseManaged() {
+    if (!lockedProviderManaged()) return false
+    toast.show({
+      variant: "info",
+      message: `API key is embedded.`,
+    })
+    dialog.clear()
+    return true
+  }
+  // fork_change end
+
   const options = createMemo(() => {
     return pipe(
       providerOptions(sync.data.provider_next.all),
@@ -124,6 +141,7 @@ export function createDialogProviderOptions() {
             description: provider.description,
             category: provider.category,
             async onSelect() {
+              if (refuseManaged()) return // fork_change
               const providerID = await promptCustomProviderID()
               if (!providerID) return
               return dialog.replace(() => <ApiMethod providerID={providerID} title="API key" custom />)
@@ -143,6 +161,7 @@ export function createDialogProviderOptions() {
           category: provider.category,
           gutter: connected && onboarded() ? () => <text fg={theme.success}>✓</text> : undefined,
           async onSelect() {
+            if (refuseManaged()) return // fork_change
             if (consoleManaged) return
 
             const methods = sync.data.provider_auth[providerID] ?? [

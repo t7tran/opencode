@@ -21,6 +21,7 @@ export type RunSplashTheme = {
   right: ColorInput
   leftShadow: ColorInput
   rightShadow: ColorInput
+  logo: ColorInput // fork_change - Genix-blue splash wordmark colour
 }
 
 export type RunFooterTheme = {
@@ -494,6 +495,7 @@ function splashTheme(theme: TuiThemeCurrent, indexed: RGBA[]): RunSplashTheme {
     right,
     leftShadow: splashShadow(indexed, theme.background, left, 0.14),
     rightShadow: splashShadow(indexed, theme.background, right, 0.14),
+    logo: rgba("#0186CD"), // fork_change - Genix blue as truecolor (not palette-indexed, so terminals with a remapped 256-palette still show blue)
   }
 }
 
@@ -634,6 +636,7 @@ export const RUN_THEME_FALLBACK: RunTheme = {
     right: fallbackSplashRight,
     leftShadow: splashShadow(fallbackSplashIndexed, RGBA.fromValues(0, 0, 0, 0), fallbackSplashLeft, 0.14),
     rightShadow: splashShadow(fallbackSplashIndexed, RGBA.fromValues(0, 0, 0, 0), fallbackSplashRight, 0.14),
+    logo: rgba("#0186CD"), // fork_change - Genix blue as truecolor
   },
   block: {
     highlight: seed.highlight,

@@ -11,6 +11,9 @@ import { ConstrainDragXAxis } from "@/utils/solid-dnd"
 import { IconButton } from "@opencode-ai/ui/icon-button"
 import { Tooltip, TooltipKeybind } from "@opencode-ai/ui/tooltip"
 import { type LocalProject } from "@/context/layout"
+// fork_change start
+import { forkSupportURL } from "@/fork/policy"
+// fork_change end
 
 export const SidebarContent = (props: {
   mobile?: boolean
@@ -99,15 +102,19 @@ export const SidebarContent = (props: {
               aria-label={props.settingsLabel()}
             />
           </TooltipKeybind>
-          <Tooltip placement={placement()} value={props.helpLabel()}>
-            <IconButton
-              icon="help"
-              variant="ghost"
-              size="large"
-              onClick={props.onOpenHelp}
-              aria-label={props.helpLabel()}
-            />
-          </Tooltip>
+          {/* fork_change start - no support destination in this build; see @/fork/policy */}
+          <Show when={forkSupportURL()}>
+            <Tooltip placement={placement()} value={props.helpLabel()}>
+              <IconButton
+                icon="help"
+                variant="ghost"
+                size="large"
+                onClick={props.onOpenHelp}
+                aria-label={props.helpLabel()}
+              />
+            </Tooltip>
+          </Show>
+          {/* fork_change end */}
         </div>
       </div>
 

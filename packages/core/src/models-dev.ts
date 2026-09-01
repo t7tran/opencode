@@ -20,7 +20,7 @@ const InterleavedField = Schema.Union([
   Schema.String,
 ])
 
-const USER_AGENT = `opencode/${InstallationChannel}/${InstallationVersion}/${Flag.OPENCODE_CLIENT}`
+const USER_AGENT = `genixcode/${InstallationChannel}/${InstallationVersion}/${Flag.OPENCODE_CLIENT}` // fork_change - renamed binary
 
 const CostTier = Schema.Struct({
   input: Schema.Finite,

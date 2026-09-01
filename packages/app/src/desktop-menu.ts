@@ -278,22 +278,13 @@ export const DESKTOP_MENU: DesktopMenu[] = [
   {
     id: "help",
     labelKey: "desktop.menu.help",
-    items: [
-      { type: "item", labelKey: "desktop.menu.documentation", href: "https://opencode.ai/docs" },
-      { type: "item", labelKey: "desktop.menu.supportForum", href: "https://discord.com/invite/opencode" },
-      { type: "item", labelKey: "desktop.menu.exportLogs", command: "logs.export" },
-      { type: "separator" },
-      {
-        type: "item",
-        labelKey: "desktop.menu.shareFeedback",
-        href: "https://github.com/anomalyco/opencode/issues/new?template=feature_request.yml",
-      },
-      {
-        type: "item",
-        labelKey: "desktop.menu.reportBug",
-        href: "https://github.com/anomalyco/opencode/issues/new?template=bug_report.yml",
-      },
-    ],
+    // fork_change start - upstream's Help menu links to opencode.ai, its Discord
+    // and its public issue tracker. Feedback and bug reports from an internal
+    // Genix build must not land in a public upstream tracker, and the fork has no
+    // public docs or forum to point at instead: support goes through internal
+    // channels (see README.md). Only Export Logs survives.
+    items: [{ type: "item", labelKey: "desktop.menu.exportLogs", command: "logs.export" }],
+    // fork_change end
   },
 ]
 

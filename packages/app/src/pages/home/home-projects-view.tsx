@@ -6,6 +6,9 @@ import { AutoScroller, Feedback, PointerActivationConstraints } from "@dnd-kit/d
 import { RestrictToVerticalAxis } from "@dnd-kit/abstract/modifiers"
 import { RestrictToElement } from "@dnd-kit/dom/modifiers"
 import { ScrollView } from "@opencode-ai/ui/scroll-view"
+// fork_change start
+import { forkSupportURL } from "@/fork/policy"
+// fork_change end
 import { ProjectAvatar } from "@opencode-ai/ui/v2/project-avatar-v2"
 import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
 import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
@@ -170,14 +173,18 @@ export function HomeUtilityNav(props: {
         <IconV2 name="settings-gear" size="small" />
         <span class={HOME_PROJECT_NAV_LABEL}>{props.language.t("sidebar.settings")}</span>
       </HomeProjectNavButton>
-      <HomeProjectNavButton
-        type="button"
-        class="text-v2-text-text-faint [&>[data-slot=icon-svg]]:text-v2-icon-icon-muted"
-        onClick={props.onOpenHelp}
-      >
-        <IconV2 name="help" size="small" />
-        <span class={HOME_PROJECT_NAV_LABEL}>{props.language.t("sidebar.help")}</span>
-      </HomeProjectNavButton>
+      {/* fork_change start - no support destination in this build; see @/fork/policy */}
+      <Show when={forkSupportURL()}>
+        <HomeProjectNavButton
+          type="button"
+          class="text-v2-text-text-faint [&>[data-slot=icon-svg]]:text-v2-icon-icon-muted"
+          onClick={props.onOpenHelp}
+        >
+          <IconV2 name="help" size="small" />
+          <span class={HOME_PROJECT_NAV_LABEL}>{props.language.t("sidebar.help")}</span>
+        </HomeProjectNavButton>
+      </Show>
+      {/* fork_change end */}
     </div>
   )
 }

@@ -5,11 +5,16 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { promisify } from "node:util"
 import { app } from "electron"
+// fork_change start
+import { appId as brandAppId } from "@opencode-ai/core/fork/brand"
+// fork_change end
 
 const execFileAsync = promisify(execFile)
 const root = dirname(fileURLToPath(import.meta.url))
 const stateHome = process.env.XDG_STATE_HOME
-const desktopStateNames = ["ai.opencode.desktop.dev", "ai.opencode.desktop.beta", "ai.opencode.desktop"]
+// fork_change start - Genix application ids
+const desktopStateNames = [brandAppId("dev"), brandAppId("beta"), brandAppId("prod")]
+// fork_change end
 
 type Logger = {
   log(message: string, meta?: Record<string, unknown>): void
@@ -17,6 +22,14 @@ type Logger = {
 }
 
 export async function startBackgroundCli(logger: Logger, shellStateHome?: string) {
+  // fork_change start - unreachable in this fork: src/main/index.ts pins the
+  // sidecar to v1, and nothing bundles the executable this function resolves.
+  // The v2 CLI is built and published by upstream, so it enforces neither the
+  // provider lock nor the managed key file. Fail loudly rather than spawn an
+  // unlocked agent if a future upstream merge re-enables this path.
+  throw new Error(
+    "The v2 sidecar CLI is not shipped in this build. It is built by upstream and does not carry the provider lock; see FORK.md.",
+  )
   const bundled = app.isPackaged
     ? join(process.resourcesPath, executableName())
     : join(root, "../../resources", executableName())
