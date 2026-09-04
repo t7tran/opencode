@@ -9,6 +9,9 @@ import { useLanguage } from "@/context/language"
 import { useServerProtocol, useServerSDK } from "@/context/server-sdk"
 import { useServerSync } from "@/context/server-sync"
 import { DialogConnectProvider, useProviderConnectController } from "./dialog-connect-provider"
+// fork_change start - see the identical gating in settings-v2/providers.tsx
+import { forkManagedKey, forkProviderLocked } from "@/fork/policy"
+// fork_change end
 import { DialogCustomProvider } from "./dialog-custom-provider"
 import { SettingsList } from "./settings-list"
 import { SettingsServerPicker, SettingsServerScope } from "./settings-server-picker"
@@ -84,8 +87,10 @@ const SettingsProvidersContent: Component<{ onBack?: () => void }> = (props) => 
     return language.t("settings.providers.tag.other")
   }
 
+  // fork_change start - a managed key cannot be removed: auth.remove is refused server-side
   const canDisconnect = (item: ProviderItem) =>
-    source(item) !== "env" && (protocol() === "v1" || !isConfigCustom(item.id))
+    !forkManagedKey() && source(item) !== "env" && (protocol() === "v1" || !isConfigCustom(item.id))
+  // fork_change end
 
   const note = (id: string) => PROVIDER_NOTES.find((item) => item.match(id))?.key
 
@@ -214,14 +219,20 @@ const SettingsProvidersContent: Component<{ onBack?: () => void }> = (props) => 
                       {(key) => <span class="text-12-regular text-text-weak pl-8">{language.t(key())}</span>}
                     </Show>
                   </div>
-                  <Button size="large" variant="secondary" icon="plus-small" onClick={() => connect(item.id)}>
-                    {language.t("common.connect")}
-                  </Button>
+                  {/* fork_change start - a managed key cannot be replaced: auth.set is refused server-side */}
+                  <Show when={!forkManagedKey()}>
+                    <Button size="large" variant="secondary" icon="plus-small" onClick={() => connect(item.id)}>
+                      {language.t("common.connect")}
+                    </Button>
+                  </Show>
+                  {/* fork_change end */}
                 </div>
               )}
             </For>
 
-            <Show when={protocol() === "v1"}>
+            {/* fork_change start - no custom providers: the lock rejects every id but the locked one */}
+            <Show when={protocol() === "v1" && !forkProviderLocked()}>
+              {/* fork_change end */}
               <div
                 class="flex items-center justify-between gap-4 min-h-16 border-b border-border-weak-base last:border-none flex-wrap py-3"
                 data-component="custom-provider-section"
@@ -250,13 +261,17 @@ const SettingsProvidersContent: Component<{ onBack?: () => void }> = (props) => 
             </Show>
           </SettingsList>
 
-          <Button
-            variant="ghost"
-            class="px-0 py-0 mt-5 text-14-medium text-text-interactive-base text-left justify-start hover:bg-transparent active:bg-transparent"
-            onClick={() => connect()}
-          >
-            {language.t("dialog.provider.viewAll")}
-          </Button>
+          {/* fork_change start - there is no catalogue to browse; only the locked provider exists */}
+          <Show when={!forkProviderLocked()}>
+            <Button
+              variant="ghost"
+              class="px-0 py-0 mt-5 text-14-medium text-text-interactive-base text-left justify-start hover:bg-transparent active:bg-transparent"
+              onClick={() => connect()}
+            >
+              {language.t("dialog.provider.viewAll")}
+            </Button>
+          </Show>
+          {/* fork_change end */}
         </div>
       </div>
     </div>

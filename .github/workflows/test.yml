@@ -63,6 +63,24 @@ jobs:
             turbo-${{ runner.os }}-${{ hashFiles('turbo.json', '**/package.json') }}-
             turbo-${{ runner.os }}-
 
+      # fork_change start - the key-sealing pepper lives outside the repository
+      # (packages/core/src/fork/pepper.ts). Without it the golden-vector tests
+      # that pin the sealed-blob format skip themselves, so write it where they
+      # look. The secret is absent on forked-PR runs and the step then does
+      # nothing, which is fine: a *build* is what must fail without a pepper.
+      - name: Provision the key-sealing pepper
+        env:
+          GENIX_KEY_PEPPER: ${{ secrets.GENIX_KEY_PEPPER }}
+        run: |
+          if [ -z "${GENIX_KEY_PEPPER}" ]; then
+            echo "no GENIX_KEY_PEPPER secret — the sealed-blob golden vectors will skip"
+            exit 0
+          fi
+          pepper_file="${RUNNER_TEMP}/genix-key-pepper"
+          printf %s "${GENIX_KEY_PEPPER}" > "${pepper_file}"
+          chmod 600 "${pepper_file}" || true
+          echo "KILO_FORK_KEY_PEPPER_FILE=${pepper_file}" >> "${GITHUB_ENV}"
+      # fork_change end
       - name: Run unit tests
         timeout-minutes: 20
         run: GITHUB_ACTIONS=false bun turbo test

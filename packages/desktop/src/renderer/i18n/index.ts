@@ -4,6 +4,10 @@ import {
   detectDesktopNativeLocale,
   type DesktopNativeLocale,
 } from "../../../../app/src/i18n/desktop-native"
+// fork_change start - desktop-only copy carries the product name too; rebrand it
+// at the same seam the shared app dictionaries use.
+import { rebrandDict } from "@opencode-ai/core/fork/brand"
+// fork_change end
 
 import { dict as desktopEn } from "./en"
 import { dict as desktopZh } from "./zh"
@@ -111,72 +115,78 @@ function pickLocale(value: unknown): Locale | null {
   return parseLocale(record.locale)
 }
 
-const base = i18n.flatten(desktopEn)
+// fork_change start
+const brand = <T>(dict: T): T => rebrandDict(dict as Record<string, unknown>) as T
 
+const base = brand(i18n.flatten(desktopEn))
+// fork_change end
+
+// fork_change start - every branch below rebrands its locale via brand()
 function build(locale: Locale): Dictionary {
   if (locale === "en") return base
-  if (locale === "zh") return { ...base, ...i18n.flatten(desktopZh) }
-  if (locale === "zht") return { ...base, ...i18n.flatten(desktopZht) }
-  if (locale === "de") return { ...base, ...i18n.flatten(desktopDe) }
-  if (locale === "es") return { ...base, ...i18n.flatten(desktopEs) }
-  if (locale === "fr") return { ...base, ...i18n.flatten(desktopFr) }
-  if (locale === "da") return { ...base, ...i18n.flatten(desktopDa) }
-  if (locale === "ja") return { ...base, ...i18n.flatten(desktopJa) }
-  if (locale === "pl") return { ...base, ...i18n.flatten(desktopPl) }
-  if (locale === "ru") return { ...base, ...i18n.flatten(desktopRu) }
-  if (locale === "uk") return { ...base, ...i18n.flatten(desktopUk) }
-  if (locale === "ar") return { ...base, ...i18n.flatten(desktopAr) }
-  if (locale === "no") return { ...base, ...i18n.flatten(desktopNo) }
-  if (locale === "br") return { ...base, ...i18n.flatten(desktopBr) }
-  if (locale === "bs") return { ...base, ...i18n.flatten(desktopBs) }
-  if (locale === "tr") return { ...base, ...i18n.flatten(desktopTr) }
-  if (locale === "hi") return { ...base, ...i18n.flatten(desktopHi) }
-  if (locale === "nl") return { ...base, ...i18n.flatten(desktopNl) }
-  if (locale === "id") return { ...base, ...i18n.flatten(desktopId) }
-  if (locale === "vi") return { ...base, ...i18n.flatten(desktopVi) }
-  if (locale === "it") return { ...base, ...i18n.flatten(desktopIt) }
-  if (locale === "ur") return { ...base, ...i18n.flatten(desktopUr) }
-  if (locale === "pa") return { ...base, ...i18n.flatten(desktopPa) }
-  if (locale === "az") return { ...base, ...i18n.flatten(desktopAz) }
-  if (locale === "fi") return { ...base, ...i18n.flatten(desktopFi) }
-  if (locale === "sv") return { ...base, ...i18n.flatten(desktopSv) }
-  if (locale === "th") return { ...base, ...i18n.flatten(desktopTh) }
-  if (locale === "am") return { ...base, ...i18n.flatten(desktopAm) }
-  if (locale === "bg") return { ...base, ...i18n.flatten(desktopBg) }
-  if (locale === "bn") return { ...base, ...i18n.flatten(desktopBn) }
-  if (locale === "ca") return { ...base, ...i18n.flatten(desktopCa) }
-  if (locale === "cs") return { ...base, ...i18n.flatten(desktopCs) }
-  if (locale === "dv") return { ...base, ...i18n.flatten(desktopDv) }
-  if (locale === "dz") return { ...base, ...i18n.flatten(desktopDz) }
-  if (locale === "el") return { ...base, ...i18n.flatten(desktopEl) }
-  if (locale === "et") return { ...base, ...i18n.flatten(desktopEt) }
-  if (locale === "fa") return { ...base, ...i18n.flatten(desktopFa) }
-  if (locale === "fo") return { ...base, ...i18n.flatten(desktopFo) }
-  if (locale === "hr") return { ...base, ...i18n.flatten(desktopHr) }
-  if (locale === "hu") return { ...base, ...i18n.flatten(desktopHu) }
-  if (locale === "hy") return { ...base, ...i18n.flatten(desktopHy) }
-  if (locale === "is") return { ...base, ...i18n.flatten(desktopIs) }
-  if (locale === "ka") return { ...base, ...i18n.flatten(desktopKa) }
-  if (locale === "km") return { ...base, ...i18n.flatten(desktopKm) }
-  if (locale === "lo") return { ...base, ...i18n.flatten(desktopLo) }
-  if (locale === "lt") return { ...base, ...i18n.flatten(desktopLt) }
-  if (locale === "lv") return { ...base, ...i18n.flatten(desktopLv) }
-  if (locale === "mk") return { ...base, ...i18n.flatten(desktopMk) }
-  if (locale === "mn") return { ...base, ...i18n.flatten(desktopMn) }
-  if (locale === "ms") return { ...base, ...i18n.flatten(desktopMs) }
-  if (locale === "my") return { ...base, ...i18n.flatten(desktopMy) }
-  if (locale === "ne") return { ...base, ...i18n.flatten(desktopNe) }
-  if (locale === "ro") return { ...base, ...i18n.flatten(desktopRo) }
-  if (locale === "si") return { ...base, ...i18n.flatten(desktopSi) }
-  if (locale === "sk") return { ...base, ...i18n.flatten(desktopSk) }
-  if (locale === "sl") return { ...base, ...i18n.flatten(desktopSl) }
-  if (locale === "sq") return { ...base, ...i18n.flatten(desktopSq) }
-  if (locale === "sr") return { ...base, ...i18n.flatten(desktopSr) }
-  if (locale === "tg") return { ...base, ...i18n.flatten(desktopTg) }
-  if (locale === "tk") return { ...base, ...i18n.flatten(desktopTk) }
-  if (locale === "uz") return { ...base, ...i18n.flatten(desktopUz) }
-  return { ...base, ...i18n.flatten(desktopKo) }
+  if (locale === "zh") return { ...base, ...brand(i18n.flatten(desktopZh)) }
+  if (locale === "zht") return { ...base, ...brand(i18n.flatten(desktopZht)) }
+  if (locale === "de") return { ...base, ...brand(i18n.flatten(desktopDe)) }
+  if (locale === "es") return { ...base, ...brand(i18n.flatten(desktopEs)) }
+  if (locale === "fr") return { ...base, ...brand(i18n.flatten(desktopFr)) }
+  if (locale === "da") return { ...base, ...brand(i18n.flatten(desktopDa)) }
+  if (locale === "ja") return { ...base, ...brand(i18n.flatten(desktopJa)) }
+  if (locale === "pl") return { ...base, ...brand(i18n.flatten(desktopPl)) }
+  if (locale === "ru") return { ...base, ...brand(i18n.flatten(desktopRu)) }
+  if (locale === "uk") return { ...base, ...brand(i18n.flatten(desktopUk)) }
+  if (locale === "ar") return { ...base, ...brand(i18n.flatten(desktopAr)) }
+  if (locale === "no") return { ...base, ...brand(i18n.flatten(desktopNo)) }
+  if (locale === "br") return { ...base, ...brand(i18n.flatten(desktopBr)) }
+  if (locale === "bs") return { ...base, ...brand(i18n.flatten(desktopBs)) }
+  if (locale === "tr") return { ...base, ...brand(i18n.flatten(desktopTr)) }
+  if (locale === "hi") return { ...base, ...brand(i18n.flatten(desktopHi)) }
+  if (locale === "nl") return { ...base, ...brand(i18n.flatten(desktopNl)) }
+  if (locale === "id") return { ...base, ...brand(i18n.flatten(desktopId)) }
+  if (locale === "vi") return { ...base, ...brand(i18n.flatten(desktopVi)) }
+  if (locale === "it") return { ...base, ...brand(i18n.flatten(desktopIt)) }
+  if (locale === "ur") return { ...base, ...brand(i18n.flatten(desktopUr)) }
+  if (locale === "pa") return { ...base, ...brand(i18n.flatten(desktopPa)) }
+  if (locale === "az") return { ...base, ...brand(i18n.flatten(desktopAz)) }
+  if (locale === "fi") return { ...base, ...brand(i18n.flatten(desktopFi)) }
+  if (locale === "sv") return { ...base, ...brand(i18n.flatten(desktopSv)) }
+  if (locale === "th") return { ...base, ...brand(i18n.flatten(desktopTh)) }
+  if (locale === "am") return { ...base, ...brand(i18n.flatten(desktopAm)) }
+  if (locale === "bg") return { ...base, ...brand(i18n.flatten(desktopBg)) }
+  if (locale === "bn") return { ...base, ...brand(i18n.flatten(desktopBn)) }
+  if (locale === "ca") return { ...base, ...brand(i18n.flatten(desktopCa)) }
+  if (locale === "cs") return { ...base, ...brand(i18n.flatten(desktopCs)) }
+  if (locale === "dv") return { ...base, ...brand(i18n.flatten(desktopDv)) }
+  if (locale === "dz") return { ...base, ...brand(i18n.flatten(desktopDz)) }
+  if (locale === "el") return { ...base, ...brand(i18n.flatten(desktopEl)) }
+  if (locale === "et") return { ...base, ...brand(i18n.flatten(desktopEt)) }
+  if (locale === "fa") return { ...base, ...brand(i18n.flatten(desktopFa)) }
+  if (locale === "fo") return { ...base, ...brand(i18n.flatten(desktopFo)) }
+  if (locale === "hr") return { ...base, ...brand(i18n.flatten(desktopHr)) }
+  if (locale === "hu") return { ...base, ...brand(i18n.flatten(desktopHu)) }
+  if (locale === "hy") return { ...base, ...brand(i18n.flatten(desktopHy)) }
+  if (locale === "is") return { ...base, ...brand(i18n.flatten(desktopIs)) }
+  if (locale === "ka") return { ...base, ...brand(i18n.flatten(desktopKa)) }
+  if (locale === "km") return { ...base, ...brand(i18n.flatten(desktopKm)) }
+  if (locale === "lo") return { ...base, ...brand(i18n.flatten(desktopLo)) }
+  if (locale === "lt") return { ...base, ...brand(i18n.flatten(desktopLt)) }
+  if (locale === "lv") return { ...base, ...brand(i18n.flatten(desktopLv)) }
+  if (locale === "mk") return { ...base, ...brand(i18n.flatten(desktopMk)) }
+  if (locale === "mn") return { ...base, ...brand(i18n.flatten(desktopMn)) }
+  if (locale === "ms") return { ...base, ...brand(i18n.flatten(desktopMs)) }
+  if (locale === "my") return { ...base, ...brand(i18n.flatten(desktopMy)) }
+  if (locale === "ne") return { ...base, ...brand(i18n.flatten(desktopNe)) }
+  if (locale === "ro") return { ...base, ...brand(i18n.flatten(desktopRo)) }
+  if (locale === "si") return { ...base, ...brand(i18n.flatten(desktopSi)) }
+  if (locale === "sk") return { ...base, ...brand(i18n.flatten(desktopSk)) }
+  if (locale === "sl") return { ...base, ...brand(i18n.flatten(desktopSl)) }
+  if (locale === "sq") return { ...base, ...brand(i18n.flatten(desktopSq)) }
+  if (locale === "sr") return { ...base, ...brand(i18n.flatten(desktopSr)) }
+  if (locale === "tg") return { ...base, ...brand(i18n.flatten(desktopTg)) }
+  if (locale === "tk") return { ...base, ...brand(i18n.flatten(desktopTk)) }
+  if (locale === "uz") return { ...base, ...brand(i18n.flatten(desktopUz)) }
+  return { ...base, ...brand(i18n.flatten(desktopKo)) }
 }
+// fork_change end
 
 const state = {
   locale: detectLocale(),

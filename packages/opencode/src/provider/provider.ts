@@ -30,6 +30,11 @@ import { ProviderV2 } from "@opencode-ai/core/provider"
 import { ModelV2 } from "@opencode-ai/core/model"
 import { ModelStatus } from "./model-status"
 import { RuntimeFlags } from "@/effect/runtime-flags"
+// fork_change start
+import { lockedConfigEntry, lockedManagedEntry, lockedProvider, isLockedProvider, lockActive } from "@opencode-ai/core/fork/lock"
+import { managedKey, keyFilePath } from "@opencode-ai/core/fork/key-file"
+import { cachedGatewayModels } from "@opencode-ai/core/fork/gateway"
+// fork_change end
 import { ProviderError } from "./error"
 
 const OPENAI_HEADER_TIMEOUT_DEFAULT = 300_000
@@ -624,7 +629,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
       const directory = yield* InstanceState.directory
 
       const aiGatewayHeaders = {
-        "User-Agent": `opencode/${InstallationVersion} gitlab-ai-provider/${GITLAB_PROVIDER_VERSION} (${os.platform()} ${os.release()}; ${os.arch()})`,
+        "User-Agent": `genixcode/${InstallationVersion} gitlab-ai-provider/${GITLAB_PROVIDER_VERSION} (${os.platform()} ${os.release()}; ${os.arch()})`, // fork_change - renamed binary
         "anthropic-beta": "context-1m-2025-08-07",
         ...providerConfig?.options?.aiGatewayHeaders,
       }
@@ -757,7 +762,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         options: {
           apiKey,
           headers: {
-            "User-Agent": `opencode/${InstallationVersion} cloudflare-workers-ai (${os.platform()} ${os.release()}; ${os.arch()})`,
+            "User-Agent": `genixcode/${InstallationVersion} cloudflare-workers-ai (${os.platform()} ${os.release()}; ${os.arch()})`, // fork_change - renamed binary
           },
         },
         async getModel(sdk: any, modelID: string) {
@@ -827,7 +832,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         skipCache: input.options?.skipCache,
         collectLog: input.options?.collectLog,
         headers: {
-          "User-Agent": `opencode/${InstallationVersion} cloudflare-ai-gateway (${os.platform()} ${os.release()}; ${os.arch()})`,
+          "User-Agent": `genixcode/${InstallationVersion} cloudflare-ai-gateway (${os.platform()} ${os.release()}; ${os.arch()})`, // fork_change - renamed binary
         },
       }
 
@@ -1438,10 +1443,48 @@ const layer = Layer.effect(
 
         // now read config providers - includes any modifications from plugin config() hook
         const configProviders = Object.entries(cfg.provider ?? {})
+        // fork_change start - inject the locked Genix provider with its hardcoded identity
+        // (id, name, baseURL) ahead of any user config. A user-supplied entry for the same
+        // id (apiKey, models, etc.) is kept and deep-merged after the locked entry by the
+        // config-provider loop below. User entries for any other provider id are filtered
+        // out after the providers map is assembled. Skipped when the fork lock is disabled
+        // (tests) so the upstream provider pipeline is exercised unmodified.
+        //
+        // When the managed key file (/etc/kilo.key) is present the key is also
+        // re-applied as a trailing entry, so a key in opencode.json cannot shadow it, and
+        // the model list is discovered from the gateway so the provider is connected
+        // without an interactive login. Discovery is memoised per process and never
+        // throws — an unreachable gateway just leaves whatever models config supplies.
+        const forkManagedKey = lockActive() ? managedKey() : undefined
+        const forkDiscovery = forkManagedKey
+          ? yield* Effect.promise(() => cachedGatewayModels(lockedProvider().baseURL, forkManagedKey))
+          : undefined
+        if (forkDiscovery?.error) {
+          yield* Effect.logWarning("fork: model discovery for the managed key failed", {
+            file: keyFilePath(),
+            err: forkDiscovery.error,
+          })
+        }
+        const forkManagedModels = forkDiscovery?.models
+        const configProvidersMerged: typeof configProviders = lockActive()
+          ? (() => {
+              const head = lockedConfigEntry(forkManagedModels) as (typeof configProviders)[number]
+              const tail = lockedManagedEntry() as (typeof configProviders)[number] | undefined
+              return tail ? [head, ...configProviders, tail] : [head, ...configProviders]
+            })()
+          : configProviders
+        // fork_change end
         const disabled = new Set(cfg.disabled_providers ?? [])
         const enabled = cfg.enabled_providers ? new Set(cfg.enabled_providers) : null
 
         function isProviderAllowed(providerID: ProviderV2.ID): boolean {
+          // fork_change start - hard lock: only the locked provider is ever allowed
+          if (!isLockedProvider(providerID)) return false
+          // The managed key file forces the locked provider on: a stale
+          // disabled_providers entry (from a disconnect performed before the file
+          // was dropped in) must not keep it disconnected.
+          if (forkManagedKey) return true
+          // fork_change end
           if (enabled && !enabled.has(providerID)) return false
           if (disabled.has(providerID)) return false
           return true
@@ -1475,7 +1518,7 @@ const layer = Layer.effect(
         }
 
         // extend database from config
-        for (const [providerID, provider] of configProviders) {
+        for (const [providerID, provider] of configProvidersMerged) { // fork_change
           const existing = database[providerID]
           const parsed: Info = {
             id: ProviderV2.ID.make(providerID),
@@ -1641,7 +1684,7 @@ const layer = Layer.effect(
         }
 
         // load config - re-apply with updated data
-        for (const [id, provider] of configProviders) {
+        for (const [id, provider] of configProvidersMerged) { // fork_change - include the locked + managed entries
           const providerID = ProviderV2.ID.make(id)
           const partial: Partial<Info> = { source: "config" }
           if (provider.env) partial.env = provider.env
@@ -1675,6 +1718,16 @@ const layer = Layer.effect(
 
           for (const [modelID, model] of Object.entries(provider.models)) {
             model.api.id = model.api.id ?? model.id ?? modelID
+            // fork_change start - while the key is managed, pin the SDK package for the
+            // locked provider's models. `npm` is user-settable both per provider and per
+            // model, it accepts a bare package name or a `file://` path, and the package
+            // it names is loaded and handed the API key — so leaving it open lets an
+            // opencode.json entry exfiltrate the managed key (and run arbitrary code)
+            // without touching the key file. Unlike `options.baseURL` this cannot be
+            // pinned from the managed tail config entry: model records are only created
+            // by entries that list models, and the tail deliberately lists none.
+            if (forkManagedKey && isLockedProvider(providerID)) model.api.npm = lockedProvider().npm
+            // fork_change end
 
             if (
               // These chat aliases are invalid for the special handling in the

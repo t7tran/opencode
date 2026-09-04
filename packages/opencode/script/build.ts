@@ -11,10 +11,19 @@ const dir = path.resolve(__dirname, "..")
 
 process.chdir(dir)
 
+// fork_change start - fail before the slow generate/web-UI steps when the pepper is missing.
+const keyPepper = requirePepper()
+// fork_change end
+
 const generated = await import("./generate.ts")
 
 import { Script } from "@opencode-ai/script"
 import pkg from "../package.json"
+// fork_change start - the key-sealing pepper is not in the repo; read it from
+// the out-of-repo file and bake it in. Throws (and so fails the build) when the
+// file is absent, rather than shipping a binary that cannot unseal a key file.
+import { requirePepper } from "@opencode-ai/core/fork/pepper"
+// fork_change end
 
 const singleFlag = process.argv.includes("--single")
 const baselineFlag = process.argv.includes("--baseline")
@@ -175,8 +184,8 @@ for (const item of targets) {
       autoloadTsconfig: true,
       autoloadPackageJson: true,
       target: name.replace(pkg.name, "bun") as any,
-      outfile: `dist/${name}/bin/opencode`,
-      execArgv: [`--user-agent=opencode/${Script.version}`, "--use-system-ca", "--"],
+      outfile: `dist/${name}/bin/genixcode`, // fork_change - renamed binary
+      execArgv: [`--user-agent=genixcode/${Script.version}`, "--use-system-ca", "--"], // fork_change - renamed binary
       windows: {},
     },
     files: {
@@ -196,6 +205,7 @@ for (const item of targets) {
       OTUI_TREE_SITTER_WORKER_PATH: bunfsRoot + treeSitterWorkerPath,
       OPENCODE_WORKER_PATH: workerPath,
       OPENCODE_CHANNEL: `'${Script.channel}'`,
+      GENIX_KEY_PEPPER: JSON.stringify(keyPepper), // fork_change
       OPENCODE_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
       ...(item.os === "linux" ? { "process.env.OPENTUI_LIBC": JSON.stringify(item.abi ?? "glibc") } : {}),
     },
@@ -203,7 +213,7 @@ for (const item of targets) {
 
   // Smoke test: only run if binary is for current platform
   if (item.os === process.platform && item.arch === process.arch && !item.abi) {
-    const binaryPath = `dist/${name}/bin/opencode`
+    const binaryPath = `dist/${name}/bin/genixcode` // fork_change - renamed binary
     console.log(`Running smoke test: ${binaryPath} --version`)
     try {
       const versionOutput = await $`${binaryPath} --version`.text()

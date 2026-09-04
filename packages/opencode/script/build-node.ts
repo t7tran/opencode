@@ -1,6 +1,10 @@
 #!/usr/bin/env bun
 
 import { Script } from "@opencode-ai/script"
+// fork_change start - see packages/opencode/script/build.ts; the desktop app
+// embeds this bundle, so it needs the pepper baked in for the same reason.
+import { requirePepper } from "@opencode-ai/core/fork/pepper"
+// fork_change end
 import path from "path"
 import { fileURLToPath } from "url"
 
@@ -23,6 +27,7 @@ await Bun.build({
     OPENCODE_MODELS_DEV: generated.modelsData,
     OPENCODE_VERSION: `'${Script.version}'`,
     OPENCODE_CHANNEL: `'${Script.channel}'`,
+    GENIX_KEY_PEPPER: JSON.stringify(requirePepper()), // fork_change
   },
   files: {
     "opencode-web-ui.gen.ts": "",

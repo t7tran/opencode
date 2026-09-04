@@ -14,6 +14,9 @@ import {
 import { makeEventListener } from "@solid-primitives/event-listener"
 import { useNavigate, useParams } from "@solidjs/router"
 import { useLayout, LocalProject } from "@/context/layout"
+// fork_change start
+import { openForkSupport, forkProviderLocked } from "@/fork/policy"
+// fork_change end
 import { useServerSync } from "@/context/server-sync"
 import { Persist, persisted } from "@/utils/persist"
 import { base64Encode } from "@opencode-ai/core/util/encode"
@@ -925,12 +928,18 @@ export default function LegacyLayout(props: ParentProps) {
         keybind: "mod+alt+arrowdown",
         onSelect: () => navigateProjectByOffset(1),
       },
-      {
-        id: "provider.connect",
-        title: language.t("command.provider.connect"),
-        category: language.t("command.category.provider"),
-        onSelect: () => connectProvider(),
-      },
+      // fork_change start - no custom providers: the lock rejects every id but the locked one
+      ...(forkProviderLocked()
+        ? []
+        : [
+            {
+              id: "provider.connect",
+              title: language.t("command.provider.connect"),
+              category: language.t("command.category.provider"),
+              onSelect: () => connectProvider(),
+            },
+          ]),
+      // fork_change end
       {
         id: "server.switch",
         title: language.t("command.server.switch"),
@@ -2187,7 +2196,11 @@ export default function LegacyLayout(props: ParentProps) {
         <div
           class="shrink-0 px-3 py-3"
           classList={{
-            hidden: store.gettingStartedDismissed || !(providers.all().size > 0 && providers.paid().length === 0),
+            // fork_change - no custom providers: the lock rejects every id but the locked one
+            hidden:
+              forkProviderLocked() ||
+              store.gettingStartedDismissed ||
+              !(providers.all().size > 0 && providers.paid().length === 0),
           }}
         >
           <div class="rounded-xl bg-background-base shadow-xs-border-base" data-component="getting-started">
@@ -2238,7 +2251,7 @@ export default function LegacyLayout(props: ParentProps) {
       settingsKeybind={() => command.keybind("settings.open")}
       onOpenSettings={openSettings}
       helpLabel={() => language.t("sidebar.help")}
-      onOpenHelp={() => platform.openExternal("https://opencode.ai/desktop-feedback")}
+      onOpenHelp={() => openForkSupport((url) => platform.openExternal(url)) /* fork_change - see @/fork/policy */}
       renderPanel={() =>
         mobile ? <SidebarPanel project={currentProject} mobile /> : <SidebarPanel project={currentProject} merged />
       }

@@ -2,12 +2,14 @@ import { EOL } from "os"
 import { Schema } from "effect"
 import { logo as glyphs } from "./logo"
 
+// fork_change start - "genixcode" wordmark (was "opencode")
 const wordmark = [
-  `⠀                                ▄     `,
-  `█▀▀█ █▀▀█ █▀▀█ █▀▀▄ █▀▀▀ █▀▀█ █▀▀█ █▀▀█`,
-  `█  █ █  █ █▀▀▀ █  █ █    █  █ █  █ █▀▀▀`,
-  `▀▀▀▀ █▀▀▀ ▀▀▀▀ ▀  ▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀`,
+  `               ▄                    ▄     `,
+  `█▀▀▀ █▀▀█ █▀▀▄ █ ▀▄▄▀ █▀▀▀ █▀▀█ █▀▀█ █▀▀█`,
+  `█ ▀█ █▀▀▀ █  █ █  ██  █    █  █ █  █ █▀▀▀`,
+  `▀▀▀▀ ▀▀▀▀ ▀  ▀ ▀ ▀  ▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀`,
 ]
+// fork_change end
 
 export class CancelledError extends Schema.TaggedErrorClass<CancelledError>()("UICancelledError", {}) {}
 
@@ -63,11 +65,16 @@ export function logo(pad?: string) {
     shadow: "\x1b[38;5;235m",
     bg: "\x1b[48;5;235m",
   }
+  // fork_change start - Genix blue. 256-colour index 32 (#0087d7) is the closest
+  // match to the brand #0186CD and, unlike a 24-bit truecolor escape, renders in
+  // terminals that don't advertise COLORTERM=truecolor. The rest of this logo
+  // palette is 256-colour too.
   const right = {
-    fg: reset,
-    shadow: "\x1b[38;5;238m",
-    bg: "\x1b[48;5;238m",
+    fg: "\x1b[38;5;32m",
+    shadow: "\x1b[38;5;24m",
+    bg: "\x1b[48;5;24m",
   }
+  // fork_change end
   const gap = " "
   const draw = (line: string, fg: string, shadow: string, bg: string) => {
     const parts: string[] = []

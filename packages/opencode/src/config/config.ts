@@ -436,7 +436,8 @@ const layer = Layer.effect(
         const deps: Fiber.Fiber<void>[] = []
 
         for (const dir of directories) {
-          if (dir.endsWith(".opencode") || dir === Flag.OPENCODE_CONFIG_DIR) {
+          if (ConfigPaths.isConfigDirectory(dir)) {
+            // fork_change - was an inline `.opencode` suffix test; see ConfigPaths.isConfigDirectory
             for (const file of ["opencode.json", "opencode.jsonc"]) {
               const source = path.join(dir, file)
               yield* Effect.logDebug(`loading config from ${source}`)

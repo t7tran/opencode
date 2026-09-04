@@ -47,7 +47,7 @@ function authHeaders() {
   return {
     "Content-Type": "application/x-www-form-urlencoded",
     Accept: "application/json",
-    "User-Agent": `opencode/${InstallationVersion}`,
+    "User-Agent": `genixcode/${InstallationVersion}`, // fork_change - renamed binary
   }
 }
 
@@ -288,7 +288,7 @@ export async function XaiAuthPlugin(input: PluginInput, options: XaiAuthPluginOp
               }
             }
             headers.set("authorization", `Bearer ${currentAuth.access}`)
-            headers.set("User-Agent", `opencode/${InstallationVersion}`)
+            headers.set("User-Agent", `genixcode/${InstallationVersion}`) // fork_change - renamed binary
 
             return fetch(requestInput, { ...init, headers })
           },

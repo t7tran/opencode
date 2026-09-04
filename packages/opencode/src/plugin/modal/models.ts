@@ -1,5 +1,6 @@
 import type { Model } from "@opencode-ai/sdk/v2"
 import { Schema } from "effect"
+import { InstallationVersion } from "@opencode-ai/core/installation/version"
 
 const reasoningOption = Schema.Struct({
   type: Schema.Literal("effort"),
@@ -51,6 +52,9 @@ export async function get(baseURL: string, apiKey: string, existing: Record<stri
   const data = await fetch(`${baseURL.replace(/\/+$/, "")}/models`, {
     headers: {
       Authorization: `Bearer ${apiKey}`,
+      // Without this, fetch() falls back to the runtime default ("node" under Node,
+      // "Bun/x" under Bun).
+      "User-Agent": `genixcode/${InstallationVersion}`, // fork_change - renamed binary
     },
     signal: AbortSignal.timeout(3_000),
   }).then(async (res) => {

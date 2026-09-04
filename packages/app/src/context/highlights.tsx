@@ -6,6 +6,9 @@ import { usePlatform } from "@/context/platform"
 import { useSettings } from "@/context/settings"
 import { persisted } from "@/utils/persist"
 import { DialogReleaseNotes, type Highlight } from "@/components/dialog-release-notes"
+// fork_change start
+import { forkReleaseNotesEnabled } from "@/fork/policy"
+// fork_change end
 
 const CHANGELOG_URL = "https://opencode.ai/changelog.json"
 
@@ -165,6 +168,12 @@ export const { use: useHighlights, provider: HighlightsProvider } = createSimple
     }
 
     const start = (previous: string) => {
+      // fork_change start - no changelog feed for this fork; see @/fork/policy
+      if (!forkReleaseNotesEnabled()) {
+        markSeen()
+        return
+      }
+      // fork_change end
       if (!settings.general.releaseNotes()) {
         markSeen()
         return

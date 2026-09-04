@@ -472,7 +472,7 @@ export async function CodexAuthPlugin(input: PluginInput, options: CodexAuthPlug
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                "User-Agent": `opencode/${InstallationVersion}`,
+                "User-Agent": `genixcode/${InstallationVersion}`, // fork_change - renamed binary
               },
               body: JSON.stringify({ client_id: CLIENT_ID }),
             })
@@ -496,7 +496,7 @@ export async function CodexAuthPlugin(input: PluginInput, options: CodexAuthPlug
                     method: "POST",
                     headers: {
                       "Content-Type": "application/json",
-                      "User-Agent": `opencode/${InstallationVersion}`,
+                      "User-Agent": `genixcode/${InstallationVersion}`, // fork_change - renamed binary
                     },
                     body: JSON.stringify({
                       device_auth_id: deviceData.device_auth_id,
@@ -556,7 +556,7 @@ export async function CodexAuthPlugin(input: PluginInput, options: CodexAuthPlug
     "chat.headers": async (input, output) => {
       if (input.model.providerID !== "openai") return
       output.headers.originator = "opencode"
-      output.headers["User-Agent"] = `opencode/${InstallationVersion} (${os.platform()} ${os.release()}; ${os.arch()})`
+      output.headers["User-Agent"] = `genixcode/${InstallationVersion} (${os.platform()} ${os.release()}; ${os.arch()})` // fork_change - renamed binary
       output.headers["session-id"] = input.sessionID
       // Temporary fetch-layer hack: title generation currently shares the conversation
       // session ID, so the OpenAI plugin marks it for HTTP fallback until transport

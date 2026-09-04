@@ -49,19 +49,31 @@ import { migrate } from "./migrate"
 import { cleanupStoreFiles } from "./store-cleanup"
 import { startBackgroundCli } from "./background-cli"
 import { setNativeTranslations } from "./native-translations"
+// fork_change start
+import { appId as brandAppId, productName, PROTOCOL_SCHEME } from "@opencode-ai/core/fork/brand"
+import { forkSidecarVersion, registerForkManagedKeyChannel } from "./fork-policy"
+// fork_change end
 
+// fork_change start - Genix identity, from the fork brand module
 const APP_NAMES: Record<string, string> = {
-  dev: "OpenCode Dev",
-  beta: "OpenCode Beta",
-  prod: "OpenCode",
+  dev: productName("dev"),
+  beta: productName("beta"),
+  prod: productName("prod"),
 }
 const APP_IDS: Record<string, string> = {
-  dev: "ai.opencode.desktop.dev",
-  beta: "ai.opencode.desktop.beta",
-  prod: "ai.opencode.desktop",
+  dev: brandAppId("dev"),
+  beta: brandAppId("beta"),
+  prod: brandAppId("prod"),
 }
+// fork_change end
 const TEST_ONBOARDING = process.env.OPENCODE_TEST_ONBOARDING === "1"
-const SIDECAR_VERSION = process.env.OPENCODE_SIDECAR_V2 === "1" ? "v2" : "v1"
+// fork_change start - the v2 sidecar is upstream's separately published CLI. It is
+// not built from this fork, so it enforces neither the provider lock nor the
+// managed key file, and nothing bundles it any more (see scripts/utils.ts).
+// Pinned to v1 — the embedded server built from packages/opencode — so
+// OPENCODE_SIDECAR_V2=1 cannot start an unlocked agent. See ./fork-policy.
+const SIDECAR_VERSION = forkSidecarVersion()
+// fork_change end
 const jsCallStackFeature = "DocumentPolicyIncludeJSCallStacksInCrashReports"
 
 let logger: ReturnType<typeof initLogging>
@@ -122,7 +134,7 @@ const main = Effect.gen(function* () {
 
   process.env.OPENCODE_DISABLE_EMBEDDED_WEB_UI = "true"
 
-  const appId = app.isPackaged ? APP_IDS[CHANNEL] : "ai.opencode.desktop.dev"
+  const appId = app.isPackaged ? APP_IDS[CHANNEL] : brandAppId("dev") // fork_change - Genix id when unpackaged too
   const onboardingTestRoot = ((): string | undefined => {
     if (!TEST_ONBOARDING) return
 
@@ -138,7 +150,7 @@ const main = Effect.gen(function* () {
     process.env.XDG_STATE_HOME = join(root, "state")
     return root
   })()
-  app.setName(app.isPackaged ? APP_NAMES[CHANNEL] : "OpenCode Dev")
+  app.setName(app.isPackaged ? APP_NAMES[CHANNEL] : productName("dev")) // fork_change
   app.setAppUserModelId(appId)
   app.setPath(
     "userData",
@@ -203,7 +215,7 @@ const main = Effect.gen(function* () {
   const shellEnv = preferAppEnv(app.getPath("userData"))
 
   app.on("second-instance", (_event: Event, argv: string[]) => {
-    const urls = argv.filter((arg: string) => arg.startsWith("opencode://"))
+    const urls = argv.filter((arg: string) => arg.startsWith(`${PROTOCOL_SCHEME}://`)) // fork_change - genixcode:// deep links
     if (urls.length) {
       logger.log("deep link received via second-instance", { urls })
       emitDeepLinks(urls)
@@ -268,7 +280,7 @@ const main = Effect.gen(function* () {
       }),
     ),
   )
-  app.setAsDefaultProtocolClient("opencode")
+  app.setAsDefaultProtocolClient(PROTOCOL_SCHEME) // fork_change
   registerRendererProtocol()
   setDockIcon()
   const updater = setupAutoUpdater(stopSidecars)
@@ -311,6 +323,7 @@ const main = Effect.gen(function* () {
       if (setNativeTranslations(bundle)) createMenu(menuDeps)
     },
   })
+  registerForkManagedKeyChannel() // fork_change - lets the renderer hide connect/disconnect
   registerWslIpcHandlers(wslServers)
   void updater.start()
   const updateTimer = setInterval(() => void updater.check(), 10 * 60 * 1000)

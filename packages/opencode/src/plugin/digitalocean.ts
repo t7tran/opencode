@@ -171,7 +171,7 @@ async function listRouters(
     headers: {
       Authorization: `Bearer ${bearer}`,
       Accept: "application/json",
-      "User-Agent": `opencode/${InstallationVersion}`,
+      "User-Agent": `genixcode/${InstallationVersion}`, // fork_change - renamed binary
     },
     signal: AbortSignal.timeout(10_000),
   }).catch(() => undefined)

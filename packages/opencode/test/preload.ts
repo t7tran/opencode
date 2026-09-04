@@ -5,6 +5,7 @@ import path from "path"
 import fs from "fs/promises"
 import { setTimeout as sleep } from "node:timers/promises"
 import { afterAll } from "bun:test"
+import { APP_DIRNAME } from "@opencode-ai/core/fork/brand" // fork_change
 
 // Set XDG env vars FIRST, before any src/ imports
 const dir = path.join(os.tmpdir(), "opencode-test-data-" + process.pid)
@@ -50,7 +51,7 @@ const testManagedConfigDir = path.join(dir, "managed")
 process.env["OPENCODE_TEST_MANAGED_CONFIG_DIR"] = testManagedConfigDir
 
 // Write the cache version file to prevent global/index.ts from clearing the cache
-const cacheDir = path.join(dir, "cache", "opencode")
+const cacheDir = path.join(dir, "cache", APP_DIRNAME) // fork_change - app dir is `genixcode`
 await fs.mkdir(cacheDir, { recursive: true })
 await fs.writeFile(path.join(cacheDir, "version"), "14")
 
@@ -85,6 +86,16 @@ delete process.env["OTEL_RESOURCE_ATTRIBUTES"]
 
 // Use in-memory sqlite
 process.env["OPENCODE_DB"] = ":memory:"
+
+// fork_change start - disable the fork's hardcoded provider lock during tests so the
+// upstream provider pipeline (anthropic/openai/bedrock/etc.) is exercised unmodified.
+process.env["KILO_FORK_DISABLE_PROVIDER_LOCK"] = "1"
+// fork_change end
+
+// fork_change start - point the managed key file at a path that never exists so tests
+// never pick up a real /etc/kilo.key from the developer's machine.
+process.env["KILO_FORK_KEY_FILE"] = "/nonexistent/fork-test/kilo.key"
+// fork_change end
 
 // Now safe to import from src/
 const { initProjectors } = await import("../src/server/projectors")

@@ -5,6 +5,9 @@ import * as pty from "@lydell/node-pty"
 import type { WslDistroProbe, WslInstalledDistro, WslOnlineDistro, WslRuntimeCheck } from "../../preload/types"
 import { wslTerminalArgs } from "./policy"
 import { nativeT } from "../native-translations"
+// fork_change start
+import { CLI_NAME } from "@opencode-ai/core/fork/brand"
+// fork_change end
 
 export type WslCommandLine = {
   stream: "stdout" | "stderr"
@@ -268,7 +271,13 @@ export async function installWslOpencode(version: string, distro: string, opts?:
   return runInteractiveCommand(
     resolveSystem32Command("wsl.exe"),
     wslArgs(
-      ["bash", "-lc", `curl -fsSL https://opencode.ai/install | bash -s -- --version ${shellEscape(version)}`],
+      // fork_change start - upstream pipes https://opencode.ai/install into bash,
+      // which installs the public OpenCode CLI into the distro. This fork must
+      // never install or run that build, so the WSL server is installed from the
+      // fork's own npm package instead. Requires npm in the distro, where
+      // upstream needed only curl and bash.
+      ["bash", "-lc", `npm install -g ${shellEscape(`${CLI_NAME}@${version}`)}`],
+      // fork_change end
       distro,
     ),
     withTimeout(opts, DEFAULT_WSL_INSTALL_TIMEOUT_MS),
@@ -308,15 +317,19 @@ export async function probeWslDistro(name: string, opts?: RunWslOptions): Promis
 }
 
 export async function resolveWslOpencode(distro: string, opts?: RunWslOptions) {
+  // fork_change start - locate the fork's CLI, not upstream's. A global npm
+  // install puts it on PATH; the $HOME fallback matches the layout an install
+  // script would use, and keeps a hand-provisioned distro working.
   return firstLine(
     (
       await runWslSh(
-        'if [ -x "$HOME/.opencode/bin/opencode" ]; then printf "%s\\n" "$HOME/.opencode/bin/opencode"; fi',
+        `command -v ${CLI_NAME} 2>/dev/null || if [ -x "$HOME/.${CLI_NAME}/bin/${CLI_NAME}" ]; then printf "%s\\n" "$HOME/.${CLI_NAME}/bin/${CLI_NAME}"; fi`,
         distro,
         opts,
       )
     ).stdout,
   )
+  // fork_change end
 }
 
 export async function readWslCommandVersion(command: string, distro: string, opts?: RunWslOptions) {
