@@ -1,1 +1,5 @@
 preload = ["@opentui/solid/preload"]
+
+[test]
+# fork_change - @opencode/util/fork/test-preload keeps the provider lock off
+preload = ["@opentui/solid/preload", "@opencode/util/fork/test-preload"] # fork_change

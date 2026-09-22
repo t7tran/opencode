@@ -1,0 +1,33 @@
+# fork_change - new file
+#
+# Materialises the key-sealing pepper for a build.
+#
+# The pepper is deliberately not in the repository — see
+# packages/core/src/fork/pepper.ts. Every build that bakes it in (the CLI via
+# script/build.ts, the desktop app's embedded server via script/build-node.ts)
+# reads it from a file and fails without one, so write it out from the secret
+# first, outside the checkout.
+#
+# Changing the secret's value is a format break: every host already provisioned
+# with a sealed key stops being able to use it.
+name: "Provision the key-sealing pepper"
+description: "Write the GENIX_KEY_PEPPER secret to a file outside the checkout and point the build at it"
+inputs:
+  pepper:
+    description: "The key-sealing pepper (secrets.GENIX_KEY_PEPPER)"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      env:
+        GENIX_KEY_PEPPER: ${{ inputs.pepper }}
+      run: |
+        if [ -z "${GENIX_KEY_PEPPER}" ]; then
+          echo "::error::secret GENIX_KEY_PEPPER is not set — the build cannot bake in the sealing pepper"
+          exit 1
+        fi
+        pepper_file="${RUNNER_TEMP}/genix-key-pepper"
+        install -m 600 /dev/null "${pepper_file}"
+        printf %s "${GENIX_KEY_PEPPER}" > "${pepper_file}"
+        echo "KILO_FORK_KEY_PEPPER_FILE=${pepper_file}" >> "${GITHUB_ENV}"

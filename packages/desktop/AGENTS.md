@@ -1,7 +1,16 @@
 # Desktop package notes
 
+- Follow Solid best practices, leave a comment when violating this: https://www.brenelz.com/posts/solid-js-best-practices/
 - Renderer process should only call `window.api` from `src/preload`.
 - Main process should register IPC handlers in `src/main/ipc.ts`.
+- Avoid FS operations where possible. For any desktop persistence prefer sqlite in most cases, as performance and EPERM and many other things, especially on windows can be quite painful. Using anything other than sqlite should come with strong reasons.
+
+<!-- fork_change start -->
+
+- This fork ships as **GenixCode**, not OpenCode, but the locale files still say "OpenCode" on purpose. The rename happens at the dictionary seam (`rebrandDict` from `@opencode/util/fork/brand`, applied in `packages/app/src/runtime/i18n/language.tsx` and `src/main/native/translations.ts`). Do NOT hand-edit locale files to rebrand them — that trades a small diff for one that conflicts on every upstream translation update. A test asserting exact English copy must expect the rebranded string.
+
+<!-- fork_change end -->
+
 - NEVER hardcode user-visible English strings in production code. ALWAYS use an i18n key for native menus, picker titles, dialogs, buttons, accessible labels, and displayed errors.
 - When migrating existing copy to i18n, preserve the English text byte-for-byte unless the task explicitly requests a copy change.
 - NEVER change existing English text or English keys to facilitate translation. English is intentional, designer-written source copy; adapt locale-specific translations and i18n mechanics around it.

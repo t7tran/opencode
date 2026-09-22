@@ -1,24 +1,50 @@
 #!/usr/bin/env bun
 
 import { $ } from "bun"
-import { rm } from "fs/promises"
+import { mkdir, rm } from "fs/promises"
 import path from "path"
-import { Script } from "@opencode-ai/script"
+import { Script } from "@opencode/script"
 import { createSolidTransformPlugin } from "@opentui/solid/bun-plugin"
+import type { BunPlugin } from "bun"
 import pkg from "../package.json"
-import { modelsData } from "./generate"
+import { buildAppArchive } from "./app-assets"
+import { verifyArtifact, verifySimulationGraph } from "./verify-artifact"
+import { resolveOpencodePty } from "./opencode-pty"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
+// fork_change start - the key-sealing pepper is not in the repo; read it from
+// the out-of-repo file and bake it in. Throws (and so fails the build) when the
+// file is absent, rather than shipping a binary that cannot unseal a key file.
+import { requirePepper } from "@opencode/util/fork/pepper"
+// fork_change end
+
+// fork_change - fail before the slow app-assets/compile steps when the pepper is missing.
+const keyPepper = requirePepper() // fork_change
 
 const dir = path.resolve(import.meta.dirname, "..")
-const binary = "lildax"
+const binary = "opencode"
+// fork_change start - `binary` above is the token upstream's target names are built
+// from and then rewritten ("opencode-linux-x64" -> "cli-linux-x64" / "bun-linux-x64"),
+// so it must keep upstream's spelling. Only the compiled executable is renamed; the
+// npm package names stay upstream's and are rewritten at publish time by
+// script/fork-publish.ts. See FORK.md § CLI name.
+const executableName = CLI_NAME
+// fork_change end
+const outdir = path.resolve(
+  dir,
+  process.argv.find((arg) => arg.startsWith("--outdir="))?.slice("--outdir=".length) ?? "dist",
+)
+if (outdir === dir) throw new Error("--outdir must not be the package directory")
 process.chdir(dir)
 
-await rm("dist", { recursive: true, force: true })
+await rm(outdir, { recursive: true, force: true })
 
 const singleFlag = process.argv.includes("--single")
 const baselineFlag = process.argv.includes("--baseline")
+const requestedTarget = process.argv.find((arg) => arg.startsWith("--target="))?.slice("--target=".length)
 const skipInstall = process.argv.includes("--skip-install")
-const sourcemapsFlag = process.argv.includes("--sourcemaps")
-const plugin = createSolidTransformPlugin()
+const skipWebUi = process.argv.includes("--skip-web-ui")
+const solidPlugin = createSolidTransformPlugin()
+const releaseAssets = new Map<string, Promise<Map<string, string>>>()
 
 const allTargets: {
   os: string
@@ -40,36 +66,86 @@ const allTargets: {
   { os: "win32", arch: "x64", avx2: false },
 ]
 
-const targets = singleFlag
-  ? allTargets.filter((item) => {
-      if (item.os !== process.platform || item.arch !== process.arch) return false
-      if (item.avx2 === false) return baselineFlag
-      return item.abi === undefined
-    })
-  : allTargets
+const targets =
+  requestedTarget !== undefined
+    ? allTargets.filter((item) => targetName(item) === requestedTarget)
+    : singleFlag
+      ? allTargets.filter((item) => {
+          if (item.os !== process.platform || item.arch !== process.arch) return false
+          if (item.avx2 === false) return baselineFlag
+          return item.abi === undefined
+        })
+      : allTargets
+if (!targets.length) throw new Error(`Unknown build target: ${requestedTarget}`)
 
-if (!skipInstall) await $`bun install --os="*" --cpu="*" @opentui/core@${pkg.dependencies["@opentui/core"]}`
+if (!skipInstall)
+  await $`bun install --os="*" --cpu="*" @opentui/core@${pkg.dependencies["@opentui/core"]} @opencode-ai/pty@${pkg.dependencies["@opencode-ai/pty"]}`
+const appArchive = await buildAppArchive(Script.channel, { skipBuild: skipWebUi })
+const appAssetsPlugin: BunPlugin = {
+  name: "opencode-app-assets",
+  setup(build) {
+    build.onResolve({ filter: /^virtual:opencode-app-assets$/ }, () => ({
+      path: "opencode-app-assets",
+      namespace: "opencode",
+    }))
+    build.onLoad({ filter: /^opencode-app-assets$/, namespace: "opencode" }, () => ({
+      loader: "js",
+      contents: `export default ${appArchive}`,
+    }))
+  },
+}
 
 for (const item of targets) {
-  const target = [
-    binary,
-    item.os === "win32" ? "windows" : item.os,
-    item.arch,
-    item.avx2 === false ? "baseline" : undefined,
-    item.abi,
-  ]
-    .filter(Boolean)
-    .join("-")
+  const opencodePty = await resolveOpencodePty({
+    platform: item.os,
+    arch: item.arch,
+    ...(item.os === "linux" ? { libc: item.abi ?? "glibc" } : {}),
+  })
+  const opencodePtyPlugin: BunPlugin = {
+    name: "opencode-pty-binary",
+    setup(build) {
+      build.onLoad({ filter: /persistent-pty[/\\]pty-binding\.ts$/ }, () => ({
+        loader: "js",
+        contents: opencodePty
+          ? `import file from ${JSON.stringify(opencodePty.source)} with { type: "file" }
+export default { path: file, version: ${JSON.stringify(opencodePty.version)}, sha256: ${JSON.stringify(opencodePty.sha256)} }`
+          : "export default undefined",
+      }))
+    },
+  }
+  const simulationInputs = new Set<string>()
+  const simulationGraphPlugin: BunPlugin = {
+    name: "opencode-simulation-graph",
+    setup(build) {
+      build.onLoad(
+        { filter: /packages[/\\]simulation[/\\]src[/\\](frontend[/\\](simulation|server)|control-server)\.ts$/ },
+        (args) => void simulationInputs.add(args.path),
+      )
+    },
+  }
+  const parcelWatcherPackage = `@parcel/watcher-${item.os}-${item.arch}${item.os === "linux" ? `-${item.abi ?? "glibc"}` : ""}`
+  const parcelWatcherPlugin: BunPlugin = {
+    name: "parcel-watcher-binding",
+    setup(build) {
+      build.onLoad({ filter: /filesystem[/\\]watcher-binding\.ts$/ }, () => ({
+        contents: `export default () => require(${JSON.stringify(parcelWatcherPackage)})`,
+        loader: "js",
+      }))
+    },
+  }
+  const target = targetName(item)
   const name = target.replace(binary, "cli")
+  const executablePath = await compileExecutable(item)
   console.log(`building ${name}`)
   const result = await Bun.build({
     entrypoints: ["./src/index.ts"],
     tsconfig: "./tsconfig.json",
-    plugins: [plugin],
+    plugins: [appAssetsPlugin, solidPlugin, parcelWatcherPlugin, opencodePtyPlugin, simulationGraphPlugin],
     external: ["node-gyp"],
     format: "esm",
     minify: true,
-    sourcemap: sourcemapsFlag ? "linked" : "none",
+    bytecode: true,
+    sourcemap: Script.channel === "dev" || Script.channel === "local" ? "inline" : "none",
     splitting: true,
     compile: {
       autoloadBunfig: false,
@@ -77,15 +153,28 @@ for (const item of targets) {
       autoloadTsconfig: true,
       autoloadPackageJson: true,
       target: target.replace(binary, "bun") as Bun.Build.CompileTarget,
-      outfile: `./dist/${name}/bin/${binary}`,
-      execArgv: [`--user-agent=${binary}/${Script.version}`, "--use-system-ca", "--"],
+      ...(executablePath ? { executablePath } : {}),
+      outfile: path.join(outdir, name, "bin", executableName), // fork_change - renamed binary
+      execArgv: [
+        "--smol",
+        `--user-agent=${CLI_NAME}/${Script.channel}/${Script.version}/cli`, // fork_change - renamed binary
+        "--use-system-ca",
+        "--no-warnings",
+        "--",
+      ],
       windows: {},
     },
     define: {
       OPENCODE_VERSION: `'${Script.version}'`,
-      OPENCODE_CLI_NAME: `'${binary}'`,
-      OPENCODE_MODELS_DEV: modelsData,
+      OPENCODE_CLI_NAME: `'${CLI_NAME}'`, // fork_change - renamed binary
+      GENIX_KEY_PEPPER: JSON.stringify(keyPepper), // fork_change
+      // fork_change start - this build never self-updates. Baked in rather than
+      // read from the environment, so no env var can re-enable an updater
+      // pointed at upstream. See src/fork/policy.ts.
+      GENIX_UPDATER_ENABLED: "false",
+      // fork_change end
       OPENCODE_CHANNEL: `'${Script.channel}'`,
+      OPENCODE_ARTIFACT: `'cli'`,
       OPENCODE_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "undefined",
       // FFF_LIBC selects the fff native lib variant: "musl" or "gnu".
       FFF_LIBC: item.os === "linux" ? `'${item.abi ?? "gnu"}'` : "undefined",
@@ -97,20 +186,111 @@ for (const item of targets) {
     for (const log of result.logs) console.error(log)
     process.exit(1)
   }
+  verifySimulationGraph(simulationInputs)
 
   await Bun.write(
-    `./dist/${name}/package.json`,
+    path.join(outdir, name, "package.json"),
     JSON.stringify(
       {
-        name: `@opencode-ai/${name}`,
+        name: `@opencode/${name}`,
         version: Script.version,
         license: "MIT",
         repository: { type: "git", url: "git+https://github.com/anomalyco/opencode.git" },
         os: [item.os],
         cpu: [item.arch],
+        // fork_change start - the channel this binary was built on, recorded so the
+        // desktop can find the registration file the CLI writes. A release version is
+        // plain semver and carries no channel, and this fork's release channel is
+        // spelled "prod" rather than upstream's "latest", so deriving it from the
+        // version string guesses wrong. See util/src/fork/service-registration.ts.
+        opencodeChannel: Script.channel,
+        // fork_change end
       },
       null,
       2,
     ),
   )
+  await verifyArtifact(path.join(outdir, name))
+}
+
+async function compileExecutable(item: (typeof allTargets)[number]) {
+  const release = process.env.BUN_COMPILE_RELEASE
+  if (!release) return
+
+  const platform = item.os === "win32" ? "windows" : item.os
+  const name = [
+    "bun",
+    platform,
+    item.arch === "arm64" ? "aarch64" : item.arch,
+    item.abi,
+    item.avx2 === false ? "baseline" : undefined,
+  ]
+    .filter(Boolean)
+    .join("-")
+  const cache = path.join(outdir, ".bun", release)
+  const executable = path.join(cache, name, item.os === "win32" ? "bun.exe" : "bun")
+  if (await Bun.file(executable).exists()) return executable
+
+  await mkdir(cache, { recursive: true })
+  const archive = path.join(cache, `${name}.zip`)
+  const assets = await compileReleaseAssets(release)
+  const url = assets.get(`${name}.zip`)
+  if (!url) throw new Error(`Bun release ${release} does not include ${name}.zip`)
+  const token = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN
+  const response = await fetch(url, {
+    headers: { Accept: "application/octet-stream", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  })
+  if (!response.ok) throw new Error(`Failed to download ${name} from Bun release ${release}: ${response.status}`)
+  // Stream to disk instead of `Bun.write(archive, response)`: passing the Response object
+  // hangs forever if it gets GC'd mid-download (https://github.com/oven-sh/bun/issues/40278).
+  const sink = Bun.file(archive).writer()
+  for await (const chunk of response.body!) await sink.write(chunk)
+  await sink.end()
+  await $`unzip -oq ${archive} -d ${cache}`
+  await rm(archive)
+  return executable
+}
+
+function compileReleaseAssets(release: string) {
+  const existing = releaseAssets.get(release)
+  if (existing) return existing
+  const pending = fetch(`https://api.github.com/repos/oven-sh/bun/releases/tags/${release}?cache=${Date.now()}`)
+    .then(async (response) => {
+      if (!response.ok) throw new Error(`Failed to resolve Bun release ${release}: ${response.status}`)
+      const data: unknown = await response.json()
+      if (typeof data !== "object" || data === null || !("assets" in data) || !Array.isArray(data.assets)) {
+        throw new Error(`Bun release ${release} returned invalid metadata`)
+      }
+      return new Map(
+        data.assets
+          .filter(
+            (asset): asset is { name: string; url: string } =>
+              typeof asset === "object" &&
+              asset !== null &&
+              "name" in asset &&
+              typeof asset.name === "string" &&
+              "url" in asset &&
+              typeof asset.url === "string",
+          )
+          .map((asset) => [asset.name, asset.url]),
+      )
+    })
+    .catch((error) => {
+      releaseAssets.delete(release)
+      throw error
+    })
+  releaseAssets.set(release, pending)
+  return pending
+}
+
+function targetName(item: (typeof allTargets)[number]) {
+  return [
+    binary,
+    item.os === "win32" ? "windows" : item.os,
+    item.arch,
+    item.avx2 === false ? "baseline" : undefined,
+    item.abi,
+  ]
+    .filter(Boolean)
+    .join("-")
 }

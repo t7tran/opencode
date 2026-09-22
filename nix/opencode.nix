@@ -8,6 +8,7 @@
   makeBinaryWrapper,
   models-dev,
   ripgrep,
+  wayland,
   installShellFiles,
   versionCheckHook,
   writableTmpDirAsHomeHook,
@@ -48,13 +49,13 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   env.OPENCODE_DISABLE_MODELS_FETCH = true;
   env.OPENCODE_VERSION = finalAttrs.version;
   env.OPENCODE_CHANNEL = "prod";
+  env.NODE_OPTIONS = "--max-old-space-size=4096";
 
   buildPhase = ''
     runHook preBuild
 
-    cd ./packages/opencode
+    cd ./packages/cli
     bun --bun ./script/build.ts --single --skip-install
-    bun --bun ./script/schema.ts schema.json
 
     runHook postBuild
   '';
@@ -62,10 +63,13 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   installPhase = ''
     runHook preInstall
 
-    install -Dm755 dist/opencode-*/bin/opencode $out/bin/opencode
-    install -Dm644 schema.json $out/share/opencode/schema.json
+    # fork_change start - renamed binary. The marker spans the wrapProgram block
+    # because its first line changed and a comment cannot sit between a line
+    # continuation and the line it continues.
+    install -Dm755 dist/cli-*/bin/genixcode $out/bin/genixcode
 
-    wrapProgram $out/bin/opencode \
+    # OpenTUI dlopens Wayland for clipboard images.
+    wrapProgram $out/bin/genixcode \
       --prefix PATH : ${
         lib.makeBinPath (
           [
@@ -74,16 +78,27 @@ stdenvNoCC.mkDerivation (finalAttrs: {
           # bun runs sysctl to detect if running on rosetta2
           ++ lib.optional stdenvNoCC.hostPlatform.isDarwin sysctl
         )
-      }
+      } ${lib.optionalString stdenvNoCC.hostPlatform.isLinux ''
+        --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ wayland ]}
+      ''}
+    # fork_change end
+
+    ln -s genixcode $out/bin/genixcode2 # fork_change - renamed binary
 
     runHook postInstall
   '';
 
   postInstall = lib.optionalString (stdenvNoCC.buildPlatform.canExecute stdenvNoCC.hostPlatform) ''
     # trick yargs into also generating zsh completions
-    installShellCompletion --cmd opencode \
-      --bash <($out/bin/opencode completion) \
-      --zsh <(SHELL=/bin/zsh $out/bin/opencode completion)
+    # fork_change start - renamed binary
+    installShellCompletion --cmd genixcode \
+      --bash <($out/bin/genixcode completion) \
+      --zsh <(SHELL=/bin/zsh $out/bin/genixcode completion)
+
+    installShellCompletion --cmd genixcode2 \
+      --bash <($out/bin/genixcode2 completion) \
+      --zsh <(SHELL=/bin/zsh $out/bin/genixcode2 completion)
+    # fork_change end
   '';
 
   nativeInstallCheckInputs = [
@@ -95,7 +110,6 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   versionCheckProgramArg = "--version";
 
   passthru = {
-    jsonschema = "${placeholder "out"}/share/opencode/schema.json";
     env = finalAttrs.env;
   };
 
@@ -103,7 +117,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     description = "The open source coding agent";
     homepage = "https://opencode.ai";
     license = lib.licenses.mit;
-    mainProgram = "opencode";
+    mainProgram = "genixcode"; # fork_change - renamed binary
     inherit (node_modules.meta) platforms;
   };
 })
