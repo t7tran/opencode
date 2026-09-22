@@ -21,6 +21,7 @@ import {
   Show,
   untrack,
 } from "solid-js"
+import { PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed product
 
 const stages = ["Keeping your session safe", "Starting the new background service", "Loading OpenCode"] as const
 const stageFloor = 480
@@ -325,7 +326,7 @@ function UpdateFooter(props: {
   const statusSweep = createSweep()
   const runningHeader = () =>
     phrase(
-      ["OpenCode", colors.muted, true],
+      [PRODUCT_NAME, colors.muted, true] /* fork_change */,
       ["is updating", colors.muted],
       ...(props.from
         ? ([
@@ -337,11 +338,11 @@ function UpdateFooter(props: {
       [OPENCODE_VERSION, colors.accent],
     )
   const completedHeader = phrase(
-    ["OpenCode", colors.muted, true],
+    [PRODUCT_NAME, colors.muted, true] /* fork_change */,
     ["updated to", colors.muted],
     [OPENCODE_VERSION, colors.accent],
   )
-  const pausedHeader = phrase(["OpenCode", colors.muted, true], ["update paused", colors.muted])
+  const pausedHeader = phrase([PRODUCT_NAME, colors.muted, true] /* fork_change */, ["update paused", colors.muted])
   const outcomeStatus = () =>
     props.outcome() === "success"
       ? [...styled("✓", colors.success), ...styled(" Ready", colors.text)]

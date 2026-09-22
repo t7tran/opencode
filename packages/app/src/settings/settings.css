@@ -240,7 +240,9 @@
 }
 
 .settings-about-wordmark {
-  width: 178px;
+  /* fork_change - "genixcode" is 246 viewBox units wide where "opencode" was 234, so
+     178px becomes 187.13px to keep the letters the same size. */
+  width: 187.13px;
   height: 32px;
   flex-shrink: 0;
   opacity: 0.2;

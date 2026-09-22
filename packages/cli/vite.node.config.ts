@@ -5,6 +5,11 @@ import { defineConfig, type Plugin, type UserConfig } from "vite"
 import solid from "vite-plugin-solid"
 import { nodeExecArgv, nodeTarget, type NodeTarget, photonWasmAsset, shellParserWasmAssets } from "./src/node/target"
 import { verifySimulationGraph } from "./script/verify-artifact"
+// fork_change start - see script/build.ts; the node build and the desktop app's
+// embedded server need the pepper baked in for the same reason the Bun build does.
+import { CLI_NAME } from "@opencode/util/fork/brand"
+import { requirePepper } from "@opencode/util/fork/pepper"
+// fork_change end
 
 const dir = import.meta.dirname
 
@@ -266,7 +271,9 @@ export function mainConfig(input: NodeBuildInput): UserConfig {
     esbuild: { jsx: "automatic" },
     define: {
       OPENCODE_VERSION: JSON.stringify(input.version),
-      OPENCODE_CLI_NAME: JSON.stringify("opencode2-node"),
+      OPENCODE_CLI_NAME: JSON.stringify(`${CLI_NAME}2-node`), // fork_change - renamed binary
+      GENIX_KEY_PEPPER: JSON.stringify(requirePepper()), // fork_change
+      GENIX_UPDATER_ENABLED: "false", // fork_change - see script/build.ts
       OPENCODE_CHANNEL: JSON.stringify(input.channel),
       OPENCODE_ARTIFACT: JSON.stringify("cli-node"),
       OPENCODE_LIBC: input.target.platform === "linux" ? JSON.stringify("glibc") : "undefined",

@@ -12,6 +12,7 @@ import { getLastFocusedWindow, makeMainWindows, setAppQuitting, setRelaunchHandl
 import { marks } from "./marks"
 import { initializeFirstLaunchOnboarding } from "./onboarding"
 import { Shutdown } from "./shutdown"
+import { PROTOCOL_SCHEME } from "@opencode/util/fork/brand" // fork_change
 
 export interface Interface {
   readonly relaunch: () => void
@@ -54,7 +55,7 @@ const runtime = Layer.effect(
       )
     }
     const secondInstance = (_event: Event, argv: string[]) => {
-      const urls = argv.filter((arg) => arg.startsWith("opencode://"))
+      const urls = argv.filter((arg) => arg.startsWith(`${PROTOCOL_SCHEME}://`)) // fork_change - genixcode:// deep links
       if (urls.length) {
         runFork(Effect.logInfo("deep link received via second-instance", { urls }))
         emitDeepLinks(urls)

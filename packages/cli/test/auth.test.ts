@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import path from "node:path"
 import { OPENCODE_VERSION } from "../src/version"
 import type { FormFields } from "@opencode/client"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 const consoleForm = [
   { type: "string", key: "server", hidden: true, format: "uri", default: "https://opencode.ai/console" },
@@ -27,15 +28,15 @@ describe("auth command", () => {
     expect(auth.stdout).toContain("switch the active account for an integration")
     expect(auth.stdout).not.toContain("connect")
     expect(list.exitCode).toBe(0)
-    expect(list.stdout).toContain("opencode auth list [flags]")
+    expect(list.stdout).toContain(`${CLI_NAME} auth list [flags]`) // fork_change
     expect(list.stdout).toContain("--format")
     expect(login.exitCode).toBe(0)
-    expect(login.stdout).toContain("opencode auth login [flags] [<target>]")
+    expect(login.stdout).toContain(`${CLI_NAME} auth login [flags] [<target>]`) // fork_change
     expect(login.stdout).toContain("Integration ID, name, or well-known provider URL")
     expect(login.stdout).toContain("--method")
     expect(login.stdout).toContain("--answer")
     expect(logout.exitCode).toBe(0)
-    expect(logout.stdout).toContain("opencode auth logout [flags] [<target>] [<credential>]")
+    expect(logout.stdout).toContain(`${CLI_NAME} auth logout [flags] [<target>] [<credential>]`) // fork_change
   })
 
   test("lists stored and environment connections", async () => {

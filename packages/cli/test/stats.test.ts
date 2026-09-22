@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { ClientError, type SessionStatsInfo } from "@opencode/client"
 import { Effect } from "effect"
 import { renderStats, request } from "../src/commands/handlers/stats"
+import { CLI_NAME, HOMEPAGE } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 const tools = {
   mode: "detail",
@@ -37,7 +38,7 @@ const stats: SessionStatsInfo = {
 describe("stats rendering", () => {
   test("keeps the default card shareable", () => {
     const output = renderStats(stats, options())
-    expect(output).toContain("opencode stats · 2026 so far · all projects")
+    expect(output).toContain(`${CLI_NAME} stats · 2026 so far · all projects`) // fork_change
     expect(output).toContain("activity")
     expect(output).toMatch(/Mo .*(?:\r?\n){2}Tu/)
     expect(output).toMatch(/Su .*(?:\r?\n){2}   less/)
@@ -70,7 +71,7 @@ describe("stats rendering", () => {
     expect(output).toContain("tool")
     expect(output).toContain("calls")
     expect(output).toContain("cached input        32.3%")
-    expect(output).not.toContain("opencode stats")
+    expect(output).not.toContain(`${CLI_NAME} stats`) // fork_change
     expect(output).not.toContain("activity")
   })
 

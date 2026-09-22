@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import { Effect, FileSystem, Path } from "effect"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change
 
 const execFileAsync = promisify(execFile)
 
@@ -41,7 +42,7 @@ export const buildLocalWslCli = Effect.fn("Wsl.buildLocalCli")(function* (input:
         { cwd: root, env: { ...process.env, OPENCODE_VERSION: input.version }, windowsHide: true },
       ),
     )
-    yield* fs.copyFile(path.join(directory, `cli-${target}`, "bin", "opencode"), input.output)
+    yield* fs.copyFile(path.join(directory, `cli-${target}`, "bin", CLI_NAME), input.output) // fork_change - renamed binary
     return input.output
   })
   return yield* build.pipe(Effect.ensuring(fs.remove(directory, { recursive: true, force: true }).pipe(Effect.orDie)))

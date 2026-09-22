@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { mkdtemp, rm } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
+import { APP_DIRNAME } from "@opencode/util/fork/brand" // fork_change - per-user dirs are rooted on the fork name
 
 describe("upgrade command", () => {
   test("is registered in root help and documents its options", async () => {
@@ -77,11 +78,75 @@ describe("upgrade command", () => {
   })
 })
 
-async function cli(args: string[], env: Record<string, string> = {}, entry = "fixture/upgrade.ts") {
+
+// fork_change start - this build does not self-update (src/fork/policy.ts). The
+// tests above opt into the build-time define so they still cover upstream's
+// per-package-manager install logic unmodified; these run without it, which is
+// what a shipped binary gets.
+describe("upgrade command as shipped", () => {
+  const shipped = (args: string[] = [], env: Record<string, string> = {}) =>
+    cli(args, env, "fixture/upgrade.ts", "disabled")
+
+  test("refuses to self-update and names the supported path", async () => {
+    const result = await shipped()
+    expect(result.exitCode).not.toBe(0)
+    // Refused before the updater is consulted, so nothing can reach upstream.
+    expect(result.events).toEqual([])
+    expect(result.stdout + result.stderr).toContain("does not self-update")
+    expect(result.stdout + result.stderr).toContain("npm install -g genixcode@")
+  })
+
+  test("refuses even with an explicit version and method", async () => {
+    const result = await shipped(["2.0.0", "--method", "npm"])
+    expect(result.exitCode).not.toBe(0)
+    expect(result.events).toEqual([])
+  })
+
+  test("never names upstream's installer host", async () => {
+    const result = await shipped([], { UPGRADE_TEST_METHOD: "curl" })
+    expect(result.stdout + result.stderr).not.toContain("opencode.ai")
+  })
+
+  test("no environment variable re-enables it", async () => {
+    const result = await shipped([], {
+      KILO_FORK_ENABLE_UPDATER: "1",
+      GENIX_UPDATER_ENABLED: "true",
+      OPENCODE_DISABLE_AUTOUPDATE: "0",
+    })
+    expect(result.exitCode).not.toBe(0)
+    expect(result.events).toEqual([])
+    expect(result.stdout + result.stderr).toContain("does not self-update")
+  })
+})
+// fork_change end
+
+// fork_change start - `updater` picks whether this run gets the build-time
+// define that enables the updater. The subprocess is a fresh `bun`, so it does
+// not inherit the one test/fork-run.ts passes to `bun test`; upstream's tests
+// below opt in, and the fork's refusal tests deliberately do not, which is what
+// a real build sees. There is no environment variable to set either way.
+async function cli(
+  args: string[],
+  env: Record<string, string> = {},
+  entry = "fixture/upgrade.ts",
+  updater: "enabled" | "disabled" = "enabled",
+) {
+  const defines =
+    updater === "enabled" ? ["--define", "GENIX_UPDATER_ENABLED=true"] : ["--define", "GENIX_UPDATER_ENABLED=false"]
+  // fork_change end
   const root = await mkdtemp(path.join(os.tmpdir(), "opencode-upgrade-"))
   try {
     const child = Bun.spawn(
-      [process.execPath, "--define", 'OPENCODE_VERSION="0.0.0-beta-old"', path.join(import.meta.dir, entry), ...args],
+      // fork_change start - `defines` carries the updater switch; see above
+      [
+        process.execPath,
+        "--define",
+        'OPENCODE_VERSION="0.0.0-beta-old"',
+        ...defines,
+        path.join(import.meta.dir, entry),
+        ...args,
+      ],
+      // fork_change end
       {
         cwd: path.join(import.meta.dir, ".."),
         env: {
@@ -107,7 +172,7 @@ async function cli(args: string[], env: Record<string, string> = {}, entry = "fi
       .split("\n")
       .filter((line) => line.startsWith("EVENT "))
       .map((line) => JSON.parse(line.slice(6)))
-    expect(await Bun.file(path.join(root, "state", "opencode", "service-local.json")).exists()).toBe(false)
+    expect(await Bun.file(path.join(root, "state", APP_DIRNAME, "service-local.json") /* fork_change */).exists()).toBe(false)
     return { stdout, stderr, exitCode, events }
   } finally {
     await rm(root, { recursive: true, force: true })

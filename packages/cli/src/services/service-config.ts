@@ -6,6 +6,7 @@ import { Effect, FileSystem, Option, Schema } from "effect"
 import { randomBytes } from "crypto"
 import path from "path"
 import { selfCommand } from "../util/process"
+import { isDefaultChannel, registrationFilename } from "@opencode/util/fork/service-registration" // fork_change - shared with the desktop client, see that module
 
 // The CLI's service configuration file, plus the Service.EnsureOptions binding that
 // points the client package's service operations at this CLI: which
@@ -27,12 +28,11 @@ const decodeInfo = Schema.decodeUnknownEffect(Schema.fromJsonString(Info))
 const decodeRegistration = Schema.decodeUnknownEffect(Schema.fromJsonString(Service.Info))
 
 export function filename(channel = OPENCODE_CHANNEL) {
-  if (channel === "latest" || channel === "dev" || channel === "beta" || channel === "next") return "service.json"
-  return `service-${channel.replace(/[^a-zA-Z0-9._-]/g, "-")}.json`
+  return registrationFilename(channel) // fork_change - one spelling of this name, shared with the desktop
 }
 
 export function defaultPort(channel = OPENCODE_CHANNEL) {
-  if (channel === "latest" || channel === "dev" || channel === "beta" || channel === "next") return 0xc0de
+  if (isDefaultChannel(channel)) return 0xc0de // fork_change - shared channel list, see service-registration
   if (channel === "local") return 0xc0df
   return 10_000 + (Number.parseInt(Hash.fast(channel).slice(0, 8), 16) % 50_000)
 }

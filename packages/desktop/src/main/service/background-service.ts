@@ -4,6 +4,7 @@ import { BackgroundServiceState } from "./background-service-state"
 import { cleanStages, DesktopCli } from "./desktop-cli"
 import { SidecarCredentials } from "./sidecar-credentials"
 import { sidecarProbe } from "./sidecar-probe"
+import { registrationFile } from "@opencode/util/fork/service-registration" // fork_change - see that module
 
 export * as BackgroundService from "./background-service"
 
@@ -29,7 +30,6 @@ export const layer = Layer.effect(
 
 const connect = Effect.fn("BackgroundService.connect")(function* (mode: "initial" | "reconnect") {
   yield* Effect.logInfo("starting v2 background service")
-  const path = yield* Path.Path
   const desktopCli = yield* DesktopCli.Service
   const runFork = Effect.runForkWith(yield* Effect.context())
   const isolated = !app.isPackaged && process.env.OPENCODE_DESKTOP_ISOLATED_SERVER === "1"
@@ -39,10 +39,14 @@ const connect = Effect.fn("BackgroundService.connect")(function* (mode: "initial
   const client = yield* Effect.promise(() => import("@opencode/client/service"))
   const ensure = () =>
     client.Service.ensure({
-      file:
-        isolated && process.env.OPENCODE_DESKTOP_SERVER_CHANNEL === "local"
-          ? path.join(app.getPath("userData"), "opencode", "service-local.json")
-          : undefined,
+      // fork_change start - upstream leaves this undefined and lets the client fall
+      // back to `~/.local/state/opencode/service.json`. This fork writes its
+      // registration under `genixcode`, named after the CLI's channel, so the fallback
+      // finds nothing and ensure() spawns forever. Name the file the CLI actually
+      // writes instead. The isolated branch is covered too: XDG_STATE_HOME is
+      // repointed just above, and registrationFile() reads it at call time.
+      file: registrationFile(cli.channel),
+      // fork_change end
       version,
       command: [...cli.command, "serve", "--service", ...(isolated ? ["--port", "0"] : [])],
       onStart: (reason, previousVersion) =>

@@ -12,6 +12,7 @@ import { serverAddress } from "./pairing"
 import { isMixedContent } from "./browser"
 import { createCameraAvailability } from "./camera"
 import "./screen.css"
+import { PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change
 
 const PairingScanner = lazy(() => import("./scanner").then((module) => ({ default: module.PairingScanner })))
 
@@ -49,7 +50,7 @@ export function ConnectServerScreen() {
   return (
     <main data-component="connect-server" aria-labelledby="server-connect-title">
       <div class="server-connect-content">
-        <div class="server-connect-brand" role="img" aria-label="OpenCode">
+        <div class="server-connect-brand" role="img" aria-label={PRODUCT_NAME /* fork_change */}>
           <Wordmark />
         </div>
         <header>

@@ -2,24 +2,29 @@ import { Effect, Schema } from "effect"
 import { HttpClient } from "effect/unstable/http"
 import { parseTarget, quote, runSsh, sshArgs, SshFailure } from "./command"
 import { RemoteCli } from "../remote/cli"
+import { APP_DIRNAME, CLI_NAME, HOME_CONFIG_DIRNAME } from "@opencode/util/fork/brand" // fork_change
 
 // Use commands supported by released V2 CLIs. The registration is the service's
 // complete private discovery contract; no remote Python/Node runtime is needed.
+// fork_change start - the state directory is keyed on the fork name
 const registrationScript = `status=$("$cli" service status) || exit 0
 if [ "$status" = stopped ]; then exit 0; fi
 printf 'OPENCODE_SSH_STATUS=%s\\n' "$status"
-for file in "\${XDG_STATE_HOME:-$HOME/.local/state}"/opencode/service*.json; do
+for file in "\${XDG_STATE_HOME:-$HOME/.local/state}"/${APP_DIRNAME}/service*.json; do
   if [ ! -f "$file" ]; then continue; fi
   printf 'OPENCODE_SSH_REGISTRATION_BEGIN\\n'
   cat "$file"
   printf '\\nOPENCODE_SSH_REGISTRATION_END\\n'
 done
 `
+// fork_change end
 
+// fork_change start - the staging directory is keyed on the fork name
 export const discoverScript = `set -eu
-${RemoteCli.discoverScript({ fromPath: true, cache: { directory: ".opencode/desktop-ssh", prefix: "0.0.0-beta-" } })}
+${RemoteCli.discoverScript({ fromPath: true, cache: { directory: `${HOME_CONFIG_DIRNAME}/desktop-ssh`, prefix: "0.0.0-beta-" } })}
 if [ -z "$cli" ]; then exit 0; fi
 ${registrationScript}`
+// fork_change end
 
 export function startScript(version: string, replace = false) {
   return `set -eu
@@ -52,9 +57,11 @@ export function parseRegistration(output: string) {
   return undefined
 }
 
+// fork_change start - renamed binary and install dir
 export function binaryPath(version: string) {
-  return `$HOME/.opencode/desktop-ssh/${RemoteCli.requireVersion(version)}/opencode`
+  return `$HOME/${HOME_CONFIG_DIRNAME}/desktop-ssh/${RemoteCli.requireVersion(version)}/${CLI_NAME}`
 }
+// fork_change end
 
 function connectionAddress(address: string, password: string) {
   const url = new URL(address)

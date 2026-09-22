@@ -23,6 +23,7 @@ import { createEventListener } from "@solid-primitives/event-listener"
 import { matchesModelSearch } from "./search"
 import { SettingsList } from "@/settings/list"
 import "@/settings/settings.css"
+import { forkProviderLocked } from "@/fork/policy" // fork_change
 
 const isFree = (provider: string, cost: { input: number } | undefined) =>
   provider === "opencode" && (!cost || cost.input === 0)
@@ -549,9 +550,13 @@ export const DialogSelectModel: Component<{ provider?: string; model?: ModelStat
     <Dialog size="large" variant="settings">
       <DialogHeader hideClose closeLabel={language.t("common.close")}>
         <DialogTitle>{language.t("dialog.model.select.title")}</DialogTitle>
-        <Button icon="plus" onClick={provider}>
-          {language.t("command.provider.connect")}
-        </Button>
+        {/* fork_change start - no custom providers: the lock rejects every id but the locked one */}
+        <Show when={!forkProviderLocked()}>
+          <Button icon="plus" onClick={provider}>
+            {language.t("command.provider.connect")}
+          </Button>
+        </Show>
+        {/* fork_change end */}
       </DialogHeader>
       <DialogBody class="flex min-h-0 flex-1 flex-col">
         <ModelList provider={props.provider} model={props.model} onSelect={() => dialog.close()} />

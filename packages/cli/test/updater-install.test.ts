@@ -276,6 +276,11 @@ test("Node distribution honors the compile-time CLI name", async () => {
       import.meta.path,
       "--define",
       'OPENCODE_CLI_NAME="opencode2-node"',
+      // fork_change start - this nested run does not inherit the define that
+      // test/fork-run.ts passes to `bun test`; see src/fork/policy.ts
+      "--define",
+      "GENIX_UPDATER_ENABLED=true",
+      // fork_change end
       "--test-name-pattern",
       "^Node distribution resolves the published npm package$",
     ],

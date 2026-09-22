@@ -5,6 +5,8 @@ import { Runtime } from "../../../framework/runtime"
 import { handlePromptErrors, requireInteractive } from "../../../ui/prompt"
 import { createClient, loadIntegrations, request } from "./shared"
 import { chooseCredential, chooseIntegration } from "./account"
+import { managedKeyRefusal } from "@opencode/util/fork/key-file" // fork_change - managed key owns the credential
+import { lockedProviderManaged } from "@opencode/util/fork/lock" // fork_change
 
 export default Runtime.handler(
   Commands.commands.auth.commands.logout,
@@ -24,6 +26,10 @@ const logout = Effect.fn("cli.auth.logout.run")(function* (input: {
   server?: string
   standalone: boolean
 }) {
+  // fork_change start - the managed key file owns the credential, so the
+  // provider cannot be disconnected. Refused server-side too; see fork/guard.ts.
+  if (lockedProviderManaged()) return yield* Effect.fail(new Error(managedKeyRefusal("log out")))
+  // fork_change end
   if (!input.target)
     yield* requireInteractive("Pass an integration ID or name when running without an interactive terminal")
   if (!input.credential)

@@ -1,5 +1,6 @@
 import { AISDK } from "@opencode/core/aisdk"
 import { App } from "@opencode/core/app"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 import { Agent } from "@opencode/schema/agent"
 import { Session } from "@opencode/core/session"
 import { Location } from "@opencode/core/location"
@@ -143,7 +144,7 @@ describe("GithubCopilotPlugin", () => {
       expect(requests[0]?.get("x-initiator")).toBe("user")
       expect(requests[0]?.get("copilot-vision-request")).toBe("true")
       expect(requests[0]?.get("x-github-api-version")).toBe("2026-08-01")
-      expect(requests[0]?.get("user-agent")).toBe("opencode/beta/1.2.3/test")
+      expect(requests[0]?.get("user-agent")).toBe(`${CLI_NAME}/beta/1.2.3/test`) // fork_change - renamed binary
     }),
   )
 

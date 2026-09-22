@@ -5,6 +5,8 @@ import { Commands } from "../../commands"
 import { Runtime } from "../../../framework/runtime"
 import { handlePromptErrors, openUrl, prompt, requireInteractive } from "../../../ui/prompt"
 import { answerForm, secret } from "./form"
+import { managedKeyRefusal } from "@opencode/util/fork/key-file" // fork_change - managed key owns the credential
+import { lockedProviderManaged } from "@opencode/util/fork/lock" // fork_change
 import {
   createClient,
   connectMethods,
@@ -47,6 +49,11 @@ const login = Effect.fn("cli.auth.login.run")(function* (input: {
   server?: string
   standalone: boolean
 }) {
+  // fork_change start - the managed key file owns the credential, so there is
+  // nothing to log in to. The server refuses the connect anyway; failing here
+  // means the user is not walked through a form that cannot succeed.
+  if (lockedProviderManaged()) return yield* Effect.fail(new Error(managedKeyRefusal("log in")))
+  // fork_change end
   if (!input.target)
     yield* requireInteractive("Pass an integration ID or name when running without an interactive terminal")
   intro("Connect an integration")

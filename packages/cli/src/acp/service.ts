@@ -58,6 +58,7 @@ import {
   type TurnStart,
 } from "./event"
 import { ACPError } from "./error"
+import { CLI_NAME, PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change
 
 export const AuthMethodID = "opencode-login"
 
@@ -195,7 +196,9 @@ export function make(input: {
       }
       if (params.clientCapabilities?._meta?.["terminal-auth"] === true) {
         authMethod._meta = {
-          "terminal-auth": { command: "opencode", args: ["auth", "login"], label: "OpenCode Login" },
+          // fork_change start - renamed binary: the client is told to run this command
+          "terminal-auth": { command: CLI_NAME, args: ["auth", "login"], label: `${PRODUCT_NAME} Login` },
+          // fork_change end
         }
       }
       return {
@@ -208,7 +211,7 @@ export function make(input: {
           _meta: { [ChildSessionUpdatesCapability]: true },
         },
         authMethods: [authMethod],
-        agentInfo: { name: "OpenCode", version: OPENCODE_VERSION },
+        agentInfo: { name: PRODUCT_NAME, version: OPENCODE_VERSION }, // fork_change - renamed product
       }
     },
     authenticate: async (params) => {

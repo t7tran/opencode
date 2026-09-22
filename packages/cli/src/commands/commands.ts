@@ -2,6 +2,7 @@ import { Argument, Flag, GlobalFlag } from "effect/unstable/cli"
 import { Schema } from "effect"
 import { Spec } from "../framework/spec"
 import { Updater } from "../services/updater"
+import { CLI_NAME, PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 export const PrintLogs = GlobalFlag.setting("print-logs")({
   flag: Flag.boolean("print-logs").pipe(
@@ -35,13 +36,13 @@ const PermissionParams = {
   ),
 }
 
-const Root = Spec.make(typeof OPENCODE_CLI_NAME === "string" ? OPENCODE_CLI_NAME : "opencode", {
-  description: "OpenCode command line interface",
+const Root = Spec.make(typeof OPENCODE_CLI_NAME === "string" ? OPENCODE_CLI_NAME : CLI_NAME /* fork_change - renamed binary */, {
+  description: `${PRODUCT_NAME} command line interface`, // fork_change - renamed binary
   params: {
     ...ServerParams,
     ...PermissionParams,
     directory: Argument.string("directory").pipe(
-      Argument.withDescription("Directory to start OpenCode in"),
+      Argument.withDescription(`Directory to start ${PRODUCT_NAME} in`), // fork_change - renamed binary
       Argument.optional,
     ),
     continue: Flag.boolean("continue").pipe(
@@ -58,7 +59,9 @@ const Root = Spec.make(typeof OPENCODE_CLI_NAME === "string" ? OPENCODE_CLI_NAME
   },
   commands: [
     Spec.make("upgrade", {
-      description: "Upgrade OpenCode to the latest or a specific version",
+      // fork_change start - this build does not self-update; see src/fork/policy.ts
+      description: `Upgrade ${PRODUCT_NAME} (disabled: use npm install -g ${CLI_NAME}@<version>)`,
+      // fork_change end
       aliases: ["update"],
       params: {
         target: Argument.string("target").pipe(
@@ -73,7 +76,7 @@ const Root = Spec.make(typeof OPENCODE_CLI_NAME === "string" ? OPENCODE_CLI_NAME
       },
     }),
     Spec.make("uninstall", {
-      description: "Uninstall OpenCode and remove all related files",
+      description: `Uninstall ${PRODUCT_NAME} and remove all related files`, // fork_change - renamed product
       params: {
         keepConfig: Flag.boolean("keep-config").pipe(
           Flag.withAlias("c"),
@@ -352,7 +355,7 @@ const Root = Spec.make(typeof OPENCODE_CLI_NAME === "string" ? OPENCODE_CLI_NAME
       },
     }),
     Spec.make("run", {
-      description: "Run OpenCode with a message",
+      description: `Run ${PRODUCT_NAME} with a message`, // fork_change - renamed product
       params: {
         ...ServerParams,
         message: Argument.string("message").pipe(
@@ -512,6 +515,25 @@ const Root = Spec.make(typeof OPENCODE_CLI_NAME === "string" ? OPENCODE_CLI_NAME
         ),
       },
     }),
+    // fork_change start - `genixcode key seal` / `key status`; see core/src/fork/key-seal.ts
+    Spec.make("key", {
+      description: "managed API key file tools",
+      commands: [
+        Spec.make("seal", {
+          description: "seal an API key into the single-line blob accepted by the key file",
+          params: {
+            key: Argument.string("key").pipe(
+              Argument.withDescription("The plain API key; read from stdin when omitted"),
+              Argument.optional,
+            ),
+          },
+        }),
+        Spec.make("status", {
+          description: "report whether a managed key is provisioned, and in which form",
+        }),
+      ],
+    }),
+    // fork_change end
     Spec.make("serve", {
       description: "Start the v2 API and web server",
       params: {

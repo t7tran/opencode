@@ -11,6 +11,10 @@ import { useServerSDK } from "@/runtime/server/client"
 import { DialogConnectProvider, useProviderConnectController } from "@/providers/connect/dialog"
 import { SettingsList } from "@/settings/list"
 import "@/settings/settings.css"
+// fork_change start - the provider lock and the managed key file turn several of
+// the affordances below into dead controls; the server refuses them outright.
+import { forkManagedKey, forkProviderLocked } from "@/fork/policy"
+// fork_change end
 
 type ProviderSource = "env" | "api" | "config" | "custom"
 type ProviderItem = ReturnType<ReturnType<typeof useProviders>["connected"]>[number]
@@ -89,6 +93,8 @@ export const SettingsProviders: Component<{
   }
 
   const canDisconnect = (item: ProviderItem) => {
+    // fork_change - a managed key cannot be removed: the server refuses it (see core/src/fork/guard.ts)
+    if (forkManagedKey()) return false // fork_change
     const current = integration(item.id)
     if (current) return current.connections.some((connection) => connection.type === "credential")
     const currentSource = source(item)
@@ -198,17 +204,25 @@ export const SettingsProviders: Component<{
                       </Show>
                     </div>
                   </div>
-                  <Button size="normal" variant="neutral" icon="plus" onClick={() => connect(item.id)}>
-                    {language.t("common.connect")}
-                  </Button>
+                  {/* fork_change start - a managed key cannot be replaced: the server refuses auth changes */}
+                  <Show when={!forkManagedKey()}>
+                    <Button size="normal" variant="neutral" icon="plus" onClick={() => connect(item.id)}>
+                      {language.t("common.connect")}
+                    </Button>
+                  </Show>
+                  {/* fork_change end */}
                 </div>
               )}
             </For>
           </SettingsList>
 
-          <button type="button" class="settings-providers-view-all" onClick={() => connect()}>
-            {language.t("dialog.provider.viewAll")}
-          </button>
+          {/* fork_change start - there is no catalogue to browse; only the locked provider exists */}
+          <Show when={!forkProviderLocked()}>
+            <button type="button" class="settings-providers-view-all" onClick={() => connect()}>
+              {language.t("dialog.provider.viewAll")}
+            </button>
+          </Show>
+          {/* fork_change end */}
         </div>
       </div>
     </>

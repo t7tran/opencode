@@ -1,6 +1,7 @@
 import { $ } from "bun"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { appId, productName } from "@opencode/util/fork/brand" // fork_change
 
 export async function prepareDevElectron() {
   const electron = dirname(fileURLToPath(import.meta.resolve("electron/package.json")))
@@ -23,10 +24,13 @@ export async function prepareDevElectron() {
   await $`mkdir -p ${root}`
   await $`ditto ${join(electron, "dist/Electron.app")} ${bundle}`
   const plist = join(bundle, "Contents/Info.plist")
+  // fork_change start - Genix identity, so a dev run never shares a bundle id
+  // (and so a macOS user-data directory) with an OpenCode install.
   for (const key of ["CFBundleName", "CFBundleDisplayName"]) {
-    await $`plutil -replace ${key} -string ${"OpenCode Dev"} ${plist}`
+    await $`plutil -replace ${key} -string ${productName("dev")} ${plist}`
   }
-  await $`plutil -replace CFBundleIdentifier -string ai.opencode.desktop.dev ${plist}`
+  await $`plutil -replace CFBundleIdentifier -string ${appId("dev")} ${plist}`
+  // fork_change end
   await $`plutil -insert NSAutoFillRequiresTextContentTypeForOneTimeCodeOnMac -bool true ${plist}`
   await Bun.write(join(bundle, "Contents/Resources/electron.icns"), icon)
   // Changing the bundle resources invalidates Electron's signature.

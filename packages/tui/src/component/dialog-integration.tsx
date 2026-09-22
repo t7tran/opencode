@@ -24,6 +24,9 @@ import { DialogPrompt } from "../ui/dialog-prompt"
 import { DialogSelect } from "../ui/dialog-select"
 import { Link } from "../ui/link"
 import { useToast } from "../ui/toast"
+// fork_change start - the managed key file owns the Genix credential
+import { lockedProviderManaged } from "@opencode/util/fork/lock"
+// fork_change end
 import { formLabel, formToggleMultiselect, formValidateValue, type FormAnswerField } from "../util/form"
 
 const INTEGRATION_PRIORITY: Record<string, number> = {
@@ -78,8 +81,20 @@ export function DialogIntegration(
   const data = useData()
   const currentLocation = useLocation()
   const dialog = useDialog()
+  const toast = useToast() // fork_change
   const theme = useTheme().surface("dialog")
   const location = currentLocation.ref ?? data.location.default()
+  // fork_change start - when the managed key file supplies the API key, the
+  // provider is already connected and its credential cannot be changed from
+  // here. The server refuses the connect outright (see core/src/fork/guard.ts);
+  // this keeps the TUI from walking the user into that error.
+  function refuseManaged() {
+    if (!lockedProviderManaged()) return false
+    toast.show({ variant: "info", message: "API key is embedded." })
+    dialog.clear()
+    return true
+  }
+  // fork_change end
   const integrations = createMemo(() =>
     integrationOptions(data.location.integration.list(location) ?? []).filter(
       (integration) => props.integrationID === undefined || integration.id === props.integrationID,
@@ -90,6 +105,7 @@ export function DialogIntegration(
     if (!props.autoConnect) return
     const integration = integrations()[0]
     if (!integration) return
+    if (refuseManaged()) return // fork_change
     const methods = connectMethods(integration)
     if (credentialConnections(integration).length) {
       manageConnections(integration, methods, location, dialog, props.onConnected)
@@ -117,6 +133,7 @@ export function DialogIntegration(
             ? () => <text fg={theme.text.feedback.success.base}>✓</text>
             : undefined,
         onSelect: () => {
+          if (refuseManaged()) return // fork_change
           if (credentials.length) return manageConnections(integration, methods, location, dialog, props.onConnected)
           return selectMethod(integration, methods, location, dialog, props.onConnected)
         },

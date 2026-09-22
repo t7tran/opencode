@@ -5,8 +5,8 @@
   "type": "module",
   "license": "MIT",
   "bin": {
-    "opencode": "./bin/opencode.cjs",
-    "opencode2": "./bin/opencode2.cjs"
+    "genixcode": "./bin/genixcode.cjs",
+    "genixcode2": "./bin/genixcode2.cjs"
   },
   "files": [
     "bin"
@@ -20,7 +20,7 @@
     "build": "bun run script/build.ts",
     "build:node": "bun run script/build-node.ts",
     "dev": "bun run src/index.ts",
-    "test": "bun test --timeout 30000 --only-failures",
+    "test": "bun run test/fork-run.ts --timeout 30000 --only-failures",
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {

@@ -25,6 +25,7 @@ import {
   type DesktopNativeBundle,
   type DesktopNativeLocale,
 } from "@/runtime/i18n/desktop-native"
+import { rebrandDict } from "@opencode/util/fork/brand" // fork_change
 
 export type Locale = DesktopNativeLocale
 export type Direction = "ltr" | "rtl"
@@ -68,11 +69,18 @@ const StoredLocaleSchema = Schema.Struct({
 
 const INTL = DESKTOP_NATIVE_LOCALE_TAGS
 
-const base = flatten({ ...en, ...dict })
+// fork_change start - this fork ships as GenixCode, not OpenCode. The rename is
+// applied to translated copy at this seam rather than by editing ~65 locale
+// files per package; see packages/util/src/fork/brand.ts. Only dictionary
+// *values* are rewritten — keys are identifiers like `dialog.provider.opencode.note`.
+const brand = <T,>(d: T): T => rebrandDict(d as Record<string, unknown>) as T
+
+const base = brand(flatten({ ...en, ...dict }))
 const dicts = new Map<Locale, Dictionary>([["en", base]])
 
 const merge = (app: Promise<Source>, ui: Promise<Source>) =>
-  Promise.all([app, ui]).then(([a, b]) => ({ ...base, ...flatten({ ...a.dict, ...b.dict }) }) as Dictionary)
+  Promise.all([app, ui]).then(([a, b]) => ({ ...base, ...brand(flatten({ ...a.dict, ...b.dict })) }) as Dictionary)
+// fork_change end
 
 const loaders: Record<Exclude<Locale, "en">, () => Promise<Dictionary>> = {
   zh: () => merge(import("@/runtime/i18n/zh"), import("@opencode/ui/i18n/zh")),

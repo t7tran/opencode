@@ -5,6 +5,7 @@ import type {
   SessionMessageAssistant,
   SessionMessageInfo,
 } from "@opencode/client/promise"
+import { PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed product
 import type { ACPConnection } from "./connection"
 import { partsToContentChunks, type ReplayPart } from "./content"
 import { ACPError } from "./error"
@@ -565,7 +566,7 @@ function response(
   if (error?.type === "provider.auth") throw new ACPError.AuthRequiredError()
   if (error && error.type !== "aborted" && error.type !== "provider.content-filter") {
     throw new ACPError.ServiceFailureError({
-      safeMessage: error.message || "OpenCode prompt failed",
+      safeMessage: error.message || `${PRODUCT_NAME} prompt failed`, // fork_change - renamed product
       service: "session",
       errorName: error.type,
     })

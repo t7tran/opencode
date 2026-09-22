@@ -3,6 +3,7 @@ import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import { OPENCODE_VERSION } from "../src/version"
+import { APP_DIRNAME, CLI_NAME } from "@opencode/util/fork/brand" // fork_change - per-user dirs and binary are renamed
 
 describe("debug config command", () => {
   test("is included in troubleshooting help", async () => {
@@ -12,14 +13,14 @@ describe("debug config command", () => {
     expect(debug.stdout).toContain("config")
     expect(debug.stdout).toContain("List configuration sources")
     expect(config.exitCode).toBe(0)
-    expect(config.stdout).toContain("opencode debug config [flags]")
+    expect(config.stdout).toContain(`${CLI_NAME} debug config [flags]`) // fork_change
     expect(config.stdout).toContain("List configuration sources")
   })
 
   test("prints config entries from the invoking directory without reordering permissions", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "opencode-debug-config-"))
     const project = path.join(import.meta.dir, "..")
-    const registration = path.join(root, "state", "opencode", "service-local.json")
+    const registration = path.join(root, "state", APP_DIRNAME /* fork_change */, "service-local.json")
     const entries = [
       {
         type: "document",

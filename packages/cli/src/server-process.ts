@@ -15,6 +15,7 @@ import { ServiceConfig } from "./services/service-config"
 import { ServiceRegistration } from "./services/service-registration"
 import { WebUi } from "./services/web-ui"
 import { databasePath } from "./database-path"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 export type Mode = "default" | "service" | "stdio"
 
@@ -99,7 +100,12 @@ const processEffect = Effect.fnUntraced(function* (options: Options) {
           models: {
             url: process.env.OPENCODE_MODELS_URL,
             file: process.env.OPENCODE_MODELS_PATH,
-            fetch: !truthy(process.env.OPENCODE_DISABLE_MODELS_FETCH),
+            // fork_change start - this build is locked to a single self-hosted
+            // provider, so there is no reason to contact the models.dev catalog
+            // endpoint on startup: it is wasted latency and it leaks usage
+            // metadata. Upstream read this from OPENCODE_DISABLE_MODELS_FETCH.
+            fetch: false,
+            // fork_change end
           },
           config: {
             directory: process.env.OPENCODE_CONFIG_DIR,
@@ -146,7 +152,7 @@ const processEffect = Effect.fnUntraced(function* (options: Options) {
                 : Effect.fail(
                     new Error(
                       `Managed service port ${port} on ${hostname} is already in use by another process. ` +
-                        "Configure another port with `opencode service set port <port>` and start the service again.",
+                        `Configure another port with \`${CLI_NAME} service set port <port>\` and start the service again.`, // fork_change - renamed binary
                       { cause: error },
                     ),
                   ),

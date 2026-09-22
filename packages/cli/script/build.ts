@@ -10,9 +10,25 @@ import pkg from "../package.json"
 import { buildAppArchive } from "./app-assets"
 import { verifyArtifact, verifySimulationGraph } from "./verify-artifact"
 import { resolveOpencodePty } from "./opencode-pty"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
+// fork_change start - the key-sealing pepper is not in the repo; read it from
+// the out-of-repo file and bake it in. Throws (and so fails the build) when the
+// file is absent, rather than shipping a binary that cannot unseal a key file.
+import { requirePepper } from "@opencode/util/fork/pepper"
+// fork_change end
+
+// fork_change - fail before the slow app-assets/compile steps when the pepper is missing.
+const keyPepper = requirePepper() // fork_change
 
 const dir = path.resolve(import.meta.dirname, "..")
 const binary = "opencode"
+// fork_change start - `binary` above is the token upstream's target names are built
+// from and then rewritten ("opencode-linux-x64" -> "cli-linux-x64" / "bun-linux-x64"),
+// so it must keep upstream's spelling. Only the compiled executable is renamed; the
+// npm package names stay upstream's and are rewritten at publish time by
+// script/fork-publish.ts. See FORK.md § CLI name.
+const executableName = CLI_NAME
+// fork_change end
 const outdir = path.resolve(
   dir,
   process.argv.find((arg) => arg.startsWith("--outdir="))?.slice("--outdir=".length) ?? "dist",
@@ -138,10 +154,10 @@ export default { path: file, version: ${JSON.stringify(opencodePty.version)}, sh
       autoloadPackageJson: true,
       target: target.replace(binary, "bun") as Bun.Build.CompileTarget,
       ...(executablePath ? { executablePath } : {}),
-      outfile: path.join(outdir, name, "bin", binary),
+      outfile: path.join(outdir, name, "bin", executableName), // fork_change - renamed binary
       execArgv: [
         "--smol",
-        `--user-agent=opencode/${Script.channel}/${Script.version}/cli`,
+        `--user-agent=${CLI_NAME}/${Script.channel}/${Script.version}/cli`, // fork_change - renamed binary
         "--use-system-ca",
         "--no-warnings",
         "--",
@@ -150,7 +166,13 @@ export default { path: file, version: ${JSON.stringify(opencodePty.version)}, sh
     },
     define: {
       OPENCODE_VERSION: `'${Script.version}'`,
-      OPENCODE_CLI_NAME: "'opencode'",
+      OPENCODE_CLI_NAME: `'${CLI_NAME}'`, // fork_change - renamed binary
+      GENIX_KEY_PEPPER: JSON.stringify(keyPepper), // fork_change
+      // fork_change start - this build never self-updates. Baked in rather than
+      // read from the environment, so no env var can re-enable an updater
+      // pointed at upstream. See src/fork/policy.ts.
+      GENIX_UPDATER_ENABLED: "false",
+      // fork_change end
       OPENCODE_CHANNEL: `'${Script.channel}'`,
       OPENCODE_ARTIFACT: `'cli'`,
       OPENCODE_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "undefined",
@@ -176,6 +198,13 @@ export default { path: file, version: ${JSON.stringify(opencodePty.version)}, sh
         repository: { type: "git", url: "git+https://github.com/anomalyco/opencode.git" },
         os: [item.os],
         cpu: [item.arch],
+        // fork_change start - the channel this binary was built on, recorded so the
+        // desktop can find the registration file the CLI writes. A release version is
+        // plain semver and carries no channel, and this fork's release channel is
+        // spelled "prod" rather than upstream's "latest", so deriving it from the
+        // version string guesses wrong. See util/src/fork/service-registration.ts.
+        opencodeChannel: Script.channel,
+        // fork_change end
       },
       null,
       2,

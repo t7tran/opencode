@@ -15,38 +15,27 @@ const it = testEffect(NodeServices.layer)
 // Execute the Linux-side installer fixture locally rather than requiring a WSL distro.
 const posix = process.platform === "win32" ? it.live.skip : it.live
 
+// fork_change start - upstream's test drives its own `install` shell script end
+// to end through a fake curl. This fork does not use that script: the installer
+// path is `npm install -g genixcode@<version>` (see src/main/remote/cli.ts),
+// because upstream's installer puts the *public* OpenCode CLI in the distro —
+// a build with neither the provider lock nor the managed key file. What is worth
+// pinning is that the generated command installs the fork's package and verifies
+// the fork's binary, so a rebase cannot quietly restore upstream's installer.
 posix(
-  "installs a local build through the managed installer, including shell PATH setup",
+  "installs through the fork's npm package, never upstream's install script",
   Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem
-    const path = yield* Path.Path
-    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-    const dir = yield* fs.makeTempDirectoryScoped({ prefix: "wsl-cli-install-" })
-    const binary = path.join(dir, "local build ' cli")
-    yield* fs.writeFileString(binary, "#!/bin/sh\nprintf 'OpenCode v0.0.0-dev-16365\\n'\n", { mode: 0o755 })
-    yield* fs.writeFileString(path.join(dir, ".bashrc"), "# existing config\n")
-    yield* fs.writeFileString(path.join(dir, "installer"), yield* fs.readFileString(path.resolve("../../install")))
-    yield* fs.writeFileString(path.join(dir, "curl"), '#!/bin/sh\ncat "$HOME/installer"\n', { mode: 0o755 })
-    yield* fs.writeFileString(
-      path.join(dir, "wslpath"),
-      '#!/bin/sh\n[ "$1" = "-a" ] || exit 1\nprintf "%s" "$2" > "$HOME/wslpath-input"\nprintf "%s\\n" "$LOCAL_BINARY"\n',
-      { mode: 0o755 },
-    )
-    const windows = "C:\\local build's\\opencode"
-    const command = wslCliInstallCommand({ version: "0.0.0-dev-16365", binary: windows })
-    expect(
-      yield* spawner.exitCode(
-        ChildProcess.make("bash", ["-c", command], {
-          env: { HOME: dir, PATH: `${dir}:/usr/bin:/bin`, LOCAL_BINARY: binary, SHELL: "/bin/bash" },
-        }),
-      ),
-    ).toBe(0)
-    expect(yield* fs.readFileString(path.join(dir, "wslpath-input"))).toBe(windows)
-    expect(yield* fs.readFileString(path.join(dir, ".opencode/bin/opencode"))).toContain("0.0.0-dev-16365")
-    expect((yield* fs.readDirectory(path.join(dir, ".opencode/bin"))).toSorted()).toEqual(["opencode", "opencode2"])
-    expect(yield* fs.readFileString(path.join(dir, ".bashrc"))).toContain(`export PATH=${dir}/.opencode/bin:$PATH`)
+    const command = wslCliInstallCommand({ version: "0.0.0-dev-16365", binary: "C:\\local build's\\genixcode" })
+
+    expect(command).toContain("npm install -g")
+    expect(command).toContain("genixcode@0.0.0-dev-16365")
+    expect(command).toContain("command -v genixcode")
+    expect(command).not.toContain("opencode.ai")
+    expect(command).not.toContain("githubusercontent.com")
+    expect(command).not.toContain("anomalyco")
   }),
 )
+// fork_change end
 
 test("installs and verifies the bundled CLI version", async () => {
   persistedServers = []
@@ -80,8 +69,9 @@ test("rejects a WSL CLI version that differs from the bundled version", async ()
     ),
   )
 
+  // fork_change - native copy is rebranded on the way out of nativeT(); see packages/util/src/fork/brand.ts
   await expect(controller.installOpencode("Debian")).rejects.toThrow(
-    "OpenCode update finished but Debian still reports 0.0.0-dev-older; expected 0.0.0-dev-16365",
+    "GenixCode update finished but Debian still reports 0.0.0-dev-older; expected 0.0.0-dev-16365", // fork_change
   )
 })
 

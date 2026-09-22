@@ -1,0 +1,42 @@
+# fork_change - new file
+name: Check fork annotations
+
+on:
+  pull_request:
+    paths:
+      - ".github/**"
+      - "github/**"
+      - "nix/**"
+      - "packages/core/**"
+      - "packages/cli/**"
+      - "packages/server/**"
+      - "packages/util/**"
+      - "packages/script/**"
+      - "packages/sdk/**"
+      - "packages/storybook/**"
+      - "packages/tui/**"
+      - "packages/ui/**"
+      - "script/**"
+  workflow_dispatch:
+
+jobs:
+  check-annotations:
+    name: Check fork_change annotations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Check fork_change annotations in shared upstream files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ -n "$BASE_SHA" ]; then
+            bun run script/check-fork-annotations.ts --base "$BASE_SHA"
+          else
+            echo "No PR base SHA available (workflow_dispatch without PR context) — skipping."
+          fi

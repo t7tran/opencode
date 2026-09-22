@@ -11,7 +11,7 @@ const directory = path.dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
 const packageJson = JSON.parse(fs.readFileSync(path.join(directory, "package.json"), "utf8"))
 const command = Object.keys(packageJson.bin ?? {})[0]
-if (!command) throw new Error("OpenCode package does not declare a binary")
+if (!command) throw new Error("GenixCode package does not declare a binary") // fork_change - renamed product
 const sourceCommand = packageJson.opencodeSourceBinary ?? command
 
 const platform = { darwin: "darwin", linux: "linux", win32: "windows" }[os.platform()] ?? os.platform()
@@ -20,7 +20,7 @@ const sourceBinary = platform === "windows" ? `${sourceCommand}.exe` : sourceCom
 const targetBinary = path.resolve(directory, packageJson.bin[command])
 const dependencies = packageJson.optionalDependencies ?? {}
 const base = Object.keys(dependencies).find((name) => name.endsWith(`-${platform}-${arch}`))
-if (!base) throw new Error(`OpenCode does not provide a binary for ${platform}-${arch}`)
+if (!base) throw new Error(`GenixCode does not provide a binary for ${platform}-${arch}`) // fork_change - renamed product
 
 function supportsAvx2() {
   if (arch !== "x64") return false
@@ -164,7 +164,8 @@ function main() {
   }
 
   throw new Error(
-    `Failed to install OpenCode. Try manually installing ${names.map((name) => JSON.stringify(name)).join(" or ")}.`,
+    // fork_change - renamed product
+    `Failed to install GenixCode. Try manually installing ${names.map((name) => JSON.stringify(name)).join(" or ")}.`, // fork_change
   )
 }
 

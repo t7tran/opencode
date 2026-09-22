@@ -1,0 +1,4 @@
+# fork_change - new file: the fork's provider lock would otherwise empty the
+# provider catalogue under test; see packages/util/src/fork/test-preload.ts
+[test]
+preload = ["@opencode/util/fork/test-preload"]

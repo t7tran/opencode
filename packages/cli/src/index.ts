@@ -51,6 +51,12 @@ const Handlers = Runtime.handlers(Commands, {
     update: () => import("./commands/handlers/plugin/update"),
     remove: () => import("./commands/handlers/plugin/remove"),
   },
+  // fork_change start - managed API key file tools
+  key: {
+    seal: () => import("./commands/handlers/key/seal"),
+    status: () => import("./commands/handlers/key/status"),
+  },
+  // fork_change end
   models: () => import("./commands/handlers/models"),
   stats: () => import("./commands/handlers/stats"),
   mini: () => import("./commands/handlers/mini"),
