@@ -768,6 +768,76 @@ server would refuse anyway:
 The web app in `packages/app/` has no preload, so `forkManagedKey()` is false there and upstream's
 affordances stay as written. Enforcement is server-side regardless; this only removes dead controls.
 
+## Serving without authentication
+
+`genixcode serve --no-auth` starts the v2 API and web UI with HTTP Basic turned off.
+
+Upstream has no such switch, and the reason is sound for a laptop: `packages/server/src/process.ts`
+refuses to start without a password, and `packages/cli/src/server-process.ts` mints a random one per
+start if you do not supply one. The UI is always behind Basic. That is the wrong default in a
+deployment where something in front has already authenticated the user — a Kong instance running an
+OIDC plugin, a Cloudflare Access application, an nginx sidecar — because there the password buys
+nothing except a browser auth dialog, or an `?auth_token=<base64>` link the operator has to hand out
+of band and which does not survive a bookmark or a PWA launch.
+
+### Why the diff is three hunks and not an auth mode
+
+Upstream already models "no password", and wires it correctly end to end. `ServerAuth.required()`
+reads an **empty** password as no authentication; `createRoutes()` maps a falsy `options.password`
+onto `Option.none()`, which makes `authorizationLayer` a pass-through; `createEmbeddedRoutes()` does
+the same unconditionally, for embedders that front the handler themselves.
+
+So the fork does not add a parallel auth path. It routes `--no-auth` onto the empty password
+upstream already understands and lifts the two guards that stopped an empty one getting there. Every
+decision that is *ours* — which spellings count as loopback, which invocations are refused — lives in
+`packages/util/src/fork/server-auth.ts`, which the annotation checker exempts and which upstream can
+never conflict with.
+
+| Where | What changes | Marked |
+|---|---|---|
+| `packages/util/src/fork/server-auth.ts` | the policy: `NO_AUTH_PASSWORD`, `isLoopbackHostname()`, `noAuthRefusal()` | fork-owned, exempt |
+| `packages/util/test/fork/server-auth.test.ts` | its tests, including a guard on upstream's `""` semantics | fork-owned, exempt |
+| `packages/cli/src/commands/commands.ts` | the flag on the `serve` spec | block |
+| `packages/cli/src/commands/handlers/serve.ts` | passes `input.auth` through | block |
+| `packages/cli/src/server-process.ts` | refusals, the empty password, the startup banner | 4 hunks |
+| `packages/server/src/process.ts` | `undefined` rather than falsy in the guard; the pre-boot gate honours `required()` | 4 hunks |
+
+The flag is registered as `auth`, defaulting to true, **not** as a literal `no-auth`. The parser in
+`effect/unstable/cli` resolves `--no-<name>` to the boolean `<name>` negated (`resolveFlag` in
+`internal/parser.ts`), so that spelling gives `--no-auth` for free and keeps `--auth` meaning what it
+says. A flag actually named `no-auth` would make `--no-auth` set it *true*, which is a trap.
+
+The one hunk that is easy to miss on a rebase is the pre-boot gate in `dispatch()`. It runs before
+the routed application exists and so never goes through `authorizationLayer` — the place where
+`createRoutes`' none-password becomes a pass-through. Without `authRequired` short-circuiting it,
+`--no-auth` would 401 every request for as long as the application layer takes to build, which on a
+cold start is long enough to look like the flag simply not working.
+
+### What it refuses
+
+| Invocation | Result |
+|---|---|
+| `--no-auth` on a loopback bind | serves unauthenticated, prints `authentication disabled (--no-auth)` |
+| `--no-auth --hostname 0.0.0.0` | refused, unless `GENIX_SERVE_NO_AUTH_ALLOW_REMOTE=1` |
+| `--no-auth --service` | refused, always |
+| no flag | unchanged: random password, `www-authenticate`, 401 without credentials |
+
+An unauthenticated genixcode server is a remote shell — the API reads and writes the filesystem, runs
+commands and hands out PTYs. On `127.0.0.1` that is no worse than the account already running the
+process. On `0.0.0.0` it is that capability offered to anything that can route to the port, so the
+flag is loopback-only by default and a deployment that genuinely terminates auth on another host
+opts in explicitly. `127.0.0.0/8` counts in full, not just `127.0.0.1`.
+
+`--service` is refused outright because the background service's password is not decoration: it is
+written to the service registration file, and every client that discovers the service reads it from
+there and presents it. Serving that unauthenticated would put an open agent server on a user's own
+machine, on a port they did not choose, started on their behalf.
+
+An env switch is the right shape for the escape hatch here, and deliberately weaker than the
+updater's compile-time `define` in `packages/cli/src/fork/policy.ts`. That one guards against a Genix
+build replacing itself with an upstream one, so it must not be reachable at runtime at all. This one
+guards a deployment decision the operator is entitled to make.
+
 ## Rebase workflow
 
 1. Rebase against `upstream/dev`.

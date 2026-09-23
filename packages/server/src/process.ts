@@ -55,7 +55,12 @@ export const start = Effect.fn("ServerProcess.start")(function* <E, R>(
   transform?: Transform,
 ) {
   const password = options.password
-  if (!password) return yield* Effect.fail(new Error("Missing server password"))
+  // fork_change start - `undefined`, not falsy. An empty password is the CLI's
+  // `--no-auth` (see packages/util/src/fork/server-auth.ts), which createRoutes
+  // and ServerAuth.required() already understand; an absent one is still the
+  // misconfiguration this guard was written to catch, and still fails loudly.
+  if (password === undefined) return yield* Effect.fail(new Error("Missing server password"))
+  // fork_change end
   const hostname = options.hostname ?? "127.0.0.1"
   const port = Option.fromNullishOr(options.port)
   const shutdown = yield* Latch.make()
@@ -186,6 +191,12 @@ function dispatch(
   tmp: string,
 ): App {
   const auth = ServerAuth.Config.of({ password: Option.some(password), username: "opencode" })
+  // fork_change start - this pre-boot gate predates the routed app and so does
+  // not go through `authorizationLayer`, which is where createRoutes' none-password
+  // becomes a pass-through. Without this it would 401 every request under
+  // `--no-auth` for as long as the application layer takes to build.
+  const authRequired = ServerAuth.required(auth)
+  // fork_change end
   return Effect.gen(function* () {
     const request = yield* HttpServerRequest.HttpServerRequest
     const url = new URL(request.url, "http://localhost")
@@ -193,10 +204,11 @@ function dispatch(
     const app = yield* Ref.get(application)
     const ready = state.type === "ready" && Option.isSome(app)
     if (request.method === "GET" && url.pathname === "/api/info" && !ready) {
-      if (!(yield* authorizedRequest(request, auth))) return unauthorized()
+      if (authRequired && !(yield* authorizedRequest(request, auth))) return unauthorized() // fork_change - `--no-auth`
       return yield* infoResponse(status, version, urls, tmp)
     }
     if (
+      authRequired && // fork_change - `--no-auth`
       (!ready || (!hasPtyConnectTicketURL(url) && !hasPersistentPtyConnectTicketURL(url))) &&
       !(yield* authorizedRequest(request, auth))
     )

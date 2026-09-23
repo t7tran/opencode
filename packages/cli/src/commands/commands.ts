@@ -546,6 +546,18 @@ const Root = Spec.make(typeof OPENCODE_CLI_NAME === "string" ? OPENCODE_CLI_NAME
         ),
         service: Flag.boolean("service").pipe(Flag.withDefault(false)),
         stdio: Flag.boolean("stdio").pipe(Flag.withDefault(false)),
+        // fork_change start - `--no-auth` serves the UI without HTTP Basic, for
+        // deployments where a reverse proxy has already authenticated the user.
+        // Registered as `auth` (default true) rather than as a literal `no-auth`
+        // flag: the parser resolves `--no-<name>` to the boolean `<name>` negated
+        // (effect/unstable/cli internal/parser.ts `resolveFlag`), so this spelling
+        // gives `--no-auth` for free and keeps `--auth` meaning what it says. A
+        // flag actually named `no-auth` would make `--no-auth` set it *true*.
+        auth: Flag.boolean("auth").pipe(
+          Flag.withDescription("Require HTTP Basic authentication (default; --no-auth serves unauthenticated)"),
+          Flag.withDefault(true),
+        ),
+        // fork_change end
       },
     }),
   ],

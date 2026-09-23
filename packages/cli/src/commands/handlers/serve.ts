@@ -12,6 +12,11 @@ export default Runtime.handler(
       hostname: Option.getOrUndefined(input.hostname),
       port: Option.getOrUndefined(input.port),
       cors: input.cors.length > 0 ? input.cors : undefined,
+      // fork_change start - `--no-auth`. The refusals live in ServerProcess.run,
+      // not here, because whether the bind is loopback is only known once the
+      // hostname default has been applied.
+      auth: input.auth,
+      // fork_change end
     })
   }),
 )
