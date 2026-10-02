@@ -12,7 +12,7 @@
 // syntax. Surrounding whitespace is trimmed, so a trailing newline is fine.
 //
 //   ~/.config/genix/key-pepper        (default; $XDG_CONFIG_HOME is honoured)
-//   $KILO_FORK_KEY_PEPPER_FILE        (override, e.g. a CI runner temp path)
+//   $GENIXCODE_FORK_KEY_PEPPER_FILE        (override, e.g. a CI runner temp path)
 //
 // A build with no pepper file fails loudly rather than shipping a binary that
 // cannot unseal the keys already provisioned to hosts — see requirePepper().
@@ -24,10 +24,10 @@ import os from "node:os"
 import path from "node:path"
 
 /** Runtime override, also used by the tests to seal under a foreign pepper. */
-export const PEPPER_ENV = "KILO_FORK_KEY_PEPPER"
+export const PEPPER_ENV = "GENIXCODE_FORK_KEY_PEPPER"
 
 /** Points the build (and an unbuilt run) at a pepper file elsewhere. */
-export const PEPPER_FILE_ENV = "KILO_FORK_KEY_PEPPER_FILE"
+export const PEPPER_FILE_ENV = "GENIXCODE_FORK_KEY_PEPPER_FILE"
 
 /** The pepper file this build reads, honouring the override. */
 export function pepperFilePath(): string {

@@ -31,7 +31,7 @@
  * job, a compromised shell profile — could turn the updater back on and point a
  * Genix install at upstream. There is no env var to set here: the value is
  * substituted at build time and the dead branch is eliminated. This is stricter
- * than the provider lock's `KILO_FORK_DISABLE_PROVIDER_LOCK`, which does ship as
+ * than the provider lock's `GENIXCODE_FORK_DISABLE_PROVIDER_LOCK`, which does ship as
  * an env switch, and stricter on purpose — the lock's hatch degrades a running
  * session, this one would replace the binary.
  *

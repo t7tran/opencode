@@ -45,6 +45,7 @@ import { Provider } from "../provider.js"
 import { cachedGatewayModels } from "@opencode/util/fork/gateway"
 import { keyFilePath, managedKey } from "@opencode/util/fork/key-file"
 import { isLockedProvider, lockActive, lockedProvider, lockedManagedSettings } from "@opencode/util/fork/lock"
+import { isMcpIntegration } from "@opencode/util/fork/guard"
 
 // While a key is managed the provider resolves its connection against this id
 // instead of its own. Nothing can hold a credential or an env method under it:
@@ -80,6 +81,9 @@ export const ForkLockPlugin = define({
     yield* ctx.integration.transform((integrations) => {
       for (const ref of integrations.list()) {
         if (isLockedProvider(ref.id)) continue
+        // MCP servers register integrations too. They are not providers, so the
+        // lock leaves them be; mcp-domains.ts decides where they may connect.
+        if (isMcpIntegration(ref.id)) continue
         integrations.remove(ref.id)
       }
     })

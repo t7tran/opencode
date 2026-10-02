@@ -3,7 +3,7 @@
 //
 // Test entry point for the CLI package.
 //
-// The bunfig preload sets KILO_FORK_DISABLE_PROVIDER_LOCK and KILO_FORK_KEY_FILE
+// The bunfig preload sets GENIXCODE_FORK_DISABLE_PROVIDER_LOCK and GENIXCODE_FORK_KEY_FILE
 // on `process.env`, which is enough for code running in the test process. It is
 // *not* enough here: many of these tests spawn the CLI as a child process, and
 // `Bun.spawn` inherits the environment the runner started with rather than later
@@ -23,8 +23,8 @@ const child = Bun.spawn({
   cwd: new URL("..", import.meta.url).pathname,
   env: {
     ...process.env,
-    KILO_FORK_DISABLE_PROVIDER_LOCK: "1",
-    KILO_FORK_KEY_FILE: "/nonexistent/fork-test/kilo.key",
+    GENIXCODE_FORK_DISABLE_PROVIDER_LOCK: "1",
+    GENIXCODE_FORK_KEY_FILE: "/nonexistent/fork-test/kilo.key",
   },
   stdin: "inherit",
   stdout: "inherit",

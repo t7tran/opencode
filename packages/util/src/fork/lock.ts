@@ -21,7 +21,7 @@
 // entirely: the key is re-applied *after* user config, and auth set/remove is
 // refused at the handler layer.
 //
-// Tests opt out of the lock by setting KILO_FORK_DISABLE_PROVIDER_LOCK=1 in the
+// Tests opt out of the lock by setting GENIXCODE_FORK_DISABLE_PROVIDER_LOCK=1 in the
 // test preload; in that mode every provider behaves as if unlocked.
 //
 // Upstream v2 note: v1 enforced this by splicing head/tail entries into the

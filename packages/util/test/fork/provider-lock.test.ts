@@ -17,11 +17,11 @@ import {
   ForkProviderLockedError,
 } from "../../src/fork/lock.js"
 
-// The global test preload disables the fork lock (KILO_FORK_DISABLE_PROVIDER_LOCK=1)
+// The global test preload disables the fork lock (GENIXCODE_FORK_DISABLE_PROVIDER_LOCK=1)
 // so upstream provider tests run unmodified. These tests verify the LOCKED behavior,
 // so re-enable it for this file.
 beforeAll(() => {
-  process.env.KILO_FORK_DISABLE_PROVIDER_LOCK = ""
+  process.env.GENIXCODE_FORK_DISABLE_PROVIDER_LOCK = ""
 })
 
 describe("fork.lock", () => {
@@ -47,7 +47,7 @@ describe("fork.lock isLockedProvider", () => {
 })
 
 describe("fork.lock lockedManagedSettings", () => {
-  // The test preload points KILO_FORK_KEY_FILE at a path that never exists, so
+  // The test preload points GENIXCODE_FORK_KEY_FILE at a path that never exists, so
   // there is no managed key here and the user's own credential stands.
   test("is absent without a managed key file", () => {
     expect(lockedManagedSettings()).toBeUndefined()

@@ -1,7 +1,7 @@
 // fork_change - new file
 //
 // Tests for the managed API key file (/etc/kilo.key). Verifies:
-//   1. The default path, and the KILO_FORK_KEY_FILE override.
+//   1. The default path, and the GENIXCODE_FORK_KEY_FILE override.
 //   2. managedKey() reads and trims the file, and treats blank/missing as absent.
 //   3. lockedProviderManaged() / lockedManagedSettings() reflect the file.
 //   4. The managed entry carries the key *and* the gateway URL so both can be
@@ -16,8 +16,8 @@ import { DEFAULT_KEY_FILE, keyFilePath, managedKey, managedKeyActive, managedKey
 import { lockedManagedSettings, lockedProviderManaged } from "../../src/fork/lock.js"
 
 const ORIGINAL = {
-  keyFile: process.env.KILO_FORK_KEY_FILE,
-  lock: process.env.KILO_FORK_DISABLE_PROVIDER_LOCK,
+  keyFile: process.env.GENIXCODE_FORK_KEY_FILE,
+  lock: process.env.GENIXCODE_FORK_DISABLE_PROVIDER_LOCK,
 }
 
 let dir: string
@@ -25,33 +25,33 @@ let file: string
 
 beforeEach(() => {
   // The global test preload disables the fork lock; these tests cover the locked behaviour.
-  process.env.KILO_FORK_DISABLE_PROVIDER_LOCK = ""
+  process.env.GENIXCODE_FORK_DISABLE_PROVIDER_LOCK = ""
   // /etc is not writable in tests, so the override points at a temp file instead.
   dir = fs.mkdtempSync(path.join(os.tmpdir(), "fork-key-file-"))
   file = path.join(dir, "kilo.key")
-  process.env.KILO_FORK_KEY_FILE = file
+  process.env.GENIXCODE_FORK_KEY_FILE = file
 })
 
 afterEach(() => {
   fs.rmSync(dir, { recursive: true, force: true })
-  if (ORIGINAL.keyFile === undefined) delete process.env.KILO_FORK_KEY_FILE
-  else process.env.KILO_FORK_KEY_FILE = ORIGINAL.keyFile
-  process.env.KILO_FORK_DISABLE_PROVIDER_LOCK = ORIGINAL.lock ?? ""
+  if (ORIGINAL.keyFile === undefined) delete process.env.GENIXCODE_FORK_KEY_FILE
+  else process.env.GENIXCODE_FORK_KEY_FILE = ORIGINAL.keyFile
+  process.env.GENIXCODE_FORK_DISABLE_PROVIDER_LOCK = ORIGINAL.lock ?? ""
 })
 
 describe("fork.key-file path resolution", () => {
-  test("KILO_FORK_KEY_FILE overrides the path", () => {
+  test("GENIXCODE_FORK_KEY_FILE overrides the path", () => {
     expect(keyFilePath()).toBe(file)
   })
 
   test("defaults to /etc/kilo.key", () => {
-    delete process.env.KILO_FORK_KEY_FILE
+    delete process.env.GENIXCODE_FORK_KEY_FILE
     expect(keyFilePath()).toBe("/etc/kilo.key")
     expect(DEFAULT_KEY_FILE).toBe("/etc/kilo.key")
   })
 
   test("a blank override falls back to the default", () => {
-    process.env.KILO_FORK_KEY_FILE = "   "
+    process.env.GENIXCODE_FORK_KEY_FILE = "   "
     expect(keyFilePath()).toBe("/etc/kilo.key")
   })
 })
@@ -75,7 +75,7 @@ describe("fork.key-file managedKey", () => {
   })
 
   test("treats an unreadable path as absent rather than throwing", () => {
-    process.env.KILO_FORK_KEY_FILE = path.join(dir, "no-such-dir", "kilo.key")
+    process.env.GENIXCODE_FORK_KEY_FILE = path.join(dir, "no-such-dir", "kilo.key")
     expect(managedKey()).toBeUndefined()
   })
 
@@ -114,7 +114,7 @@ describe("fork.lock managed settings", () => {
 
   test("no managed settings when the fork lock is disabled", () => {
     fs.writeFileSync(file, "sk-genix-secret")
-    process.env.KILO_FORK_DISABLE_PROVIDER_LOCK = "1"
+    process.env.GENIXCODE_FORK_DISABLE_PROVIDER_LOCK = "1"
     expect(lockedProviderManaged()).toBe(false)
     expect(lockedManagedSettings()).toBeUndefined()
   })

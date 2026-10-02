@@ -8,6 +8,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs"
 import path from "node:path"
 import { Updater } from "../src/services/updater"
 import { testEffect } from "../../core/test/lib/effect"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 const it = testEffect(NodeServices.layer)
 
@@ -395,7 +396,7 @@ test("Node distribution honors the compile-time CLI name", async () => {
       "test",
       import.meta.path,
       "--define",
-      'OPENCODE_CLI_NAME="opencode2-node"',
+      `OPENCODE_CLI_NAME="${CLI_NAME}2-node"`, // fork_change - renamed binary
       // fork_change start - this nested run does not inherit the define that
       // test/fork-run.ts passes to `bun test`; see src/fork/policy.ts
       "--define",
@@ -417,7 +418,7 @@ test("Node distribution honors the compile-time CLI name", async () => {
   expect(stderr).toContain("1 pass")
 })
 
-if (typeof OPENCODE_CLI_NAME === "string" && OPENCODE_CLI_NAME === "opencode2-node") {
+if (typeof OPENCODE_CLI_NAME === "string" && OPENCODE_CLI_NAME === `${CLI_NAME}2-node`) { // fork_change - renamed binary
   it.live("Node distribution resolves the published npm package", () =>
     Effect.gen(function* () {
       const test = yield* fixture(

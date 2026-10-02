@@ -51,9 +51,10 @@ export const CredentialHandler = HttpApiBuilder.group(Api, "server.credential", 
       "credential.activate",
       Effect.fn(function* (ctx) {
         const credential = yield* Credential.Service
-        // fork_change start - switching accounts is a credential mutation like any
-        // other; refused while the key is managed, on the same terms as remove.
-        const refusal = managedCredentialRefusal()
+        // fork_change start - switching to another Genix credential would unseat
+        // the managed key; refused on the same terms as remove. MCP accounts are
+        // the user's to switch.
+        const refusal = managedCredentialRefusal((yield* credential.get(ctx.params.credentialID))?.integrationID)
         if (refusal) {
           yield* Effect.logWarning("fork: rejected credential.activate: API key is embedded")
           return yield* new InvalidRequestError({ message: refusal, kind: "integration_authorization" })
@@ -67,10 +68,11 @@ export const CredentialHandler = HttpApiBuilder.group(Api, "server.credential", 
       "credential.remove",
       Effect.fn(function* (ctx) {
         const credential = yield* Credential.Service
-        // fork_change start - the managed key file owns the credential, so the
+        // fork_change start - the managed key file owns the Genix credential, so the
         // provider cannot be disconnected. Refused here rather than only in the
-        // UI, so a direct API or CLI call cannot bypass it.
-        const refusal = managedCredentialRefusal()
+        // UI, so a direct API or CLI call cannot bypass it. Logging out of an MCP
+        // server is still the user's call.
+        const refusal = managedCredentialRefusal((yield* credential.get(ctx.params.credentialID))?.integrationID)
         if (refusal) {
           yield* Effect.logWarning("fork: rejected credential.remove: API key is embedded")
           return yield* new InvalidRequestError({ message: refusal, kind: "integration_authorization" })

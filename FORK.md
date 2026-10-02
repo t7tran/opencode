@@ -8,7 +8,9 @@ This document is the authoritative reference for the fork's divergence-tracking 
 
 The same fork exists on top of [Kilo-Org/kilocode](https://github.com/Kilo-Org/kilocode) (itself a
 fork of opencode). The two share the marker convention, the provider identity, the managed key file
-path, and the sealing pepper — a host provisioned with a key serves either build.
+path, and the sealing pepper — a host provisioned with a key serves either build. They no longer share
+environment variable names: this fork's overrides are `GENIXCODE_FORK_*`, where kilocode's are
+`KILO_FORK_*`, so a host that sets an override for one build has to set it for the other as well.
 
 ## Marker token: `fork_change`
 
@@ -78,7 +80,7 @@ Only `packages/core/src/fork/plugin.ts` stays in core: it is the lock's v2 wirin
 | Guard | When it runs |
 |---|---|
 | `bun run script/check-fork-annotations.ts` | Every PR touching a shared scope, via `.github/workflows/check-fork-annotations.yml` |
-| `packages/util/test/fork/**` (key sealing, the lock, the pepper golden vectors) | Every test run — `turbo.json` has an `@opencode/util#test` task for it, which upstream doesn't, and passes `KILO_FORK_KEY_PEPPER_FILE` through turbo's strict env |
+| `packages/util/test/fork/**` (key sealing, the lock, the pepper golden vectors) | Every test run — `turbo.json` has an `@opencode/util#test` task for it, which upstream doesn't, and passes `GENIXCODE_FORK_KEY_PEPPER_FILE` through turbo's strict env |
 
 Run locally, the checker diffs committed `HEAD` against the base but reads line content from the
 working tree, so commit (or stash) before trusting its line numbers.
@@ -111,7 +113,8 @@ executable name and the places that produce or consume it:
 | SSH staging directory (desktop) | `packages/desktop/src/main/ssh/bootstrap.ts` — `~/.genixcode/desktop-ssh/<version>`, the same place `binaryPath()` looks |
 | TUI resume hints | `packages/tui/src/mini/splash.ts` (mini) and `packages/tui/src/util/presentation.ts` (full-screen exit) |
 | "run `opencode …`" hints in errors and help text | see the list below |
-| CI smoke test of the compiled binary | `packages/cli/script/service-smoke.ts` |
+| Node (SEA) build's binary, `genixcode2-node` — what the launcher's `nodeBuild` branch runs | `packages/cli/script/build-node.ts` |
+| CI smoke test of the compiled binaries | `packages/cli/script/service-smoke.ts` |
 
 The hints are the easy ones to miss, because each is one string in a file nobody thinks of as
 branding. Every one that tells the user to type a command now spells it with `CLI_NAME`:
@@ -229,8 +232,8 @@ in the provider pipeline and at the server/handler layer, not just in the UI:
 - **Provider pipeline** (`packages/core/src/fork/plugin.ts`): every provider but the locked one is removed from the provider map, and every integration but the locked one from the connect surface.
 - **Plugin removal** (`packages/core/src/plugin/internal.ts`): `ForkLockPlugin` is in upstream's `guarded` set, so `"plugins": ["-*"]` in a repository's `opencode.json` cannot switch the lock off.
 - **List handlers** (`packages/server/src/handlers/{provider,model}.ts`): `provider.list`, `provider.get`, `model.list` and `model.default` redact `settings.apiKey` while the key is managed.
-- **Connect handlers** (`packages/server/src/handlers/integration.ts`): `integration.connect.key` and `integration.oauth.connect` are rejected for any non-locked integration, and for any integration at all while a key is managed.
-- **Credential handler** (`packages/server/src/handlers/credential.ts`): `credential.create` is rejected on the same terms as a connect (it is what `auth import` calls); `credential.remove` and `credential.activate` are rejected while a key is managed.
+- **Connect handlers** (`packages/server/src/handlers/integration.ts`): `integration.connect.key` and `integration.oauth.connect` are rejected for any non-locked integration, and for Genix's own while a key is managed. MCP servers' integrations are not providers and pass; see [MCP outbound domains](#mcp-outbound-domains).
+- **Credential handler** (`packages/server/src/handlers/credential.ts`): `credential.create` is rejected on the same terms as a connect (it is what `auth import` calls); `credential.remove` and `credential.activate` are rejected for a Genix credential while a key is managed. Logging out of, or switching accounts on, an MCP server is still allowed.
 - **models.dev fetch**: forced off in `packages/cli/src/server-process.ts`; no network request to the catalog endpoint.
 
 The provider identity is hardcoded in `packages/util/src/fork/lock.ts`:
@@ -293,12 +296,13 @@ The file holds **either** the plain key **or** a *sealed* blob — see [Sealed k
 
 The path is a fixed system location, not a per-user one — deliberately outside anything an
 unprivileged user can write, so a machine can be provisioned with a key its users cannot change. On
-Windows it resolves against the current drive root (`C:\etc\kilo.key`). `KILO_FORK_KEY_FILE`
+Windows it resolves against the current drive root (`C:\etc\kilo.key`). `GENIXCODE_FORK_KEY_FILE`
 overrides the path; the test preloads point it at a path that never exists so tests never pick up a
 real key, and the fork tests point it at a temp file since `/etc` is not writable under test.
 
-The path and the `KILO_FORK_*` env var names are shared with the kilocode-based fork deliberately, so
-one provisioned host serves both builds.
+The path is shared with the kilocode-based fork deliberately, so one provisioned host serves both
+builds. The override variables used to be shared too (`KILO_FORK_*`); they're `GENIXCODE_FORK_*` now, so
+a test rig or CI job that points `KILO_FORK_KEY_FILE` somewhere no longer moves this fork's key file.
 
 User-facing messages say only that the key is "embedded" — they never name the path. The key is
 provisioned by whoever administers the machine, and the location is not the user's business.
@@ -312,9 +316,9 @@ provisioned by whoever administers the machine, and the location is not the user
 | Model discovery from the gateway | `packages/util/src/fork/gateway.ts` |
 | Key injection, force-enable, package pin | `packages/core/src/fork/plugin.ts` |
 | Connect / disconnect refusal, key redaction | `packages/util/src/fork/guard.ts`, applied in `packages/server/src/handlers/{integration,credential,provider,model}.ts` |
-| `auth login` / `auth logout` / `auth import` refusal | `packages/cli/src/commands/handlers/auth/{login,logout,import}.ts` |
+| `auth login` / `auth logout` refusal for Genix, and `auth import` skipping what the lock refuses | `packages/cli/src/commands/handlers/auth/{login,logout,import}.ts` |
 | The cheap predicates (`lockActive`, `lockedProviderManaged`) without `effect` | `packages/util/src/fork/lock-state.ts`, re-exported by `lock.ts` |
-| TUI connect-dialog refusal | `packages/tui/src/component/dialog-integration.tsx` |
+| TUI connect-dialog refusal (MCP servers excepted) | `packages/tui/src/component/dialog-integration.tsx` |
 
 ```mermaid
 ---
@@ -469,7 +473,7 @@ the mode is to stop users *changing* the key, and sealing is what stops them rea
   [The sealing pepper](#the-sealing-pepper). A build with no pepper file fails; it does not fall
   back to a placeholder, because a binary sealed under the wrong pepper reads every already
   provisioned host's key file as *no managed key at all*.
-- **Rotating the pepper is a format break.** `KILO_FORK_KEY_PEPPER` overrides it — used by the tests
+- **Rotating the pepper is a format break.** `GENIXCODE_FORK_KEY_PEPPER` overrides it — used by the tests
   to prove a foreign blob is rejected, and available to anyone building their own CLI from source. It
   grants an attacker nothing: sealing under a pepper of your choosing produces a blob only your own
   build can read. But changing the shipped value invalidates every provisioned host, and breaks
@@ -790,7 +794,7 @@ the refusal message says.
 re-enable an updater pointed at upstream.
 
 That is deliberately stricter than the provider lock, which *does* ship
-`KILO_FORK_DISABLE_PROVIDER_LOCK` as an env switch. The difference is what each one costs if it is
+`GENIXCODE_FORK_DISABLE_PROVIDER_LOCK` as an env switch. The difference is what each one costs if it is
 flipped: the lock's hatch degrades a running session, this one would replace the binary.
 
 An absent define reads as *off*, so a build that somehow skipped it gets the safe value rather than a
@@ -849,6 +853,60 @@ server would refuse anyway:
 The web app in `packages/app/` has no preload, so `forkManagedKey()` is false there and upstream's
 affordances stay as written. Enforcement is server-side regardless; this only removes dead controls.
 
+## MCP outbound domains
+
+Early on, the lock refused every integration but Genix's, which quietly took MCP down with it. MCP
+servers register integrations of their own (`mcp_` plus 16 hex digits of a hash over the server's
+name and URL), so a locked build couldn't sign in to a single one. `genixcode mcp auth`, the TUI's
+MCP dialog and the app's MCP settings all hit the same refusal.
+
+MCP isn't a provider, so the lock now leaves it alone (`isMcpIntegration()` in
+`packages/util/src/fork/guard.ts`). What an administrator controls instead is *where* MCP may
+connect: a root-owned file of allowed domains.
+
+```text
+# /etc/genixcode.domains — one entry per line
+mcp.example.com        # that host exactly
+*.corp.example.net     # any subdomain of corp.example.net, but not corp.example.net itself
+```
+
+| | |
+|---|---|
+| Default path | `/etc/genixcode.domains` |
+| Path override | `GENIXCODE_FORK_DOMAINS_FILE` |
+| No file | no restriction, exactly as upstream; dropping the file in is what locks a host down |
+| File present but unreadable | nothing is allowed. Someone who wrote the file meant to restrict, and a permissions slip shouldn't quietly lift it, so make it `0644` |
+| Always allowed | loopback (`localhost`, `127.0.0.0/8`, `::1`), which isn't outbound |
+| Reloads | on the next request after the file's mtime or size changes; no restart |
+
+It covers everything the MCP layer sends for a remote server, not just the first connection:
+
+| Request | Where it's checked |
+|---|---|
+| The server's own URL, before any transport exists | `packages/core/src/mcp/client.ts`, so the server's status says why |
+| Every MCP HTTP request: transport, OAuth discovery, client registration, token exchange and refresh | `base` in `packages/core/src/mcp/oauth.ts`, wrapped by `allowlistedFetch()` |
+| Each redirect hop of those | `allowlistedFetch()` follows redirects itself |
+| The browser hop to the authorisation page | `redirectToAuthorization` in `packages/core/src/mcp/oauth.ts` |
+
+Redirects are the part you can get wrong. Left to `fetch`, an allowed host could answer `307` and the
+request, body included, would be replayed to a host the list doesn't name. So with an allowlist in
+place the wrapper uses `redirect: "manual"` underneath and walks the hops itself, re-checking each
+one. It keeps fetch's own rules (303 becomes a GET, 301/302 turn a POST into a GET, 307/308 keep
+method and body), and drops `Authorization` when a hop changes origin, so an MCP bearer token never
+follows a redirect off the server that issued it. Without a file the wrapper is a plain pass-through,
+so an unprovisioned host behaves exactly as upstream does.
+
+Two things it deliberately doesn't do. It doesn't touch **local (stdio) MCP servers**: those are
+processes the user configured, and what they connect to is out of this process's reach. And it
+doesn't govern anything **outside MCP**. webfetch, websearch, the model gateway and plugins aren't
+filtered, nor are the shell commands the agent runs.
+
+| Concern | Where |
+|---|---|
+| Parsing, matching, the fetch wrapper | `packages/util/src/fork/mcp-domains.ts` |
+| MCP integrations exempt from the lock | `packages/util/src/fork/guard.ts`, the integration prune in `packages/core/src/fork/plugin.ts` |
+| Tests | `packages/util/test/fork/mcp-domains.test.ts`, `packages/core/test/fork/mcp-domains.test.ts`, `packages/core/test/fork/lock-plugin.test.ts` |
+
 ## Serving without authentication
 
 `genixcode serve --no-auth` starts the v2 API and web UI with HTTP Basic turned off.
@@ -899,7 +957,7 @@ cold start is long enough to look like the flag simply not working.
 | Invocation | Result |
 |---|---|
 | `--no-auth` on a loopback bind | serves unauthenticated, prints `authentication disabled (--no-auth)` |
-| `--no-auth --hostname 0.0.0.0` | refused, unless `GENIX_SERVE_NO_AUTH_ALLOW_REMOTE=1` |
+| `--no-auth --hostname 0.0.0.0` | refused, unless `GENIXCODE_FORK_SERVE_NO_AUTH_ALLOW_REMOTE=1` |
 | `--no-auth --service` | refused, always |
 | no flag | unchanged: random password, 401 without credentials (with a `www-authenticate` challenge on navigations) |
 
@@ -957,8 +1015,8 @@ chmod 600 ~/.config/genix/key-pepper
 | | |
 |---|---|
 | Default path | `~/.config/genix/key-pepper` (`$XDG_CONFIG_HOME` is honoured) |
-| Path override | `KILO_FORK_KEY_PEPPER_FILE` — used by CI to point at a runner temp path |
-| Value override | `KILO_FORK_KEY_PEPPER` — the pepper itself, no file; also the tests' override |
+| Path override | `GENIXCODE_FORK_KEY_PEPPER_FILE` — used by CI to point at a runner temp path |
+| Value override | `GENIXCODE_FORK_KEY_PEPPER` — the pepper itself, no file; also the tests' override |
 | Contents | the pepper and nothing else, one line; surrounding whitespace is trimmed |
 | Resolution order | `packages/util/src/fork/pepper.ts` |
 
@@ -971,7 +1029,7 @@ is read at runtime instead. A dev machine without the pepper file still runs: se
 read as *no managed key*, and the normal interactive login flow applies.
 
 `nix/opencode.nix` builds inside a sandbox with no access to `~/.config`, so a nix build needs
-`KILO_FORK_KEY_PEPPER` (or a `KILO_FORK_KEY_PEPPER_FILE` path) threaded into the derivation. The
+`GENIXCODE_FORK_KEY_PEPPER` (or a `GENIXCODE_FORK_KEY_PEPPER_FILE` path) threaded into the derivation. The
 fork does not ship nix builds, and `nix-eval.yml` only evaluates.
 
 ### Binaries

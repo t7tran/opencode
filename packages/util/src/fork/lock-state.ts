@@ -14,7 +14,7 @@ import { managedKey } from "./key-file.js"
 
 /** Lock is active unless the test override disables it. */
 export function lockActive(): boolean {
-  return process.env.KILO_FORK_DISABLE_PROVIDER_LOCK !== "1"
+  return process.env.GENIXCODE_FORK_DISABLE_PROVIDER_LOCK !== "1"
 }
 
 /**

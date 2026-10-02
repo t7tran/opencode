@@ -34,7 +34,7 @@ export function forkManagedKey(): boolean {
  * — browsing "all providers", adding a custom OpenAI-compatible one — are dead
  * controls in this build regardless of whether a managed key is present.
  *
- * The lock has a test escape hatch (KILO_FORK_DISABLE_PROVIDER_LOCK), but it is
+ * The lock has a test escape hatch (GENIXCODE_FORK_DISABLE_PROVIDER_LOCK), but it is
  * read server-side; a browser renderer has no process env to consult, so this is
  * a constant rather than a call into packages/util/src/fork/lock.ts.
  */

@@ -17,7 +17,7 @@
 // The path is shared with the sibling fork of Kilo-Org/kilocode, so a host
 // provisioned once serves both builds.
 //
-// The `KILO_FORK_KEY_FILE` env var overrides the path; the test preload points
+// The `GENIXCODE_FORK_KEY_FILE` env var overrides the path; the test preload points
 // it at a path that never exists so tests are hermetic.
 //
 // See FORK.md.
@@ -29,7 +29,7 @@ export const DEFAULT_KEY_FILE = "/etc/kilo.key"
 
 /** Absolute path of the managed key file. */
 export function keyFilePath(): string {
-  return process.env.KILO_FORK_KEY_FILE?.trim() || DEFAULT_KEY_FILE
+  return process.env.GENIXCODE_FORK_KEY_FILE?.trim() || DEFAULT_KEY_FILE
 }
 
 /**

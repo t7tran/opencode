@@ -109,7 +109,7 @@ describe("upgrade command as shipped", () => {
 
   test("no environment variable re-enables it", async () => {
     const result = await shipped([], {
-      KILO_FORK_ENABLE_UPDATER: "1",
+      GENIXCODE_FORK_ENABLE_UPDATER: "1",
       GENIX_UPDATER_ENABLED: "true",
       OPENCODE_DISABLE_AUTOUPDATE: "0",
     })

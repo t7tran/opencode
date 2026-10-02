@@ -57,26 +57,26 @@ describe("noAuthRefusal", () => {
   test("refuses a wildcard bind and names the escape hatch", () => {
     const refusal = noAuthRefusal({ mode: "default", hostname: "0.0.0.0", env })
     expect(refusal).toContain("0.0.0.0")
-    expect(refusal).toContain("GENIX_SERVE_NO_AUTH_ALLOW_REMOTE")
+    expect(refusal).toContain("GENIXCODE_FORK_SERVE_NO_AUTH_ALLOW_REMOTE")
   })
 
   test("the escape hatch lifts the bind restriction", () => {
     for (const value of ["1", "true", "TRUE"])
       expect(
-        noAuthRefusal({ mode: "default", hostname: "0.0.0.0", env: { GENIX_SERVE_NO_AUTH_ALLOW_REMOTE: value } }),
+        noAuthRefusal({ mode: "default", hostname: "0.0.0.0", env: { GENIXCODE_FORK_SERVE_NO_AUTH_ALLOW_REMOTE: value } }),
       ).toBeUndefined()
   })
 
   test("the escape hatch does not lift the service-mode refusal", () => {
     expect(
-      noAuthRefusal({ mode: "service", hostname: "127.0.0.1", env: { GENIX_SERVE_NO_AUTH_ALLOW_REMOTE: "1" } }),
+      noAuthRefusal({ mode: "service", hostname: "127.0.0.1", env: { GENIXCODE_FORK_SERVE_NO_AUTH_ALLOW_REMOTE: "1" } }),
     ).toContain("--service")
   })
 
   test("an unset or nonsense switch value does not lift anything", () => {
     for (const value of [undefined, "", "0", "false", "yes"])
       expect(
-        noAuthRefusal({ mode: "default", hostname: "0.0.0.0", env: { GENIX_SERVE_NO_AUTH_ALLOW_REMOTE: value } }),
+        noAuthRefusal({ mode: "default", hostname: "0.0.0.0", env: { GENIXCODE_FORK_SERVE_NO_AUTH_ALLOW_REMOTE: value } }),
       ).toBeDefined()
   })
 })

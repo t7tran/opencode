@@ -28,6 +28,7 @@ import { Cause, Effect, Exit, Schema } from "effect"
 import { ConfigMCP } from "@opencode/schema/config/mcp"
 import type { Session } from "@opencode/schema/session"
 import { McpStdio } from "./stdio.js"
+import { mcpDomainRefusal } from "@opencode/util/fork/mcp-domains" // fork_change - MCP outbound domain allowlist
 
 const DEFAULT_STARTUP_TIMEOUT = 30_000
 const DEFAULT_CATALOG_TIMEOUT = 30_000
@@ -209,6 +210,11 @@ export const connect = Effect.fnUntraced(function* (
     }
     if (!URL.canParse(config.url))
       return yield* new ConnectError({ server, message: `Invalid MCP URL for "${server}"` })
+    // fork_change start - refused here, before any transport exists, so the
+    // server's status says why instead of reporting a failed fetch
+    const refusal = mcpDomainRefusal(config.url)
+    if (refusal) return yield* new ConnectError({ server, message: refusal })
+    // fork_change end
     const { McpOAuth } = yield* Effect.promise(() => import("./oauth.js"))
     const fetch = yield* McpOAuth.loggedFetch({ server, directory })
     // Servers that bundle their own Code Mode (Cloudflare and others) expose raw tools when asked

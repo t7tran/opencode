@@ -14,7 +14,7 @@ const target = `cli${nodeBuild ? "-node" : ""}-${process.platform === "win32" ? 
 const directory = path.join(import.meta.dir, "..", "dist", ...(nodeBuild ? ["node"] : []), target, "bin")
 const binary = path.join(
   directory,
-  `${nodeBuild ? "opencode2-node" : CLI_NAME}${process.platform === "win32" ? ".exe" : ""}`, // fork_change - renamed binary
+  `${nodeBuild ? `${CLI_NAME}2-node` : CLI_NAME}${process.platform === "win32" ? ".exe" : ""}`, // fork_change - renamed binary
 )
 if (!(await Bun.file(binary).exists())) throw new Error(`Missing compiled CLI in ${directory}`)
 

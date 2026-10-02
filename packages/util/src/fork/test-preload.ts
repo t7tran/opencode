@@ -15,12 +15,12 @@
 // module rather than as a copy per package — a copy that drifts is a test suite
 // that silently starts exercising the lock.
 //
-// Tests that need a key file (key-file, key-seal) override KILO_FORK_KEY_FILE
+// Tests that need a key file (key-file, key-seal) override GENIXCODE_FORK_KEY_FILE
 // with a temp path of their own.
 //
 // The CLI updater is off by default too, but it is gated on a build-time
 // `define` rather than the environment, so it cannot be switched here — see
 // packages/cli/src/fork/policy.ts and packages/cli/test/fork-run.ts.
 
-process.env.KILO_FORK_DISABLE_PROVIDER_LOCK = "1"
-process.env.KILO_FORK_KEY_FILE = "/nonexistent/fork-test/kilo.key"
+process.env.GENIXCODE_FORK_DISABLE_PROVIDER_LOCK = "1"
+process.env.GENIXCODE_FORK_KEY_FILE = "/nonexistent/fork-test/kilo.key"

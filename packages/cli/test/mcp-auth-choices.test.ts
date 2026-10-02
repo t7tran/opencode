@@ -2,6 +2,7 @@ import { expect, test } from "bun:test"
 import path from "node:path"
 import type { IntegrationInfo, McpServer } from "@opencode/client"
 import { mcpAuthChoices } from "../src/commands/handlers/mcp/auth"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 const server = (
   name: string,
@@ -50,7 +51,7 @@ test("mcp auth accepts an optional server name and rejects no-name noninteractiv
       stderr: "pipe",
     })
   const help = cli(["--help"])
-  expect(await new Response(help.stdout).text()).toContain("opencode mcp auth [flags] [<name>]")
+  expect(await new Response(help.stdout).text()).toContain(`${CLI_NAME} mcp auth [flags] [<name>]`) // fork_change - renamed binary
   expect(await help.exited).toBe(0)
 
   const missing = cli([])

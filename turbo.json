@@ -72,7 +72,7 @@
     // mode would also strip the pepper path test.yml provisions.
     "@opencode/util#test": {
       "outputs": [],
-      "passThroughEnv": ["KILO_FORK_KEY_PEPPER_FILE"]
+      "passThroughEnv": ["GENIXCODE_FORK_KEY_PEPPER_FILE"]
     },
     // fork_change end
     "@opencode/tui#test": {

@@ -15,6 +15,7 @@ import { Effect, Schema } from "effect"
 import { Config } from "@opencode/core/config"
 import { ConfigProviderPlugin } from "@opencode/core/config/plugin/provider"
 import { ForkLockPlugin } from "@opencode/core/fork/plugin"
+import { Integration } from "@opencode/core/integration"
 import { Model } from "@opencode/core/model"
 import { Plugin } from "@opencode/core/plugin"
 import { PluginHost } from "@opencode/core/plugin/host"
@@ -54,7 +55,7 @@ afterEach(() => {
 })
 
 const locked = <A, E, R>(effect: () => Effect.Effect<A, E, R>) =>
-  withEnv({ KILO_FORK_DISABLE_PROVIDER_LOCK: undefined, KILO_FORK_KEY_FILE: keyFile }, effect)
+  withEnv({ GENIXCODE_FORK_DISABLE_PROVIDER_LOCK: undefined, GENIXCODE_FORK_KEY_FILE: keyFile }, effect)
 
 const install = Effect.fn(function* (entries: Entry[]) {
   const plugin = yield* Plugin.Service
@@ -111,6 +112,31 @@ describe("ForkLockPlugin with a managed key", () => {
         expect(provider.settings?.apiKey).toBe(MANAGED_KEY)
         const available = yield* (yield* Model.Service).available()
         expect(available.some((model) => model.providerID === GENIX)).toBe(true)
+      }),
+    ),
+  )
+})
+
+describe("ForkLockPlugin and MCP", () => {
+  it.effect("leaves MCP servers' integrations alone while pruning other providers'", () =>
+    locked(() =>
+      Effect.gen(function* () {
+        const integrations = yield* Integration.Service
+        const mcp = Integration.ID.make("mcp_0123456789abcdef")
+        const other = Integration.ID.make("openai")
+        // Registered before the lock, so the lock's prune sees both.
+        yield* integrations.transform((editor) => {
+          editor.update(mcp, (ref) => {
+            ref.name = "docs"
+            ref.metadata = { source: "mcp" }
+          })
+          editor.update(other, (ref) => {
+            ref.name = "OpenAI"
+          })
+        })
+        yield* install([])
+        expect(yield* integrations.get(mcp)).toBeDefined()
+        expect(yield* integrations.get(other)).toBeUndefined()
       }),
     ),
   )

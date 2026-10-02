@@ -24,9 +24,9 @@ const KEY = "sk-genix-abc123-XYZ_secret"
 const TEST_PEPPER = "genix-test-pepper"
 
 const ORIGINAL = {
-  keyFile: process.env.KILO_FORK_KEY_FILE,
-  pepper: process.env.KILO_FORK_KEY_PEPPER,
-  lock: process.env.KILO_FORK_DISABLE_PROVIDER_LOCK,
+  keyFile: process.env.GENIXCODE_FORK_KEY_FILE,
+  pepper: process.env.GENIXCODE_FORK_KEY_PEPPER,
+  lock: process.env.GENIXCODE_FORK_DISABLE_PROVIDER_LOCK,
 }
 
 let dir: string
@@ -34,21 +34,21 @@ let file: string
 
 beforeEach(() => {
   // The global test preload disables the fork lock; these tests cover the locked behaviour.
-  process.env.KILO_FORK_DISABLE_PROVIDER_LOCK = ""
+  process.env.GENIXCODE_FORK_DISABLE_PROVIDER_LOCK = ""
   // /etc is not writable in tests, so the override points at a temp file instead.
   dir = fs.mkdtempSync(path.join(os.tmpdir(), "fork-key-seal-"))
   file = path.join(dir, "kilo.key")
-  process.env.KILO_FORK_KEY_FILE = file
-  process.env.KILO_FORK_KEY_PEPPER = TEST_PEPPER
+  process.env.GENIXCODE_FORK_KEY_FILE = file
+  process.env.GENIXCODE_FORK_KEY_PEPPER = TEST_PEPPER
 })
 
 afterEach(() => {
   fs.rmSync(dir, { recursive: true, force: true })
-  if (ORIGINAL.keyFile === undefined) delete process.env.KILO_FORK_KEY_FILE
-  else process.env.KILO_FORK_KEY_FILE = ORIGINAL.keyFile
-  if (ORIGINAL.pepper === undefined) delete process.env.KILO_FORK_KEY_PEPPER
-  else process.env.KILO_FORK_KEY_PEPPER = ORIGINAL.pepper
-  process.env.KILO_FORK_DISABLE_PROVIDER_LOCK = ORIGINAL.lock ?? ""
+  if (ORIGINAL.keyFile === undefined) delete process.env.GENIXCODE_FORK_KEY_FILE
+  else process.env.GENIXCODE_FORK_KEY_FILE = ORIGINAL.keyFile
+  if (ORIGINAL.pepper === undefined) delete process.env.GENIXCODE_FORK_KEY_PEPPER
+  else process.env.GENIXCODE_FORK_KEY_PEPPER = ORIGINAL.pepper
+  process.env.GENIXCODE_FORK_DISABLE_PROVIDER_LOCK = ORIGINAL.lock ?? ""
 })
 
 describe("fork.key-seal round trip", () => {
@@ -110,9 +110,9 @@ describe("fork.key-seal rejection", () => {
   })
 
   test("a blob sealed under a different pepper is rejected", () => {
-    process.env.KILO_FORK_KEY_PEPPER = "some-other-build"
+    process.env.GENIXCODE_FORK_KEY_PEPPER = "some-other-build"
     const foreign = seal(KEY)
-    process.env.KILO_FORK_KEY_PEPPER = TEST_PEPPER
+    process.env.GENIXCODE_FORK_KEY_PEPPER = TEST_PEPPER
     expect(unseal(foreign)).toBeUndefined()
   })
 })
@@ -162,7 +162,7 @@ const describeGolden = provisioned ? describe : describe.skip
 describeGolden("fork.key-seal format stability", () => {
   // The golden vectors are the shipped pepper's, so the synthetic override goes.
   beforeEach(() => {
-    delete process.env.KILO_FORK_KEY_PEPPER
+    delete process.env.GENIXCODE_FORK_KEY_PEPPER
   })
 
   test("still seals the pinned key to the pinned blob", () => {
@@ -194,9 +194,9 @@ describe("fork.key-file with a sealed file", () => {
   })
 
   test("a blob this build cannot unseal reads as no managed key at all", () => {
-    process.env.KILO_FORK_KEY_PEPPER = "some-other-build"
+    process.env.GENIXCODE_FORK_KEY_PEPPER = "some-other-build"
     const foreign = seal(KEY)
-    process.env.KILO_FORK_KEY_PEPPER = TEST_PEPPER
+    process.env.GENIXCODE_FORK_KEY_PEPPER = TEST_PEPPER
     fs.writeFileSync(file, foreign)
     expect(managedKey()).toBeUndefined()
     expect(managedKeyActive()).toBe(false)

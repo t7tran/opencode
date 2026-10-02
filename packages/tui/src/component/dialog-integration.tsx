@@ -27,6 +27,7 @@ import { useToast } from "../ui/toast"
 import { errorMessage } from "../util/error"
 // fork_change start - the managed key file owns the Genix credential
 import { lockedProviderManaged } from "@opencode/util/fork/lock"
+import { isMcpIntegration } from "@opencode/util/fork/guard"
 // fork_change end
 import { formLabel, formToggleMultiselect, formValidateValue, type FormAnswerField } from "../util/form"
 
@@ -89,8 +90,9 @@ export function DialogIntegration(
   // provider is already connected and its credential cannot be changed from
   // here. The server refuses the connect outright (see core/src/fork/guard.ts);
   // this keeps the TUI from walking the user into that error.
-  function refuseManaged() {
-    if (!lockedProviderManaged()) return false
+  // MCP servers are not the key file's: their sign-in stays the user's to manage.
+  function refuseManaged(integrationID: string) {
+    if (isMcpIntegration(integrationID) || !lockedProviderManaged()) return false
     toast.show({ variant: "info", message: "API key is embedded." })
     dialog.clear()
     return true
@@ -106,7 +108,7 @@ export function DialogIntegration(
     if (!props.autoConnect) return
     const integration = integrations()[0]
     if (!integration) return
-    if (refuseManaged()) return // fork_change
+    if (refuseManaged(integration.id)) return // fork_change
     const methods = connectMethods(integration)
     if (credentialConnections(integration).length) {
       manageConnections(integration, methods, location, dialog, props.onConnected)
@@ -136,7 +138,7 @@ export function DialogIntegration(
             ? () => <text fg={theme.text.feedback.success.base}>✓</text>
             : undefined,
         onSelect: () => {
-          if (refuseManaged()) return // fork_change
+          if (refuseManaged(integration.id)) return // fork_change
           if (credentials.length) return manageConnections(integration, methods, location, dialog, props.onConnected)
           return selectMethod(integration, methods, location, dialog, props.onConnected)
         },

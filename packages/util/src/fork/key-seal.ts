@@ -69,14 +69,14 @@ const NONCE_BYTES = 12
 const TAG_BYTES = 16
 
 /**
- * `KILO_FORK_KEY_PEPPER` overrides the pepper. Used by the tests to prove that
+ * `GENIXCODE_FORK_KEY_PEPPER` overrides the pepper. Used by the tests to prove that
  * a blob sealed by one build is rejected by another; also lets an operator who
  * builds their own CLI and extension from source use a private pepper. It grants
  * nothing to an attacker: sealing with a pepper of your choosing produces a blob
  * only your own build can read.
  */
 function pepper(): Buffer {
-  const override = process.env.KILO_FORK_KEY_PEPPER?.trim()
+  const override = process.env.GENIXCODE_FORK_KEY_PEPPER?.trim()
   if (override && override.length > 0) return Buffer.from(override, "utf8")
   const value = BUILD_PEPPER ?? readPepperFile()
   // Only reachable from an unbuilt run with no pepper file: unseal() catches it

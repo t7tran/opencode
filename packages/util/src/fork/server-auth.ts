@@ -59,7 +59,7 @@ export function isLoopbackHostname(hostname: string): boolean {
 }
 
 /** Env switch that lifts the loopback restriction. See `noAuthRefusal`. */
-const ALLOW_REMOTE_ENV = "GENIX_SERVE_NO_AUTH_ALLOW_REMOTE"
+const ALLOW_REMOTE_ENV = "GENIXCODE_FORK_SERVE_NO_AUTH_ALLOW_REMOTE"
 
 function truthy(value: string | undefined): boolean {
   return value === "1" || value?.toLowerCase() === "true"
@@ -76,7 +76,7 @@ function truthy(value: string | undefined): boolean {
  * `127.0.0.1` that is no worse than the account already running the process. On
  * `0.0.0.0` it is that capability offered to anything that can route to the port.
  * The flag is therefore loopback-only by default, and a deployment that really
- * does terminate auth on another host sets `GENIX_SERVE_NO_AUTH_ALLOW_REMOTE=1`
+ * does terminate auth on another host sets `GENIXCODE_FORK_SERVE_NO_AUTH_ALLOW_REMOTE=1`
  * and owns the consequence. An env switch is the right shape here — unlike the
  * updater's compile-time `define`, which guards against a Genix build replacing
  * itself with an upstream one and so must not be reachable at runtime at all.

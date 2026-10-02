@@ -127,7 +127,7 @@ jobs:
           pepper_file="${RUNNER_TEMP}/genix-key-pepper"
           printf %s "${GENIX_KEY_PEPPER}" > "${pepper_file}"
           chmod 600 "${pepper_file}" || true
-          echo "KILO_FORK_KEY_PEPPER_FILE=${pepper_file}" >> "${GITHUB_ENV}"
+          echo "GENIXCODE_FORK_KEY_PEPPER_FILE=${pepper_file}" >> "${GITHUB_ENV}"
           echo "available=true" >> "${GITHUB_OUTPUT}"
       # fork_change end
       - name: Run unit tests
