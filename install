@@ -472,10 +472,13 @@ if [ -n "${GITHUB_ACTIONS-}" ] && [ "${GITHUB_ACTIONS}" == "true" ]; then
 fi
 
 echo -e ""
-echo -e "${MUTED}                    ${NC}             ▄     "
-echo -e "${MUTED}█▀▀█ █▀▀█ █▀▀█ █▀▀▄ ${NC}█▀▀▀ █▀▀█ █▀▀█ █▀▀█"
-echo -e "${MUTED}█░░█ █░░█ █▀▀▀ █░░█ ${NC}█░░░ █░░█ █░░█ █▀▀▀"
-echo -e "${MUTED}▀▀▀▀ █▀▀▀ ▀▀▀▀ ▀  ▀ ${NC}▀▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀"
+# fork_change start - "genix" replaces "open"; "code" in Genix blue, matching packages/tui/src/logo.ts
+BRAND='\033[1;38;5;32m'
+echo -e "${MUTED}                      ${BRAND}             ▄     ${NC}"
+echo -e "${MUTED}█▀▀▀ █▀▀█ █▀▀▄ ▀ ▀▄▄▀ ${BRAND}█▀▀▀ █▀▀█ █▀▀█ █▀▀█${NC}"
+echo -e "${MUTED}█░▀█ █▀▀▀ █░░█ █  ██  ${BRAND}█░░░ █░░█ █░░█ █▀▀▀${NC}"
+echo -e "${MUTED}▀▀▀▀ ▀▀▀▀ ▀  ▀ ▀ ▀  ▀ ${BRAND}▀▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀${NC}"
+# fork_change end
 echo -e ""
 echo -e ""
 echo -e "${MUTED}OpenCode includes free models, to start:${NC}"
