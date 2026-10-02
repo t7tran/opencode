@@ -67,6 +67,14 @@
       "dependsOn": ["^build"],
       "outputs": []
     },
+    // fork_change start - util has no task upstream, so packages/util/test/fork/**
+    // (key sealing, the lock, the pepper golden vectors) never ran in CI. Strict env
+    // mode would also strip the pepper path test.yml provisions.
+    "@opencode/util#test": {
+      "outputs": [],
+      "passThroughEnv": ["KILO_FORK_KEY_PEPPER_FILE"]
+    },
+    // fork_change end
     "@opencode/tui#test": {
       "dependsOn": ["^build"],
       "outputs": []

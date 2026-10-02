@@ -56,6 +56,18 @@ export function forkReleaseNotesEnabled(): boolean {
 }
 
 /**
+ * Whether Settings → About asks GitHub how many people contributed upstream.
+ *
+ * The credits on that screen stay upstream's (see FORK.md § The About screen),
+ * but refreshing the "and N other contributors" count calls api.github.com every
+ * time the screen opens. The figure is cosmetic and already has a baked-in
+ * fallback, so it is not worth an outbound request from every Genix install.
+ */
+export function forkContributorCountEnabled(): boolean {
+  return false
+}
+
+/**
  * External support/feedback destination, or undefined when there is none.
  *
  * Upstream's Help affordances open https://opencode.ai/desktop-feedback, and its

@@ -13,6 +13,7 @@ import { getStore } from "../storage/store"
 import { emitIpcEvent } from "../ipc-events"
 import { createSshController } from "./controller"
 import { sshHosts, SshFailure } from "./command"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 export class Service extends Context.Service<Service, Effect.Success<ReturnType<typeof make>>>()(
   "opencode/desktop/Ssh",
@@ -27,7 +28,7 @@ const make = Effect.fn("Ssh.make")(function* (cli: DesktopCli.Resolved) {
   const controller = yield* createSshController({
     version: cli.version,
     development: !app.isPackaged && cli.binary === undefined,
-    binary: cli.binary ?? cli.command[0] ?? "opencode",
+    binary: cli.binary ?? cli.command[0] ?? CLI_NAME, // fork_change - renamed binary
     command: cli.command,
     configs: stored._tag === "Some" ? stored.value : [],
     save: (configs) => Effect.try({ try: () => getStore().set("ssh.servers", configs), catch: SshFailure.from }),

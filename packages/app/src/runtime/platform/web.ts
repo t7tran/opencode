@@ -30,7 +30,7 @@ export function createWebPlatform(version: string) {
 
       const notification = new Notification(title, {
         body: description ?? "",
-        icon: "https://opencode.ai/favicon-96x96-v3.png",
+        icon: "/favicon-96x96-v3.png", // fork_change - served from packages/app/public; never fetched from opencode.ai
       })
       notification.onclick = () => {
         window.focus()

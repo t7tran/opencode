@@ -41,6 +41,10 @@
 
 import { Effect, Schema } from "effect"
 import { managedKey } from "./key-file.js"
+import { lockActive } from "./lock-state.js"
+
+// Split out so the desktop entry module can ask without loading effect; see lock-state.ts.
+export { lockActive, lockedProviderManaged } from "./lock-state.js"
 
 const PROVIDER_ID = "genix"
 const PROVIDER_NAME = "Genix"
@@ -52,11 +56,6 @@ const PROVIDER_BASE_URL = "https://ai.gateway.genixventures.com/v1"
  * OpenAI-compatible one is this built-in specifier.
  */
 const PROVIDER_PACKAGE = "@opencode/ai/providers/openai-compatible"
-
-/** Lock is active unless the test override disables it. */
-export function lockActive(): boolean {
-  return process.env.KILO_FORK_DISABLE_PROVIDER_LOCK !== "1"
-}
 
 export interface LockedProvider {
   id: string
@@ -81,15 +80,6 @@ export function isLockedProvider(id: string): boolean {
   // When the lock is disabled (tests), every provider is treated as allowed.
   if (!lockActive()) return true
   return id === PROVIDER_ID
-}
-
-/**
- * True when the API key is supplied by the managed key file rather than by the
- * user. In that mode the provider is always connected and every credential
- * mutation (connect, disconnect, login, logout) is refused.
- */
-export function lockedProviderManaged(): boolean {
-  return lockActive() && managedKey() !== undefined
 }
 
 /**

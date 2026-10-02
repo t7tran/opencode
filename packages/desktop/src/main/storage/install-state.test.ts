@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { hasExistingAppState } from "./install-state"
+import { APP_DIRNAME } from "@opencode/util/fork/brand" // fork_change
 
 const file = (name: string) => ({ name, directory: false })
 const directory = (name: string) => ({ name, directory: true })
@@ -15,6 +16,6 @@ describe("hasExistingAppState", () => {
     expect(hasExistingAppState([file("opencode.global.dat")])).toBe(true)
     expect(hasExistingAppState([file("drafts.sqlite")])).toBe(true)
     expect(hasExistingAppState([file("window-state-abc.json")])).toBe(true)
-    expect(hasExistingAppState([directory("opencode")])).toBe(true)
+    expect(hasExistingAppState([directory(APP_DIRNAME)])).toBe(true) // fork_change - userData/genixcode
   })
 })

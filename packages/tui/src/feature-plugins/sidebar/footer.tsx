@@ -5,6 +5,7 @@ import { FilePath } from "../../ui/file-path"
 import { useWorkingDirectoryActions } from "../../ui/working-directory-actions"
 import { usePromptMove } from "../../component/prompt/move"
 import { hasConnectedProvider } from "../../util/connected-provider"
+import { lockedProvider, lockedProviderManaged } from "@opencode/util/fork/lock" // fork_change
 
 export function SidebarOnboarding(props: { context: Plugin.Context; sessionID: string }) {
   const dimensions = useTerminalDimensions()
@@ -17,6 +18,7 @@ export function SidebarOnboarding(props: { context: Plugin.Context; sessionID: s
   )
   const showOnboarding = createMemo(() => {
     if (dimensions().height < 22) return false
+    if (lockedProviderManaged()) return false // fork_change - already connected, and /connect is refused
     const list = integrations()
     if (!list) return false
     return !onboarding.dismissed && !hasConnectedProvider(list)
@@ -54,10 +56,9 @@ export function SidebarOnboarding(props: { context: Plugin.Context; sessionID: s
               ✕
             </text>
           </box>
-          <text fg={props.context.theme.text.muted}>OpenCode includes free models so you can start immediately.</text>
-          <text fg={props.context.theme.text.muted}>
-            Connect from 75+ providers to use other models, including Claude, GPT, Gemini etc
-          </text>
+          {/* fork_change start - the lock leaves one provider and no free catalogue */}
+          <text fg={props.context.theme.text.muted}>Connect {lockedProvider().name} with your API key to get started.</text>
+          {/* fork_change end */}
           <box
             id="sidebar.footer.getting-started.connect"
             flexDirection="row"

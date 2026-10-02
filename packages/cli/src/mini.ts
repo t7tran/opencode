@@ -6,6 +6,7 @@ import { readStdin } from "./util/io"
 import { createMiniHost, INTERACTIVE_INPUT_ERROR, usingInteractiveStdin } from "./mini-host"
 import { parseSessionTargetModel, resolveSessionTarget, type SessionTargetPreparation } from "./session-target"
 import { Env } from "./env"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 export type MiniCommandInput = {
   server: {
@@ -181,7 +182,7 @@ export async function resolveMiniTarget<A>(input: {
 }
 
 export function validateMiniTerminal() {
-  if (!process.stdout.isTTY) fail("opencode mini requires a TTY stdout")
+  if (!process.stdout.isTTY) fail(`${CLI_NAME} mini requires a TTY stdout`) // fork_change - renamed binary
 }
 
 /** @internal Exported for testing. */

@@ -103,6 +103,7 @@ import { SessionTerminalsProvider } from "./context/session-terminals"
 import { PanelProvider, usePanel } from "./context/panel"
 import { SessionFrame } from "./component/session-frame"
 import { createTuiClipboard } from "./clipboard"
+import { PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed product
 
 registerOpencodeSpinner()
 
@@ -608,14 +609,14 @@ function App() {
     if (!terminalTitleEnabled()) return
 
     if (route.data.type === "home") {
-      renderer.setTerminalTitle("OpenCode")
+      renderer.setTerminalTitle(PRODUCT_NAME) // fork_change - renamed product
       return
     }
 
     if (route.data.type === "session") {
       const title = session?.title
       if (!title || isFallbackTitle(title)) {
-        renderer.setTerminalTitle("OpenCode")
+        renderer.setTerminalTitle(PRODUCT_NAME) // fork_change - renamed product
         return
       }
 

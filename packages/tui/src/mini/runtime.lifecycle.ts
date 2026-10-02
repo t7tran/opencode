@@ -37,6 +37,7 @@ import type {
 } from "./types"
 import { resolveMiniSettings } from "./runtime.boot"
 import { formatModelLabel } from "./variant.shared"
+import { PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed product
 
 const FOOTER_HEIGHT = 4
 
@@ -174,7 +175,7 @@ export async function createRuntimeLifecycle(input: LifecycleInput): Promise<Lif
   if (mono) renderer.on(CliRenderEvents.EXTERNAL_OUTPUT, monoSnapshot)
   const setTitle = (title?: string) => {
     if (input.host.platform !== "linux") return
-    if (!title || isFallbackTitle(title)) return renderer.setTerminalTitle("OpenCode")
+    if (!title || isFallbackTitle(title)) return renderer.setTerminalTitle(PRODUCT_NAME) // fork_change - renamed product
     renderer.setTerminalTitle(`OC | ${title.length > 40 ? title.slice(0, 37) + "…" : title}`)
   }
   setTitle(input.sessionTitle)

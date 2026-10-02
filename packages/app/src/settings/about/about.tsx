@@ -1,5 +1,6 @@
 import { createResource } from "solid-js"
 import { FORK_NOTICE } from "@opencode/util/fork/brand" // fork_change
+import { forkContributorCountEnabled } from "@/fork/policy" // fork_change
 import { useLanguage } from "@/runtime/i18n/language"
 import { usePlatform } from "@/runtime/platform/platform"
 import { ExternalLink } from "@/runtime/platform/external-link"
@@ -32,7 +33,7 @@ export function SettingsAbout(props: { active: boolean }) {
   const language = useLanguage()
   const platform = usePlatform()
   const [otherContributors] = createResource(
-    () => props.active || undefined,
+    () => (forkContributorCountEnabled() && props.active) || undefined, // fork_change - no api.github.com call
     () => loadOtherContributorCount(platform.fetch ?? fetch),
     { initialValue: FALLBACK_OTHER_CONTRIBUTORS },
   )

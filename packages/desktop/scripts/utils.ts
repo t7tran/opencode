@@ -107,8 +107,9 @@ async function copyCliToResources(pkg: string, dest: string) {
   const cli = getCurrentCli()
   await copyFile(join(pkg, "bin", cli.os === "win32" ? `${CLI_NAME}.exe` : CLI_NAME), dest) // fork_change - renamed binary
   await prepareCli(dest)
-  // fork_change - opencodeChannel is written by packages/cli/script/build.ts
+  // fork_change start - opencodeChannel is written by packages/cli/script/build.ts
   const manifest = (await Bun.file(join(pkg, "package.json")).json()) as { version?: string; opencodeChannel?: string }
+  // fork_change end
   if (!manifest.version) throw new Error(`Bundled CLI package has no version: ${pkg}`)
   await Bun.write(versionFile(dest), manifest.version)
   // fork_change start - the channel decides which registration file the CLI writes,

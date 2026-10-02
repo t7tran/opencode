@@ -7,6 +7,7 @@ import { registerStorageSnapshotHandler } from "./storage/snapshot"
 import { createEarlyWindow } from "./windows/early"
 import { rendererAssetsServed } from "./windows/protocol"
 import { registerRendererScheme } from "./windows/scheme"
+import { registerForkManagedKeyChannel } from "./fork-policy" // fork_change
 
 // This module stays small on purpose. Electron holds the ready event until the entry module has
 // finished, and the first window should be on screen before the rest of the main process — a few
@@ -20,6 +21,7 @@ if (acquireApplicationLock()) {
   void app.whenReady().then(async () => {
     marks.ready = Date.now()
     registerStorageSnapshotHandler()
+    registerForkManagedKeyChannel() // fork_change - answered before the early window's preload asks
     createEarlyWindow()
     marks.window = Date.now()
     startSidecarProbe()

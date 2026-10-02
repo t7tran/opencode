@@ -4,7 +4,7 @@ import { Effect } from "effect"
 import { HttpApiBuilder, HttpApiSchema } from "effect/unstable/httpapi"
 import { Api } from "../api"
 import { InvalidRequestError } from "@opencode/protocol/errors" // fork_change - provider lock
-import { managedCredentialRefusal } from "@opencode/util/fork/guard" // fork_change - provider lock
+import { credentialRefusal, managedCredentialRefusal } from "@opencode/util/fork/guard" // fork_change - provider lock
 
 export const CredentialHandler = HttpApiBuilder.group(Api, "server.credential", (handlers) =>
   handlers
@@ -19,6 +19,16 @@ export const CredentialHandler = HttpApiBuilder.group(Api, "server.credential", 
       "credential.create",
       Effect.fn(function* (ctx) {
         const credential = yield* Credential.Service
+        // fork_change start - credential.create is integration.connect.key without
+        // the connect handler's checks, and `auth import` goes through it. A stored
+        // credential for a pruned integration still activates it, so it is refused
+        // on the same terms as a connect.
+        const refusal = credentialRefusal(ctx.payload.integrationID)
+        if (refusal) {
+          yield* Effect.logWarning("fork: rejected credential.create", { integrationID: ctx.payload.integrationID })
+          return yield* new InvalidRequestError({ message: refusal, kind: "integration_authorization" })
+        }
+        // fork_change end
         if (ctx.payload.id && (yield* credential.get(ctx.payload.id)))
           return yield* new ConflictError({
             resource: ctx.payload.id,
@@ -41,6 +51,14 @@ export const CredentialHandler = HttpApiBuilder.group(Api, "server.credential", 
       "credential.activate",
       Effect.fn(function* (ctx) {
         const credential = yield* Credential.Service
+        // fork_change start - switching accounts is a credential mutation like any
+        // other; refused while the key is managed, on the same terms as remove.
+        const refusal = managedCredentialRefusal()
+        if (refusal) {
+          yield* Effect.logWarning("fork: rejected credential.activate: API key is embedded")
+          return yield* new InvalidRequestError({ message: refusal, kind: "integration_authorization" })
+        }
+        // fork_change end
         yield* credential.activate(ctx.params.credentialID)
         return HttpApiSchema.NoContent.make()
       }),

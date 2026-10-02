@@ -5,9 +5,12 @@ on:
   pull_request:
     paths:
       - ".github/**"
+      - ".husky/**"
       - "github/**"
       - "nix/**"
+      - "packages/app/**"
       - "packages/core/**"
+      - "packages/desktop/**"
       - "packages/cli/**"
       - "packages/server/**"
       - "packages/util/**"

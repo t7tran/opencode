@@ -206,8 +206,8 @@ export function make(input: {
       capabilities.writeTextFile = params.clientCapabilities?.fs?.writeTextFile === true
       capabilities.childSessionUpdates = params.clientCapabilities?._meta?.[ChildSessionUpdatesCapability] === true
       const authMethod: AuthMethod = {
-        description: "Run `opencode auth login` in the terminal",
-        name: "Login with opencode",
+        description: `Run \`${CLI_NAME} auth login\` in the terminal`, // fork_change - renamed binary
+        name: `Login with ${CLI_NAME}`, // fork_change - renamed binary
         id: AuthMethodID,
       }
       if (params.clientCapabilities?._meta?.["terminal-auth"] === true) {

@@ -8,6 +8,7 @@ import { Logo } from "../../component/logo"
 import { useTheme } from "../../context/theme"
 import { tint } from "../../theme/color"
 import { statsMetrics, statsNumber } from "./stats-data"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 const digits: Record<string, string[]> = {
   "0": ["111", "101", "101", "101", "111"],
@@ -62,7 +63,9 @@ export function StatsPoster(props: { stats: SessionStatsInfo }) {
     <box width={width()} flexDirection="column" alignItems="center" flexShrink={0} gap={compact() ? 1 : 2}>
       <box width="100%" flexDirection={width() < 44 ? "column" : "row"} justifyContent="space-between">
         <text fg={theme.text.base} attributes={TextAttributes.BOLD}>
-          opencode / stats
+          {/* fork_change start - renamed binary */}
+          {CLI_NAME} / stats
+          {/* fork_change end */}
         </text>
         <text fg={theme.text.muted}>{dates()}</text>
       </box>

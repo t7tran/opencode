@@ -76,9 +76,13 @@ const baseIdx = args.indexOf("--base")
 const base = baseIdx !== -1 ? args[baseIdx + 1] : "upstream/dev"
 
 function run(cmd: string, args: string[]) {
-  const result = spawnSync(cmd, args, { cwd: ROOT, encoding: "utf8" })
-  if (result.status !== 0) {
-    const msg = result.stderr?.trim() || result.stdout?.trim() || "unknown error"
+  // The whole-tree diff against an older upstream base runs to tens of MB
+  // (bun.lock alone is several), well past spawnSync's 1 MB default. Overflowing
+  // it kills git with ENOBUFS and leaves status null, which used to surface as a
+  // bare "Command failed" followed by a page of perfectly good diff output.
+  const result = spawnSync(cmd, args, { cwd: ROOT, encoding: "utf8", maxBuffer: 1024 * 1024 * 1024 })
+  if (result.error || result.status !== 0) {
+    const msg = result.error?.message || result.stderr?.trim() || "unknown error"
     console.error(`Command failed: ${cmd} ${args.join(" ")}\n${msg}`)
     process.exit(1)
   }

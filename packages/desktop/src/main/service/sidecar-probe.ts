@@ -18,8 +18,9 @@ export function startSidecarProbe() {
   if (!app.isPackaged) return
   const version = bundledVersion()
   if (!version) return
-  // fork_change - the build ships the CLI's channel beside its version; see desktop-cli.ts
+  // fork_change start - the build ships the CLI's channel beside its version; see desktop-cli.ts
   const channel = bundledChannel() || channelFromVersion(version)
+  // fork_change end
   probe = import("@opencode/client/service")
     .then(({ Service }) => Service.discover({ file: registrationFile(channel), version })) // fork_change - explicit registration path
     .catch(() => undefined)

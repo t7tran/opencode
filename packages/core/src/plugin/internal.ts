@@ -273,7 +273,7 @@ const post = [
 
 // Repository config must not switch off policy enforcement or the Console connection that delivers
 // organization statements, so plugin remove operations skip these IDs.
-export const guarded: ReadonlySet<string> = new Set([OpencodePlugin.id, ConfigPolicyPlugin.Plugin.id])
+export const guarded: ReadonlySet<string> = new Set([OpencodePlugin.id, ConfigPolicyPlugin.Plugin.id, ForkLockPlugin.id]) // fork_change - config cannot remove the provider lock
 
 export const list = Effect.fn("PluginInternal.list")(function* () {
   // Capture only services; activation supplies the child Scope and batching context.

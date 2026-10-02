@@ -105,7 +105,7 @@ export const bootstrap = Effect.fn("Ssh.bootstrap")(function* (input: {
   // while retaining support for explicitly staged, matching development builds.
   const version =
     input.development && !staged ? yield* RemoteCli.latestBeta().pipe(Effect.mapError(SshFailure.from)) : input.version
-  const setup = { version, directory: `.opencode/desktop-ssh/${version}` }
+  const setup = { version, directory: `${HOME_CONFIG_DIRNAME}/desktop-ssh/${version}` } // fork_change - the staging dir binaryPath() reads
   if (!staged) {
     const output = yield* run(RemoteCli.probeScript).pipe(Effect.mapError(() => new SshFailure("platform")))
     const target = output

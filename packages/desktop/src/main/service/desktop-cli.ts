@@ -10,8 +10,8 @@ import { DesktopPaths } from "../paths"
 import { BUNDLED_CLI_VERSION_KEY } from "../storage/keys"
 import { getStore } from "../storage/store"
 import { parseCliVersion } from "./cli-version"
-import { CLI_NAME, HOME_CONFIG_DIRNAME } from "@opencode/util/fork/brand" // fork_change
 import { channelFromVersion } from "@opencode/util/fork/service-registration" // fork_change - the registration file is named after this channel
+import { installForkCli } from "../fork-install-cli" // fork_change - upstream's installer writes ~/.opencode/bin/opencode
 
 const execFileAsync = promisify(execFile)
 
@@ -47,8 +47,13 @@ export const layer = Layer.effect(
       const cli = yield* resolve
       if (!cli.binary) return yield* Effect.fail(new Error("Bundled CLI executable is unavailable"))
       const home = app.getPath("home")
-      yield* runInstaller(cli.binary, home)
-      return path.join(home, HOME_CONFIG_DIRNAME, "bin", CLI_NAME) // fork_change - renamed binary and install dir
+      // fork_change start - renamed binary and install dir; see fork-install-cli.ts
+      const binary = cli.binary
+      return yield* Effect.tryPromise({
+        try: () => installForkCli(binary, home),
+        catch: (error) => (error instanceof Error ? error : new Error(String(error))),
+      })
+      // fork_change end
     })
     return Service.of({ resolve, install })
   }),

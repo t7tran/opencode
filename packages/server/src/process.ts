@@ -19,6 +19,7 @@ import { createRoutes } from "./routes"
 import { ServerInfo } from "./server-info"
 import { Status } from "./service-status"
 import type { ServerOptions } from "./options"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 export interface Lifecycle<E = never, R = never> {
   readonly onListen: (
@@ -231,7 +232,7 @@ function unavailable(status: Status.State) {
       {
         code: "service_failed",
         message: "The background service could not start.",
-        action: "Run `opencode service restart` after checking the service logs.",
+        action: `Run \`${CLI_NAME} service restart\` after checking the service logs.`, // fork_change - renamed binary
       },
       { status: 503 },
     )

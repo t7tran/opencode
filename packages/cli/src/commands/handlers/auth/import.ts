@@ -7,11 +7,14 @@ import { Runtime } from "../../../framework/runtime"
 import { createClient, request } from "./shared"
 import { errorMessage } from "../../../util/error"
 import { readStdin } from "../../../util/io"
+import { managedKeyRefusal } from "@opencode/util/fork/key-file" // fork_change - managed key owns the credential
+import { lockedProviderManaged } from "@opencode/util/fork/lock" // fork_change
 
 export default Runtime.handler(
   Commands.commands.auth.commands.import,
   Effect.fn("cli.auth.import")(
     function* (input) {
+      if (lockedProviderManaged()) return yield* Effect.fail(new Error(managedKeyRefusal("import credentials"))) // fork_change
       const file = Option.getOrUndefined(input.file)
       if (!file && process.stdin.isTTY)
         return yield* Effect.fail(new Error("Pipe auth export output into stdin or pass a file to import"))

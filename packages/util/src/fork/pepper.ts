@@ -6,7 +6,7 @@
 // every provisioned host's managed key into the git history of a repo that gets
 // forked, mirrored, and shared. It now lives in a file *outside* the working
 // tree, is read once at build time, and is baked into the binary through a Bun
-// `define` — see packages/opencode/script/build.ts.
+// `define` — see packages/cli/script/build.ts.
 //
 // The file holds the pepper and nothing else: one line, no quoting, no key/value
 // syntax. Surrounding whitespace is trimmed, so a trailing newline is fine.

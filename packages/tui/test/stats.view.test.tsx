@@ -5,6 +5,7 @@ import { Effect, FileSystem } from "effect"
 import { createEventStream, createFetch, json } from "./fixture/tui-client"
 import { tmpdir } from "./fixture/fixture"
 import { takeDraft } from "../src/component/prompt/draft-stash"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 test("stats shows only this year and returns after errors or success", async () => {
   // Other app tests can leave a home draft in the process-wide stash.
@@ -73,7 +74,7 @@ test("stats shows only this year and returns after errors or success", async () 
       setup
         .captureCharFrame()
         .split("\n")
-        .find((line) => line.includes("opencode / stats")),
+        .find((line) => line.includes(`${CLI_NAME} / stats`)), // fork_change - renamed binary
     ).not.toContain("tab")
     setup.mockInput.pressKey("RETURN")
     setup.mockInput.pressKey("SPACE")
@@ -85,7 +86,7 @@ test("stats shows only this year and returns after errors or success", async () 
     expect(setup.captureCharFrame()).toContain("TOKENS")
     expect(setup.captureCharFrame()).not.toContain("headline")
     setup.mockInput.pressKey("ESCAPE")
-    await setup.waitForFrame((frame) => frame.includes("commands") && !frame.includes("opencode / stats"))
+    await setup.waitForFrame((frame) => frame.includes("commands") && !frame.includes(`${CLI_NAME} / stats`)) // fork_change - renamed binary
   } finally {
     if (!setup.renderer.isDestroyed) setup.renderer.destroy()
     await task.finally(() => server.stop(true))

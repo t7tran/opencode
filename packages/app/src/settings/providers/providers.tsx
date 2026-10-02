@@ -405,7 +405,7 @@ export const SettingsProviders: Component<{
                             </div>
                           </div>
                           <Show
-                            when={canManageAccounts(item)}
+                            when={canManageAccounts(item) && !forkManagedKey() /* fork_change - add/remove/switch account are refused */}
                             fallback={
                               <Show
                                 when={canDisconnect(item)}
@@ -469,15 +469,19 @@ export const SettingsProviders: Component<{
                               </div>
                             </div>
                             <Show
-                              when={canManageAccounts(item)}
+                              when={canManageAccounts(item) && !forkManagedKey() /* fork_change */}
                               fallback={
-                                <Button
-                                  size="normal"
-                                  variant="ghost-muted"
-                                  onClick={() => void disconnect(item, language.t("provider.connect.opencode.name"))}
-                                >
-                                  {language.t("common.disconnect")}
-                                </Button>
+                                // fork_change start - same disconnect gate as the provider rows above
+                                <Show when={canDisconnect(item)}>
+                                  <Button
+                                    size="normal"
+                                    variant="ghost-muted"
+                                    onClick={() => void disconnect(item, language.t("provider.connect.opencode.name"))}
+                                  >
+                                    {language.t("common.disconnect")}
+                                  </Button>
+                                </Show>
+                                // fork_change end
                               }
                             >
                               <AccountMenu provider={item} name={language.t("provider.connect.opencode.name")} />

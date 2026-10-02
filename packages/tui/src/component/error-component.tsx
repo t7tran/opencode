@@ -6,6 +6,7 @@ import { useClipboard } from "../context/clipboard"
 import { useExit } from "../context/exit"
 import { useTuiApp } from "../context/runtime"
 import { describeOS, describeTerminal } from "../util/system"
+import { PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change
 
 export function ErrorComponent(props: { error: Error; reset: () => void; mode?: "dark" | "light" }) {
   const term = useTerminalDimensions()
@@ -43,11 +44,24 @@ export function ErrorComponent(props: { error: Error; reset: () => void; mode?: 
 
   const message = props.error.message || "An unknown error occurred."
   const stack = props.error.stack || "No stack trace available."
-  const issueURL = buildIssueURL(message, stack, app.version)
+  // fork_change start - upstream copies a pre-filled issue link for its public
+  // tracker, which would carry internal failure reports out of the company
+  // (FORK.md § What no longer reaches upstream). The same facts go to the
+  // clipboard as plain text for whoever supports this build instead.
+  const report = [
+    `${PRODUCT_NAME} ${app.version} TUI crash`,
+    `OS: ${describeOS()}`,
+    `Terminal: ${describeTerminal()}`,
+    "",
+    `Error: ${message}`,
+    "",
+    stack,
+  ].join("\n")
 
   const copyReport = () => {
     void clipboard
-      .write(issueURL.toString())
+      .write(report)
+  // fork_change end
       .then(() => setCopyState("copied"))
       .catch(() => setCopyState("failed"))
   }
@@ -117,7 +131,9 @@ export function ErrorComponent(props: { error: Error; reset: () => void; mode?: 
         {/* Headline */}
         <box flexDirection="column" alignItems="center" flexShrink={0}>
           <text attributes={TextAttributes.BOLD} fg={colors.text}>
-            OpenCode crashed
+            {/* fork_change start */}
+            {PRODUCT_NAME} crashed
+            {/* fork_change end */}
           </text>
           <Show when={showSubtext()}>
             <text fg={colors.muted}>An unexpected error stopped the session.</text>
@@ -204,13 +220,15 @@ export function ErrorComponent(props: { error: Error; reset: () => void; mode?: 
         <Show when={showFooter()}>
           <box flexDirection="column" alignItems="center" flexShrink={0}>
             <text fg={colors.muted}>
+              {/* fork_change start - no public tracker to send it to */}
               {copyState() === "copied"
-                ? "Report copied — paste it into a new GitHub issue."
+                ? "Report copied — send it to whoever supports this build."
                 : copyState() === "failed"
                   ? "Clipboard write failed. Try again or report the crash manually."
-                  : "Copy the report and open a GitHub issue to help us fix this."}
+                  : "Copy the report and send it to whoever supports this build."}
+              {/* fork_change end */}
             </text>
-            <text fg={colors.muted}>OpenCode {app.version}</text>
+            <text fg={colors.muted}>{PRODUCT_NAME} {app.version /* fork_change */}</text>
           </box>
         </Show>
       </box>

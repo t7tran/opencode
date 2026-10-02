@@ -68,6 +68,7 @@ import type {
   RunTuiConfig,
 } from "./types"
 import { EmptyBorder } from "../ui/border"
+import { PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed product
 
 const AUTOCOMPLETE_ROWS = FOOTER_MENU_ROWS
 
@@ -534,7 +535,7 @@ export function createPromptState(input: PromptInput): PromptState {
         description: "compact older session context to free space",
       } satisfies SlashOption,
       ...EXIT_COMMANDS.map(
-        (name) => ({ kind: "slash", name, display: `/${name}`, description: "close OpenCode" }) satisfies SlashOption,
+        (name) => ({ kind: "slash", name, display: `/${name}`, description: `close ${PRODUCT_NAME}` }) satisfies SlashOption, // fork_change - renamed product
       ),
     ]
     const hidden = new Set(builtins.map((item) => item.name))

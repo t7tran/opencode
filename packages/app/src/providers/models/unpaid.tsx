@@ -11,6 +11,7 @@ import { useIntegrations } from "@/providers/catalog/integrations"
 import { decode64 } from "@/runtime/persistence/base64"
 import { useLanguage } from "@/runtime/i18n/language"
 import { ModelTooltip } from "./tooltip"
+import { forkProviderLocked } from "@/fork/policy" // fork_change
 
 type ModelState = ModelSelection
 const featuredProviders = ["opencode-go", "opencode", "openai", "anthropic", "google", "github-copilot"]
@@ -165,6 +166,8 @@ export const DialogSelectModelUnpaid: Component<{ model?: ModelState }> = (props
                     </button>
                   )}
                 </For>
+                {/* fork_change start - the lock leaves nothing to browse */}
+                <Show when={!forkProviderLocked()}>
                 <button
                   type="button"
                   class="col-span-full flex h-8 w-full scroll-my-3.5 items-center justify-start rounded-md px-3 text-left text-[13px] font-[440] leading-5 tracking-[-0.04px] text-v2-text-text-muted [font-family:var(--v2-font-family-sans)] [font-variation-settings:'slnt'_0] hover:bg-v2-overlay-simple-overlay-hover focus:bg-v2-overlay-simple-overlay-hover focus:outline-none"
@@ -172,6 +175,8 @@ export const DialogSelectModelUnpaid: Component<{ model?: ModelState }> = (props
                 >
                   {language.t("dialog.model.unpaid.viewMoreProviders")}
                 </button>
+                </Show>
+                {/* fork_change end */}
               </div>
             </div>
           </div>

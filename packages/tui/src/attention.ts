@@ -18,6 +18,7 @@ import {
   errorSoundPath,
   subagentDoneSoundPath,
 } from "#attention-sounds"
+import { PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed product
 
 type FocusState = "unknown" | "focused" | "blurred"
 
@@ -32,7 +33,7 @@ type AttentionHost = Attention & {
   dispose(): void
 }
 
-const DEFAULT_TITLE = "OpenCode"
+const DEFAULT_TITLE = PRODUCT_NAME // fork_change - renamed product
 const TITLE_LIMIT = 80
 const MESSAGE_LIMIT = 240
 const BUILTIN_SOUNDS: Record<AttentionSoundName, string> = {

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import type { McpServer } from "@agentclientprotocol/sdk"
 import { currentValue } from "./select-options"
 import { makeSession, rpcError, secondModel, startSession, startWire } from "./wire-fixture"
+import { CLI_NAME, PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary and product
 
 describe("acp session lifecycle over the wire", () => {
   test("initialize advertises capabilities and terminal auth only when the client asks", async () => {
@@ -19,13 +20,13 @@ describe("acp session lifecycle over the wire", () => {
         sessionCapabilities: { close: {}, delete: {}, fork: {}, list: {}, resume: {} },
         _meta: { "opencode/child-session-updates": true },
       },
-      agentInfo: { name: "OpenCode" },
+      agentInfo: { name: PRODUCT_NAME }, // fork_change - renamed product
     })
     expect(plain.authMethods).toEqual([
-      { id: "opencode-login", name: "Login with opencode", description: "Run `opencode auth login` in the terminal" },
+      { id: "opencode-login", name: `Login with ${CLI_NAME}`, description: `Run \`${CLI_NAME} auth login\` in the terminal` }, // fork_change - renamed binary
     ])
     expect(terminal.authMethods?.[0]?._meta).toEqual({
-      "terminal-auth": { command: "opencode", args: ["auth", "login"], label: "OpenCode Login" },
+      "terminal-auth": { command: CLI_NAME, args: ["auth", "login"], label: `${PRODUCT_NAME} Login` }, // fork_change - renamed binary
     })
     expect(await acp.request("authenticate", { methodId: "opencode-login" })).toEqual({})
     expect(await rpcError(acp.request("authenticate", { methodId: "missing" }))).toMatchObject({

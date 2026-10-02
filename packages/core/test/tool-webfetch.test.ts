@@ -15,6 +15,7 @@ import { testEffect } from "./lib/effect"
 import { imagePassthrough } from "./lib/image"
 import { permissionLayer } from "./lib/permission"
 import { toolIdentity, executeTool, registerToolPlugin, toolDefinitions } from "./lib/tool"
+import { HOMEPAGE, PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change
 
 const webFetchToolNode = makeLocationNode({
   name: "test/webfetch-tool-plugin",
@@ -23,8 +24,9 @@ const webFetchToolNode = makeLocationNode({
 })
 
 const sessionID = Session.ID.make("ses_webfetch_test")
-const webFetchUserAgent =
-  "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; OpenCode-User/1.0; +https://opencode.ai"
+// fork_change start - the fork's webfetch UA names the fork
+const webFetchUserAgent = `Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ${PRODUCT_NAME}-User/1.0; +${HOMEPAGE}`
+// fork_change end
 const requests: Array<{ readonly url: string; readonly headers: Record<string, string> }> = []
 const assertions: Permission.AssertInput[] = []
 let respond = (_request: HttpClientRequest.HttpClientRequest) =>

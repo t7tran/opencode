@@ -20,7 +20,8 @@
 // redacts it for exactly the same reason.
 
 import { ipcMain } from "electron"
-import { lockedProviderManaged } from "@opencode/util/fork/lock"
+// lock-state, not lock: this module is imported by the entry module, which stays free of effect.
+import { lockedProviderManaged } from "@opencode/util/fork/lock-state"
 
 export const FORK_MANAGED_KEY_CHANNEL = "fork-managed-key"
 

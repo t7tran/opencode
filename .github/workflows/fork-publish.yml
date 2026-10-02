@@ -107,7 +107,7 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       # The build fails without a pepper file — see .github/actions/fork-key-pepper
-      # and packages/core/src/fork/pepper.ts.
+      # and packages/util/src/fork/pepper.ts.
       - name: Provision the key-sealing pepper
         uses: ./.github/actions/fork-key-pepper
         with:
@@ -205,6 +205,9 @@ jobs:
         working-directory: packages/desktop
         env:
           NODE_OPTIONS: --max-old-space-size=4096
+          # Prepare already built the CLI for this runner; prebuild.ts copies it
+          # from here instead of compiling it a second time.
+          OPENCODE_CLI_DIST: ${{ github.workspace }}/packages/cli/dist
           OPENCODE_VERSION: ${{ needs.release.outputs.version }}
           OPENCODE_CHANNEL: prod
 

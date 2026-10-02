@@ -1,4 +1,5 @@
 import { isRecord } from "./record"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 type ConfigIssue = { message: string; path: string[] }
 
@@ -24,7 +25,7 @@ export function cliErrorMessage(input: unknown): string | undefined {
     return [
       `Model not found: ${field(model, "providerID")}/${field(model, "modelID")}`,
       ...(suggestions.length ? ["Did you mean: " + suggestions.join(", ")] : []),
-      "Try: `opencode models` to list available models",
+      `Try: \`${CLI_NAME} models\` to list available models`, // fork_change - renamed binary
       "Or check your config (opencode.json) provider/model names",
     ].join("\n")
   }

@@ -6,6 +6,7 @@ import { getCursorPosition, setCursorPosition } from "./editor/dom"
 import { useSessionLayout } from "@/session/session-layout"
 import { createSessionOwnership } from "@/session/session-ownership"
 import { useWorkspaceLocation } from "@/workspaces/location"
+import { forkManagedKey } from "@/fork/policy" // fork_change
 
 const withCategory = (category: string) => {
   return (option: Omit<CommandOption, "category">): CommandOption => ({
@@ -76,6 +77,7 @@ export const useComposerCommands = (input: { model?: ModelSelection } = {}) => {
       title: language.t("command.provider.connect"),
       description: language.t("command.provider.connect.description"),
       slash: "connect",
+      disabled: forkManagedKey(), // fork_change - the server refuses every connect while the key is managed
       onSelect: connectProvider,
     }),
     agentCommand({

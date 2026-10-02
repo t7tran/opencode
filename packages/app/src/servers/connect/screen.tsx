@@ -12,7 +12,7 @@ import { pairingLink, redeemPairingLink, serverAddress } from "./pairing"
 import { isMixedContent } from "./browser"
 import { createCameraAvailability } from "./camera"
 import "./screen.css"
-import { PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change
+import { CLI_NAME, PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change
 
 const PairingScanner = lazy(() => import("./scanner").then((module) => ({ default: module.PairingScanner })))
 
@@ -156,7 +156,7 @@ export function ConnectServerScreen(props: { url?: string } = {}) {
           </Show>
           <footer>
             <p>{language.t("server.connect.pair.description")}</p>
-            <code dir="ltr">opencode pair</code>
+            <code dir="ltr">{`${CLI_NAME} pair` /* fork_change - renamed binary */}</code>
           </footer>
         </Show>
       </div>

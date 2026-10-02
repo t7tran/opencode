@@ -54,6 +54,7 @@ import { ConsoleAuthorization } from "./console"
 import { DialogChatGPTPlanWelcome } from "./chatgpt-welcome"
 import { authServerName, RemoteAuthNotice } from "./remote"
 import "./models.css"
+import { forkProviderLocked } from "@/fork/policy" // fork_change
 
 const CUSTOM_ID = "_custom"
 type IntegrationForm = NonNullable<ProviderConnectMethod["form"]>[number]
@@ -226,7 +227,7 @@ function ProviderPicker(props: { directory?: string; onSelect: (provider: string
     language.locale()
     const query = store.filter.trim().toLowerCase()
     const values = [
-      custom(),
+      ...(forkProviderLocked() ? [] : [custom()]), // fork_change - the lock rejects every other provider id
       ...integrations
         .list()
         .filter((integration) =>

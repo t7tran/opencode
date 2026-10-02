@@ -78,6 +78,14 @@ Only `packages/core/src/fork/plugin.ts` stays in core: it is the lock's v2 wirin
 | Guard | When it runs |
 |---|---|
 | `bun run script/check-fork-annotations.ts` | Every PR touching a shared scope, via `.github/workflows/check-fork-annotations.yml` |
+| `packages/util/test/fork/**` (key sealing, the lock, the pepper golden vectors) | Every test run — `turbo.json` has an `@opencode/util#test` task for it, which upstream doesn't, and passes `KILO_FORK_KEY_PEPPER_FILE` through turbo's strict env |
+
+Run locally, the checker diffs committed `HEAD` against the base but reads line content from the
+working tree, so commit (or stash) before trusting its line numbers.
+
+In `test.yml` the two compiled-binary checks only run when the `GENIX_KEY_PEPPER` secret is
+available. Forked-PR and Dependabot runs don't get it, and `build.ts` fails closed without a pepper,
+so those steps are skipped there rather than failing.
 
 ## CLI name
 
@@ -94,14 +102,37 @@ executable name and the places that produce or consume it:
 | Compiled binary name, build user agent, `OPENCODE_CLI_NAME` define | `packages/cli/script/build.ts` |
 | Node build's `OPENCODE_CLI_NAME` define | `packages/cli/vite.node.config.ts` |
 | Postinstall messages (binary resolution is generic — it reads `bin` from package.json) | `packages/cli/script/postinstall.mjs` |
-| Outbound `User-Agent` headers (providers, models.dev, websearch, webfetch) | `packages/core/src/app.ts` — one seam, see below |
+| Outbound `User-Agent` headers (providers, models.dev, websearch) | `packages/core/src/app.ts` — one seam, see below |
+| webfetch's browser-style `User-Agent` | `packages/core/src/tool/plugin/webfetch.ts` — names `GenixCode-User` and the Genix homepage |
 | Container entrypoint | `packages/cli/Dockerfile` |
 | Nix install path, `mainProgram`, completions | `nix/opencode.nix` |
+| Bundled CLI path in the Nix desktop build | `nix/desktop.nix` |
 | Remote/WSL install and binary lookup (desktop) | `packages/desktop/src/main/remote/cli.ts` |
-| TUI resume hint | `packages/tui/src/mini/splash.ts` |
+| SSH staging directory (desktop) | `packages/desktop/src/main/ssh/bootstrap.ts` — `~/.genixcode/desktop-ssh/<version>`, the same place `binaryPath()` looks |
+| TUI resume hints | `packages/tui/src/mini/splash.ts` (mini) and `packages/tui/src/util/presentation.ts` (full-screen exit) |
+| "run `opencode …`" hints in errors and help text | see the list below |
+| CI smoke test of the compiled binary | `packages/cli/script/service-smoke.ts` |
+
+The hints are the easy ones to miss, because each is one string in a file nobody thinks of as
+branding. Every one that tells the user to type a command now spells it with `CLI_NAME`:
+
+- `pair` and `mcp auth` handlers, `service get/set/unset` usage errors (`services/service-config.ts`),
+  `mini`'s TTY errors (`mini.ts`, `mini-host.ts`) and the ACP terminal-login method (`acp/service.ts`)
+  in `packages/cli`
+- the expired pairing link and the "restart the service" action in `packages/server`
+  (`handlers/server.ts`, `process.ts`)
+- `util/error.ts`, `component/dialog-pair.tsx` and the stats heading in `packages/tui`
+- the connect-a-server screen's `<code>` in `packages/app/src/servers/connect/screen.tsx`
+
+The built-in skills the agent reads (`packages/core/src/plugin/skill/opencode.md`, `report.md`) get the
+same treatment by hand, because the agent *runs* what they say. They are Markdown, so they carry no
+marker and the checker does not read them; a rebase that takes upstream's copy puts `opencode service
+status` back in front of the model.
 
 Upstream v2 consolidated every outbound user agent into `App.useragent(app)`, so what was roughly a
-dozen scattered literals in v1 is now a **single line** in `packages/core/src/app.ts`. Upstream's
+dozen scattered literals in v1 is now a **single line** in `packages/core/src/app.ts`. webfetch is
+the exception: it sends a browser-shaped string so sites serve it real pages, and that one is spelled
+out in the tool. Upstream's
 `packages/cli/script/publish.ts`, `packages/cli/script/publish-aur.ts` and the root `install` script
 are deliberately left alone — they publish to and download from registries and package repos this
 fork does not own.
@@ -183,7 +214,9 @@ name needed a helper (`ConfigPaths.isConfigDirectory()`), because callers tested
 v2 has one loader — `packages/core/src/config/discovery.ts` — and it reads the XDG config directory
 plus project `.opencode` directories only. It never walked the home-level dotdir, so the helper and
 its test have no v2 equivalent and are gone. `HOME_CONFIG_DIRNAME` survives in `brand.ts` because the
-remote and WSL installers still use it as the install prefix (`$HOME/.genixcode/bin/genixcode`).
+remote, WSL and SSH installers still use it as the install prefix (`$HOME/.genixcode/bin/genixcode`),
+and because Plan mode writes its plans to `~/.genixcode/plan` (`packages/core/src/plugin/plan.ts`)
+rather than into an OpenCode install's dotdir.
 
 The root `install` script still puts the binary in `$HOME/.opencode/bin`; it is left alone along with
 upstream's `publish.ts`, as noted under [CLI name](#cli-name).
@@ -194,9 +227,10 @@ This fork is permanently locked to a single OpenAI-compatible provider (Genix). 
 in the provider pipeline and at the server/handler layer, not just in the UI:
 
 - **Provider pipeline** (`packages/core/src/fork/plugin.ts`): every provider but the locked one is removed from the provider map, and every integration but the locked one from the connect surface.
-- **List handler** (`packages/server/src/handlers/provider.ts`): `provider.list` and `provider.get` redact `settings.apiKey` while the key is managed.
+- **Plugin removal** (`packages/core/src/plugin/internal.ts`): `ForkLockPlugin` is in upstream's `guarded` set, so `"plugins": ["-*"]` in a repository's `opencode.json` cannot switch the lock off.
+- **List handlers** (`packages/server/src/handlers/{provider,model}.ts`): `provider.list`, `provider.get`, `model.list` and `model.default` redact `settings.apiKey` while the key is managed.
 - **Connect handlers** (`packages/server/src/handlers/integration.ts`): `integration.connect.key` and `integration.oauth.connect` are rejected for any non-locked integration, and for any integration at all while a key is managed.
-- **Credential handler** (`packages/server/src/handlers/credential.ts`): `credential.remove` is rejected while a key is managed.
+- **Credential handler** (`packages/server/src/handlers/credential.ts`): `credential.create` is rejected on the same terms as a connect (it is what `auth import` calls); `credential.remove` and `credential.activate` are rejected while a key is managed.
 - **models.dev fetch**: forced off in `packages/cli/src/server-process.ts`; no network request to the catalog endpoint.
 
 The provider identity is hardcoded in `packages/util/src/fork/lock.ts`:
@@ -220,6 +254,17 @@ upstream's own `ConfigProviderPlugin` — mutates them through `ctx.provider.tra
 apply in plugin registration order, so `ForkLockPlugin` is registered **last** in
 `packages/core/src/plugin/internal.ts`, which reproduces the v1 tail's precedence exactly; the same
 transform fills in whatever user config did not set, which is the head's job.
+
+There's a second State to watch, and it's the one that bit. The model catalogue isn't read out of
+the provider map at resolution time: it's its own State, seeded from the provider snapshot, and
+`ConfigProviderPlugin` edits it again in a `ctx.model.transform` of its own. Per-model `package`,
+`settings` and variant `settings` from `opencode.json` land *there*, and the resolver lets model and
+variant settings win over the provider's. So pinning `baseURL` and `package` on the provider alone
+looked right and did nothing: `models.<id>.settings.baseURL` still sent the managed key wherever it
+pointed. `ForkLockPlugin` therefore registers a model transform too, after upstream's, and re-pins
+`package`, `baseURL` and the key on every model and variant. `packages/core/test/fork/lock-plugin.test.ts`
+runs the real config plugin first and the lock second, the way `internal.ts` orders them, and fails
+if either pin stops holding.
 
 The user supplies the remaining configuration (API key and model list) via normal provider config in
 `opencode.json`:
@@ -266,8 +311,9 @@ provisioned by whoever administers the machine, and the location is not the user
 | The settings the lock pins | `packages/util/src/fork/lock.ts` (`lockedManagedSettings`, `lockedProviderManaged`) |
 | Model discovery from the gateway | `packages/util/src/fork/gateway.ts` |
 | Key injection, force-enable, package pin | `packages/core/src/fork/plugin.ts` |
-| Connect / disconnect refusal, key redaction | `packages/util/src/fork/guard.ts`, applied in `packages/server/src/handlers/{integration,credential,provider}.ts` |
-| `auth login` / `auth logout` refusal | `packages/cli/src/commands/handlers/auth/{login,logout}.ts` |
+| Connect / disconnect refusal, key redaction | `packages/util/src/fork/guard.ts`, applied in `packages/server/src/handlers/{integration,credential,provider,model}.ts` |
+| `auth login` / `auth logout` / `auth import` refusal | `packages/cli/src/commands/handlers/auth/{login,logout,import}.ts` |
+| The cheap predicates (`lockActive`, `lockedProviderManaged`) without `effect` | `packages/util/src/fork/lock-state.ts`, re-exported by `lock.ts` |
 | TUI connect-dialog refusal | `packages/tui/src/component/dialog-integration.tsx` |
 
 ```mermaid
@@ -288,7 +334,7 @@ flowchart TB
   E --> F["Managed apiKey + baseURL re-applied<br/>over user config, package pinned"]
   F --> G["activation forced to enabled,<br/>models discovered from /models"]
   G --> H["Genix connected"]
-  H --> I["provider.list redacts settings.apiKey"]
+  H --> I["provider.list / model.list<br/>redact settings.apiKey"]
   B --> J["integration.connect + credential.remove refused"]
   J --> K["UI hides connect + disconnect;<br/>CLI login/logout fail"]
 ```
@@ -306,14 +352,23 @@ Mechanics worth knowing:
   model, and the package it names is loaded and handed the API key, so leaving it open lets an
   `opencode.json` entry exfiltrate the managed key (and run arbitrary code) without touching the key
   file. While a managed key is in play, every model of the locked provider has it forced back to
-  `@opencode/ai/providers/openai-compatible`.
+  `@opencode/ai/providers/openai-compatible` — in the model catalogue as well as the provider map,
+  for the reason under [How the lock attaches to v2](#how-the-lock-attaches-to-v2).
+- **No stored credential outranks the key.** When a model resolves, a connection on the provider's
+  integration beats its settings. A `genix` credential left over from a login made before the key
+  file arrived, or an `env` method added through config, would quietly replace the managed key. So
+  while a key is managed, the plugin points the provider at `fork.genix.managed`, an integration id
+  nothing can hold a credential under (`credential.create` refuses every id but the locked one).
+  `activation: "enabled"` keeps the provider available without a connection.
 - **Always connected.** The Genix gateway has no models.dev catalogue entry, so the model list is
   discovered from its OpenAI-compatible `/models` endpoint and registered by the plugin. Discovery is
   memoised per process and never throws — an unreachable gateway leaves whatever models config
   already supplies. The plugin also forces `activation: "enabled"`, so a stale `provider.use` deny
   policy (a disconnect performed *before* the file was dropped in) cannot keep it disconnected.
-- **No key broadcast.** `settings` is part of the public provider shape, so the `provider.list` and `provider.get` handlers redact
-  `settings.apiKey` while the key is managed — no client receives the secret.
+- **No key broadcast.** `settings` is part of the public provider shape, so the `provider.list` and
+  `provider.get` handlers redact `settings.apiKey` while the key is managed. Every model inherits its
+  provider's settings, so `model.list` and `model.default` redact it too — the TUI and the web app
+  call those on every start, and before v2.0.21's port they quietly carried the key to both.
 - **Enforcement is server-side.** The UI changes only remove dead affordances; the connect and
   credential-removal handlers refuse outright, so a direct API or CLI call cannot bypass the lock.
 
@@ -429,7 +484,14 @@ The fork replaces upstream's visual identity with Genix branding, using the bran
 | Surface | Where | Change |
 |---|---|---|
 | TUI home-screen wordmark | `packages/tui/src/logo.ts`, `packages/tui/src/component/logo.tsx` | `open`→`genix` block art; the `code` half is drawn in Genix blue (truecolor) instead of `theme.text.base` |
-| TUI resume hint | `packages/tui/src/mini/splash.ts` | `opencode mini -s …` → `genixcode mini -s …` |
+| TUI resume hints | `packages/tui/src/mini/splash.ts`, `packages/tui/src/util/presentation.ts` | `opencode mini -s …` / `opencode -s …` → `genixcode …` |
+| Terminal title | `packages/tui/src/app.tsx`, `attention.ts`, `mini/runtime.lifecycle.ts` | `OpenCode` → `PRODUCT_NAME` |
+| Product name in prompts | `routes/session/permission.tsx`, `mini/footer.permission.tsx`, `mini/footer.prompt.tsx`, `component/terminal-pane.tsx` | "Tell OpenCode what to do differently", "close OpenCode", "restart OpenCode" → `PRODUCT_NAME` |
+| Crash screen | `packages/tui/src/component/error-component.tsx` | headline and footer use `PRODUCT_NAME`; see [What no longer reaches upstream](#what-no-longer-reaches-upstream) for the report it copies |
+| Sidebar "Getting started" | `packages/tui/src/feature-plugins/sidebar/footer.tsx` | hidden while a key is managed; otherwise says to connect Genix instead of advertising free models and 75+ providers |
+
+The TUI's update dialog still says "Update OpenCode". It's left alone because nothing can open it:
+the updater is compiled off (see [The CLI updater](#the-cli-updater)).
 
 Two v1 surfaces have no v2 equivalent. The CLI help banner drew the same wordmark in plain text from
 `packages/opencode/src/cli/ui.ts`; v2's CLI framework prints no banner. The run splash drew the word
@@ -512,7 +574,8 @@ unlocked agent inside a locked build. This fork therefore **never downloads**:
 | Linux artefacts | `.deb`, `.rpm`, AppImage | `.deb` only |
 | AppStream metainfo | Anomaly Innovations, opencode.ai, upstream tracker, upstream screenshot | Genix Ventures; outbound links dropped |
 | Icons | hand-made, per channel | generated by `icons/fork-generate.py` from the `Splash` mark in Genix blue |
-| Wordmark | `opencode` block letters | `genixcode`, "code" half in Genix blue (`packages/ui/src/components/logo.tsx`, scaled up by `packages/ui/src/typography/wordmark/wordmark.tsx`, scrambled by `packages/app/src/settings/about/animated-wordmark.tsx`) |
+| Wordmark | `opencode` block letters | `genixcode`, "code" half in Genix blue (`packages/ui/src/components/logo.tsx`, scaled up by `packages/ui/src/typography/wordmark/wordmark.tsx`, scrambled by `packages/app/src/settings/about/animated-wordmark.tsx`, boxed at `aspect-[246/42]` by `packages/app/src/new-session/wordmark.tsx`) |
+| Console return deep link | `opencode://console/authorized` | matched on `PROTOCOL_SCHEME` in `src/main/lifecycle/deep-link.ts` |
 
 The identity lives in `packages/util/src/fork/brand.ts`. `electron-builder.config.ts` is the one
 exception: electron-builder loads it with its own TypeScript loader, outside bun and outside the
@@ -643,12 +706,13 @@ are hand-edited literals like the CLI's.
 |---|---|---|
 | Browser tab title, web UI | `packages/app/index.html` | `<title>`: `OpenCode` → `GenixCode` |
 | Browser tab title, desktop renderer | `packages/desktop/src/renderer/index.html` | same |
-| Installed-app name — PWA install prompt, home screen, app switcher | `packages/ui/src/assets/favicon/site.webmanifest` | `name` and `short_name` → `GenixCode` |
+| Installed-app name, web UI — PWA install prompt, home screen, app switcher | `packages/app/manifest.json` | `name` and `short_name` → `GenixCode` |
+| Installed-app name, other sites | `packages/ui/src/assets/favicon/site.webmanifest` | same |
 
-`site.webmanifest` lives in `packages/ui` and is symlinked into `packages/app/public/`,
-`packages/console/app/public/`, `packages/web/public/` and `packages/enterprise/public/`. Editing the
-one shared copy keeps this a two-line diff instead of four files' worth; the sites this fork does not
-ship pick the new name up harmlessly.
+v2 generates the web UI's manifest from `packages/app/manifest.json`. The shared
+`site.webmanifest` in `packages/ui` is still symlinked into `packages/console/app/public/`,
+`packages/web/public/` and `packages/enterprise/public/`; the sites this fork does not ship pick the
+new name up harmlessly.
 
 `packages/app/src/fork/web-shell.test.ts` asserts both against `PRODUCT_NAME`, because a rebase that
 takes upstream's `index.html` or manifest wholesale restores upstream's product name without failing
@@ -675,7 +739,16 @@ Two web-facing surfaces are knowingly still upstream's:
 | Auto-update (CLI) | background check against `opencode.ai/update/api/…` on every run; `upgrade` pipes `opencode.ai/v2/install` into bash | off — `forkUpdaterEnabled()` in `packages/cli/src/fork/policy.ts` |
 | Help menu | opencode.ai docs, upstream Discord, upstream issue tracker | removed — only Export Logs remains |
 | Help buttons and the error page's report link | `opencode.ai/desktop-feedback` | hidden while `forkSupportURL()` is undefined |
+| TUI crash screen's "Copy report" | a pre-filled `github.com/anomalyco/opencode/issues/new` link | a plain-text report (version, OS, terminal, error, stack) for whoever supports the build |
+| Notification icon (desktop and web) | `opencode.ai/favicon-96x96-v3.png`, fetched per notification | the same file, served by the app itself |
+| Settings → About contributor count | `api.github.com/repos/anomalyco/opencode/contributors` each time the screen opens | off — `forkContributorCountEnabled()`; the baked-in fallback count is shown |
 | Remote / WSL install | upstream's installer piped into bash, and `@opencode/cli-*` tarballs | `npm install -g genixcode@<version>`, and `genixcode-*` tarballs; discovery looks for `genixcode` (`src/main/remote/cli.ts`) |
+| "Install CLI" (desktop, macOS) | the root `install` script with `--binary`, which writes `~/.opencode/bin/opencode` | `src/main/fork-install-cli.ts` copies the bundled binary to `~/.genixcode/bin/genixcode` and adds it to `PATH` |
+
+Still pointing at upstream, knowingly: docs links (the TUI's `docs.open`, the themes and skills pages
+in settings, `$schema` URLs), and the built-in `opencode.md` skill, which tells the agent to read
+`opencode.ai/v2/docs`. They're documentation rather than reporting, and there's no fork equivalent to
+point them at.
 
 The auto-update and the issue-tracker links are the two that matter most. An update feed pointed at
 upstream would quietly turn a Genix build into an OpenCode one; a "Report Bug" item pointed at a
@@ -741,11 +814,10 @@ one day turns them all back on at once.
 ### Left alone
 
 `scripts/copy-bundles.ts` and `scripts/finalize-latest-{json,yml}.ts` still carry upstream's artefact
-names. They are driven only by upstream's `publish.yml` and `script/publish.ts`, which this fork
-deliberately does not touch — same reasoning as the CLI's publish script: they push to repositories
-and update feeds the fork does not own. `migrate.ts` keeps its body too, but the migration itself is
-off (`forkTauriMigrationEnabled()`): it imports settings and session data from upstream's Tauri-era
-app, and this build has no such lineage.
+names. Nothing in this tree runs them any more — upstream's `publish.yml` stopped calling them too —
+so they're left as upstream wrote them rather than renamed for a pipeline that doesn't exist. v1 also
+had a `migrate.ts` that imported settings from upstream's Tauri-era app, switched off by
+`forkTauriMigrationEnabled()`. v2 removed the migration entirely, so the switch went with it.
 
 ### Managed key in the renderer
 
@@ -755,15 +827,24 @@ browser context and cannot, so the main process answers a sync IPC channel
 `window.electron.forkManagedKey` (upstream v2 renamed the bridge from `window.api`).
 Only the boolean crosses — the key itself never does, the same reason `provider.list` redacts it.
 
+The channel is registered in `src/main/index.ts`, *before* `createEarlyWindow()`, because that
+window's preload asks straight away. The port to v2 dropped that call for a while, and nothing
+complained: `sendSync` to an unregistered channel just comes back empty, so `forkManagedKey()` was
+always false and every gate below was silently open on desktop. `index.ts` is kept small on purpose
+(Electron holds `ready` until it has evaluated), which is why `fork-policy.ts` imports
+`lock-state.ts` rather than `lock.ts` — the latter pulls in `effect`. Main also unseals the key file
+now, so `electron.vite.config.ts` bakes the pepper into the main bundle for builds, the same way the
+CLI build does.
+
 `packages/app/src/fork/policy.ts` exposes that to the shared UI, which drops the affordances the
 server would refuse anyway:
 
 | Affordance | Hidden when |
 |---|---|
-| Connect | a managed key is present |
-| Disconnect | a managed key is present |
-| "View all providers" | always — the lock leaves nothing to browse |
-| Add custom provider | always — the lock rejects every other provider id |
+| Connect (settings, model picker header, `/connect` and the command palette) | a managed key is present |
+| Disconnect, and the account menu (add / remove / switch account) | a managed key is present |
+| "View all providers", and the unpaid dialog's "View more providers" | always — the lock leaves nothing to browse |
+| Add custom provider, including the "Custom" row at the top of the provider picker | always — the lock rejects every other provider id |
 
 The web app in `packages/app/` has no preload, so `forkManagedKey()` is false there and upstream's
 affordances stay as written. Enforcement is server-side regardless; this only removes dead controls.
@@ -820,7 +901,12 @@ cold start is long enough to look like the flag simply not working.
 | `--no-auth` on a loopback bind | serves unauthenticated, prints `authentication disabled (--no-auth)` |
 | `--no-auth --hostname 0.0.0.0` | refused, unless `GENIX_SERVE_NO_AUTH_ALLOW_REMOTE=1` |
 | `--no-auth --service` | refused, always |
-| no flag | unchanged: random password, `www-authenticate`, 401 without credentials |
+| no flag | unchanged: random password, 401 without credentials (with a `www-authenticate` challenge on navigations) |
+
+`packages/server/test/fork-no-auth.test.ts` boots the real server process both ways and checks it,
+including that upstream still reads an empty password as "no authentication". It's the guard for the
+hunk below: upstream keeps adding gates to `dispatch()` — v2.0.21 brought the pairing-link
+exemption — and a merge that drops `authRequired` fails there rather than in production.
 
 An unauthenticated genixcode server is a remote shell — the API reads and writes the filesystem, runs
 commands and hands out PTYs. On `127.0.0.1` that is no worse than the account already running the
@@ -843,7 +929,14 @@ guards a deployment decision the operator is entitled to make.
 1. Rebase against `upstream/dev`.
 2. Resolve conflicts on shared files — look for `fork_change` markers to identify our changes.
 3. Run `bun run script/check-fork-annotations.ts --base <upstream-ref>` to verify all fork changes are still annotated.
-4. Fork-owned files under `packages/util/src/fork/`, `packages/util/test/fork/` and
+   On a release branch, `<upstream-ref>` is the release commit the fork sits on (e.g. `sync release
+   versions for v2.0.21`), not `upstream/dev`: release commits aren't on `dev`, so the default base
+   counts upstream's own release-branch changes as unannotated fork code.
+4. Look for what upstream *added*, not just what conflicted. New copy, new endpoints and new outbound
+   calls merge cleanly and still break the fork's guarantees; the v2.0.12 → v2.0.21 port found an
+   unguarded `credential.create`, a model-level settings path around the key pins, and a `/connect`
+   command that way.
+5. Fork-owned files under `packages/util/src/fork/`, `packages/util/test/fork/` and
    `packages/core/src/fork/` should never conflict with upstream.
 
 ## Local builds

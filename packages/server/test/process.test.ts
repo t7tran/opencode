@@ -3,6 +3,7 @@ import { Effect } from "effect"
 import { HttpServer, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import { it } from "../../core/test/lib/effect"
 import { ServerProcess } from "../src/process"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 it.live("authenticates API requests behind the frontend transform while allowing browser preflight", () =>
   Effect.gen(function* () {
@@ -209,7 +210,7 @@ it.live("pairing links sign in browsers with a cookie and API clients with a tok
 
     const reused = yield* request(`/auth/connect/${browser.code}`, { headers: { accept: "text/html" } })
     expect(reused.status).toBe(401)
-    expect(yield* Effect.promise(() => reused.text())).toContain("opencode pair")
+    expect(yield* Effect.promise(() => reused.text())).toContain(`${CLI_NAME} pair`) // fork_change - renamed binary
 
     expect((yield* request("/api/info", { headers: { cookie } })).status).toBe(200)
     expect((yield* request("/api/info", { headers: { cookie, origin: base } })).status).toBe(200)

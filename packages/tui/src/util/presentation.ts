@@ -1,4 +1,5 @@
 import { logo } from "../logo"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 const reset = "\x1b[0m"
 const bold = "\x1b[1m"
@@ -29,7 +30,7 @@ export function sessionEpilogue(input: { title: string; sessionID?: string }) {
     ...wordmark("  "),
     "",
     `  ${weak("Session")}${bold}${input.title}${reset}`,
-    `  ${weak("Continue")}${bold}opencode -s ${input.sessionID}${reset}`,
+    `  ${weak("Continue")}${bold}${CLI_NAME} -s ${input.sessionID}${reset}`, // fork_change - renamed binary
     "",
   ].join("\n")
 }

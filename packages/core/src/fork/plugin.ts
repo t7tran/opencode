@@ -39,11 +39,18 @@
 import { Effect } from "effect"
 import { define } from "@opencode/plugin/effect/plugin"
 import { App } from "../app.js"
+import { Integration } from "../integration.js"
 import { Model } from "../model.js"
 import { Provider } from "../provider.js"
 import { cachedGatewayModels } from "@opencode/util/fork/gateway"
 import { keyFilePath, managedKey } from "@opencode/util/fork/key-file"
 import { isLockedProvider, lockActive, lockedProvider, lockedManagedSettings } from "@opencode/util/fork/lock"
+
+// While a key is managed the provider resolves its connection against this id
+// instead of its own. Nothing can hold a credential or an env method under it:
+// it is not an integration, and every credential write for an id other than the
+// locked provider's is refused (fork/guard.ts). See the comment where it is set.
+const MANAGED_INTEGRATION = Integration.ID.make("fork.genix.managed")
 
 export const ForkLockPlugin = define({
   id: "fork.provider.lock",
@@ -87,7 +94,13 @@ export const ForkLockPlugin = define({
       providers.update(lockedID, (provider) => {
         provider.name = provider.name && provider.name !== lockedID ? provider.name : locked.name
         provider.package = locked.npm
-        provider.integrationID = undefined
+        // A connection on the provider's integration outranks its settings when
+        // a model is resolved, so a stored `genix` credential (a login made
+        // before the key file was dropped in, or a `credential.activate` among
+        // old ones) or an `env` method added through config would replace the
+        // managed key. Pointing a managed provider at an integration that can
+        // never have a connection leaves the settings below as the only source.
+        provider.integrationID = managed ? MANAGED_INTEGRATION : undefined
         provider.settings = {
           baseURL: locked.baseURL,
           ...provider.settings,
@@ -115,6 +128,28 @@ export const ForkLockPlugin = define({
       for (const model of providers.get(lockedID)?.models.values() ?? []) {
         providers.models.update(lockedID, model.id, (draft) => {
           draft.package = locked.npm
+        })
+      }
+    })
+
+    // The pins above hold in the provider state, but the model catalogue is a
+    // separate State seeded from it, and upstream's ConfigProviderPlugin edits it
+    // in its own model transform: a per-model `package`, `settings` or variant
+    // `settings` in opencode.json lands there, and the resolver lets model and
+    // variant settings win over the provider's. Left alone, `models.<id>.settings.baseURL`
+    // sends the managed key to a host of the user's choosing and
+    // `models.<id>.package` hands it to a package of theirs. This plugin is
+    // registered last, so this transform runs after that one and re-pins all three.
+    yield* ctx.model.transform((models) => {
+      const managed = lockedManagedSettings()
+      if (!managed) return
+      for (const model of models.list(lockedID)) {
+        models.update(lockedID, model.id, (draft) => {
+          draft.package = locked.npm
+          draft.settings = { ...draft.settings, ...managed }
+          for (const variant of draft.variants ?? []) {
+            if (variant.settings) variant.settings = { ...variant.settings, ...managed }
+          }
         })
       }
     })

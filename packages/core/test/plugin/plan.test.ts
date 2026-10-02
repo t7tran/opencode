@@ -19,12 +19,13 @@ import { Global } from "@opencode/util/global"
 import path from "path"
 import { it } from "../lib/effect"
 import { host } from "./host"
+import { HOME_CONFIG_DIRNAME } from "@opencode/util/fork/brand" // fork_change - renamed home dotdir
 
 const sessionID = Session.ID.make("ses_plan_test")
 const plan = Agent.ID.make("plan")
 const build = Agent.ID.make("build")
 const home = "/home/plan-test"
-const planDirectory = path.join(home, ".opencode", "plan")
+const planDirectory = path.join(home, HOME_CONFIG_DIRNAME, "plan") // fork_change - renamed home dotdir
 
 const agentSelected = (agent: Agent.ID, previous: Agent.ID): SessionEvent.AgentSelected => ({
   id: Event.ID.create(),

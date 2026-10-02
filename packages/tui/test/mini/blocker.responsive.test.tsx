@@ -12,6 +12,7 @@ import { createFormBodyState } from "../../src/mini/form.shared"
 import { RUN_THEME_FALLBACK, RUN_THEME_MONO } from "../../src/mini/theme"
 import type { FormReply, MiniFormRequest, MiniPermissionRequest, PermissionReply } from "../../src/mini/types"
 import { createTuiResolvedConfig } from "../fixture/tui-runtime"
+import { PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed product
 
 const permission: MiniPermissionRequest = {
   id: "per_responsive",
@@ -257,7 +258,7 @@ test("roomy rejection keeps the editor and confirmation hints inline", async () 
     expect(confirm.y).toBe(editor.y)
     expect(confirm.x).toBeGreaterThanOrEqual(editor.x + editor.width)
     expect(app.captureCharFrame()).toContain("esc cancel")
-    expect(app.captureCharFrame()).toContain("Tell OpenCode what to do differently")
+    expect(app.captureCharFrame()).toContain(`Tell ${PRODUCT_NAME} what to do differently`) // fork_change - renamed product
   } finally {
     app.renderer.destroy()
   }

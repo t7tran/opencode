@@ -6,6 +6,7 @@ import { Api } from "../api"
 import { ServerAuth } from "../auth"
 import { ServerInfo } from "../server-info"
 import { ServerPairing } from "../pairing"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 export const ServerHandler = HttpApiBuilder.group(Api, "server.server", (handlers) =>
   Effect.gen(function* () {
@@ -35,7 +36,7 @@ export const ServerHandler = HttpApiBuilder.group(Api, "server.server", (handler
           if (token === undefined) {
             if (!browser) return yield* new UnauthorizedError({ message: "Pairing link expired or already used" })
             return HttpServerResponse.text(
-              "This pairing link expired or was already used. Run `opencode pair` to get a new one.",
+              `This pairing link expired or was already used. Run \`${CLI_NAME} pair\` to get a new one.`, // fork_change - renamed binary
               { status: 401 },
             )
           }

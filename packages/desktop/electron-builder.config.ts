@@ -104,9 +104,10 @@ const getBase = (appId: string): Configuration => ({
     {
       from: "resources/",
       to: "",
-      // fork_change - opencode-cli.channel rides along with the version; see
+      // fork_change start - opencode-cli.channel rides along with the version; see
       // scripts/utils.ts copyCliToResources and main/service/desktop-cli.ts.
       filter: ["opencode-cli", "opencode-cli.exe", "opencode-cli.version", "opencode-cli.channel"],
+      // fork_change end
     },
   ],
   afterPack: async (context) => {

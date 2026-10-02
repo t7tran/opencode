@@ -3,9 +3,10 @@
 # Materialises the key-sealing pepper for a build.
 #
 # The pepper is deliberately not in the repository — see
-# packages/core/src/fork/pepper.ts. Every build that bakes it in (the CLI via
-# script/build.ts, the desktop app's embedded server via script/build-node.ts)
-# reads it from a file and fails without one, so write it out from the secret
+# packages/util/src/fork/pepper.ts. Every build that bakes it in (the CLI via
+# script/build.ts, which the desktop's prebuild.ts also runs for its bundled CLI,
+# and the desktop main process via electron.vite.config.ts) reads it from a file
+# and fails without one, so write it out from the secret
 # first, outside the checkout.
 #
 # Changing the secret's value is a format break: every host already provisioned
