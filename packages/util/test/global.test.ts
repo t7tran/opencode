@@ -5,6 +5,7 @@ import path from "path"
 import { pathToFileURL } from "url"
 import { Context, Effect, Layer } from "effect"
 import { Global } from "../src/global.js"
+import { APP_DIRNAME } from "../src/fork/brand.js" // fork_change - per-user dirs are rooted on the fork name
 
 describe("global", () => {
   test("importing the module does not create directories", () => {
@@ -25,7 +26,7 @@ describe("global", () => {
     })
 
     expect(result.exitCode, result.stderr.toString()).toBe(0)
-    directories.forEach((directory) => expect(fs.existsSync(path.join(directory, "opencode"))).toBe(false))
+    directories.forEach((directory) => expect(fs.existsSync(path.join(directory, APP_DIRNAME) /* fork_change */)).toBe(false))
     fs.rmSync(root, { recursive: true, force: true })
   })
 
@@ -77,15 +78,15 @@ describe("global", () => {
     })
 
     expect(result.exitCode, result.stderr.toString()).toBe(0)
-    expect(result.stdout.toString()).toBe(fs.realpathSync(path.join(directories[4], "opencode")))
+    expect(result.stdout.toString()).toBe(fs.realpathSync(path.join(directories[4], APP_DIRNAME) /* fork_change */))
     const created = [
-      path.join(directories[0], "opencode"),
-      path.join(directories[1], "opencode", "bin"),
-      path.join(directories[2], "opencode"),
-      path.join(directories[3], "opencode"),
-      path.join(directories[0], "opencode", "log"),
-      path.join(directories[0], "opencode", "repos"),
-      path.join(directories[4], "opencode"),
+      path.join(directories[0], APP_DIRNAME) /* fork_change */,
+      path.join(directories[1], APP_DIRNAME, "bin") /* fork_change */,
+      path.join(directories[2], APP_DIRNAME) /* fork_change */,
+      path.join(directories[3], APP_DIRNAME) /* fork_change */,
+      path.join(directories[0], APP_DIRNAME, "log") /* fork_change */,
+      path.join(directories[0], APP_DIRNAME, "repos") /* fork_change */,
+      path.join(directories[4], APP_DIRNAME) /* fork_change */,
     ]
     created.forEach((directory) => expect(fs.statSync(directory).isDirectory()).toBe(true))
     fs.rmSync(root, { recursive: true, force: true })

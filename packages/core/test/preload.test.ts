@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import os from "os"
 import path from "path"
 import { Global } from "@opencode/util/global"
+import { APP_DIRNAME } from "@opencode/util/fork/brand" // fork_change - per-user dirs are rooted on the fork name
 
 describe("Core test environment", () => {
   test("disables public npm security audits", () => {
@@ -15,10 +16,10 @@ describe("Core test environment", () => {
 
     expect(os.homedir()).toBe(home)
     expect(Global.Path.home).toBe(home)
-    expect(Global.Path.config).toBe(path.join(home, ".config", "opencode"))
-    expect(Global.Path.data).toBe(path.join(home, ".local", "share", "opencode"))
-    expect(Global.Path.cache).toBe(path.join(home, ".cache", "opencode"))
-    expect(Global.Path.state).toBe(path.join(home, ".local", "state", "opencode"))
+    expect(Global.Path.config).toBe(path.join(home, ".config", APP_DIRNAME) /* fork_change */)
+    expect(Global.Path.data).toBe(path.join(home, ".local", "share", APP_DIRNAME) /* fork_change */)
+    expect(Global.Path.cache).toBe(path.join(home, ".cache", APP_DIRNAME) /* fork_change */)
+    expect(Global.Path.state).toBe(path.join(home, ".local", "state", APP_DIRNAME) /* fork_change */)
     expect(os.tmpdir()).toBe(path.join(home, "tmp"))
     expect(process.env.OPENCODE_CONFIG_DIR).toBe(Global.Path.config)
     expect(process.env.OPENCODE_CONFIG).toBeUndefined()

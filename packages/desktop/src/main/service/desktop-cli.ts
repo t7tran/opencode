@@ -10,11 +10,19 @@ import { DesktopPaths } from "../paths"
 import { BUNDLED_CLI_VERSION_KEY } from "../storage/keys"
 import { getStore } from "../storage/store"
 import { parseCliVersion } from "./cli-version"
+import { CLI_NAME, HOME_CONFIG_DIRNAME } from "@opencode/util/fork/brand" // fork_change
+import { channelFromVersion } from "@opencode/util/fork/service-registration" // fork_change - the registration file is named after this channel
 
 const execFileAsync = promisify(execFile)
 
 export interface Resolved {
   readonly version: string
+  // fork_change start - the release channel this CLI was built on, which decides
+  // the name of the registration file it writes. Derived from the version for a
+  // bundled binary; a CLI run from source carries no OPENCODE_CHANNEL define and
+  // so is always "local", whatever OPENCODE_VERSION says.
+  readonly channel: string
+  // fork_change end
   readonly command: readonly string[]
   readonly binary?: string
   readonly wslBuild?: { readonly script: string; readonly output: string }
@@ -40,7 +48,7 @@ export const layer = Layer.effect(
       if (!cli.binary) return yield* Effect.fail(new Error("Bundled CLI executable is unavailable"))
       const home = app.getPath("home")
       yield* runInstaller(cli.binary, home)
-      return path.join(home, ".opencode", "bin", "opencode")
+      return path.join(home, HOME_CONFIG_DIRNAME, "bin", CLI_NAME) // fork_change - renamed binary and install dir
     })
     return Service.of({ resolve, install })
   }),
@@ -52,6 +60,7 @@ const make = Effect.fn("DesktopCli.resolve")(function* () {
   const cli = development
     ? {
         version,
+        channel: "local", // fork_change - no OPENCODE_CHANNEL define when run from source
         command: [
           "bun",
           "run",
@@ -84,7 +93,7 @@ const resolveBundledCli = Effect.fn("DesktopCli.resolveBundled")(function* (isol
   yield* Effect.logInfo("v2 CLI executable resolved", { bundled, packaged: app.isPackaged })
   const version = yield* bundledVersion(bundled)
   const binary = app.isPackaged || isolated ? yield* installCli(bundled, version) : bundled
-  return { version, binary, command: [binary] }
+  return { version, channel: yield* bundledChannel(bundled, version), binary, command: [binary] } // fork_change - channel names the registration file
 })
 
 // Spawning the bundled executable for `--version` costs ~400 ms of startup on a 200 MB binary (and
@@ -119,6 +128,28 @@ const bundledVersion = Effect.fn("DesktopCli.bundledVersion")(function* (bundled
   if (identity) store.set(BUNDLED_CLI_VERSION_KEY, { path: bundled, identity, version } satisfies VersionCache)
   return version
 })
+
+// fork_change start - the channel the bundled CLI was built on, which names the
+// registration file it writes (see util/src/fork/service-registration.ts). The build
+// records it next to the version; channelFromVersion is only a fallback, and a lossy
+// one: it reads a plain-semver release as "latest", while this fork ships its releases
+// on "prod". Getting it wrong is silent — ensure() waits on a file nobody writes while
+// each spawned CLI finds its own registration and exits 0 — so log which source won.
+const bundledChannel = Effect.fn("DesktopCli.bundledChannel")(function* (bundled: string, version: string) {
+  const path = yield* Path.Path
+  // Synchronous for the same reason as bundledVersion: this is on the first window's IPC path.
+  const shipped = yield* Effect.sync(() => {
+    try {
+      return readFileSync(path.join(path.dirname(bundled), "opencode-cli.channel"), "utf8").trim()
+    } catch {
+      return ""
+    }
+  })
+  const channel = shipped || channelFromVersion(version)
+  yield* Effect.logInfo("v2 CLI channel resolved", { channel, shipped: !!shipped })
+  return channel
+})
+// fork_change end
 
 type VersionCache = { path: string; identity: string; version: string }
 

@@ -13,6 +13,7 @@ import {
 } from "@/shell/commands/desktop-menu"
 import { usePlatform } from "@/runtime/platform/platform"
 import { useLanguage } from "@/runtime/i18n/language"
+import { PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change
 
 const accelerators = DESKTOP_MENU.flatMap((menu) => menu.items ?? []).flatMap((entry) => {
   if (entry.type === "separator" || !entry.action || !entry.accelerator?.windows) return []
@@ -97,7 +98,9 @@ export function WindowsAppMenu(props: {
       <Menu.Portal>
         <Menu.Content class="desktop-app-menu">
           <Menu.Group>
-            <Menu.GroupLabel class="desktop-app-menu-heading">OpenCode</Menu.GroupLabel>
+            {/* fork_change start - heading is a literal, so the dictionary seam never sees it */}
+            <Menu.GroupLabel class="desktop-app-menu-heading">{PRODUCT_NAME}</Menu.GroupLabel>
+            {/* fork_change end */}
             <For each={DESKTOP_MENU.filter((menu) => desktopMenuVisible(menu, "windows"))}>
               {(menu) => (
                 <DesktopMenuSubmenu label={language.t(menu.labelKey)}>

@@ -6,6 +6,7 @@ import { Context, Effect, FileSystem, Layer, Logger, Option, Path, References, S
 import { homedir } from "node:os"
 import { VERSION } from "../constants"
 import { marks } from "../lifecycle/marks"
+import { APP_DIRNAME } from "@opencode/util/fork/brand" // fork_change
 
 const MAX_LOG_AGE_DAYS = 7
 const TAIL_LINES = 1000
@@ -239,7 +240,11 @@ function manifest(path: Path.Path) {
 function serverLogRoots(path: Path.Path) {
   const xdgData = process.env.XDG_DATA_HOME || path.join(homedir(), ".local", "share")
   return [
-    ...new Set([path.join(xdgData, "opencode", "log"), path.join(app.getPath("userData"), "opencode", "log")]),
+    // fork_change start - the sidecar writes to Global.Path.log, which is keyed
+    // on the fork's app directory name; a literal "opencode" here would collect
+    // nothing.
+    ...new Set([path.join(xdgData, APP_DIRNAME, "log"), path.join(app.getPath("userData"), APP_DIRNAME, "log")]),
+    // fork_change end
   ]
 }
 

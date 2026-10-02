@@ -1,4 +1,5 @@
 import { createResource } from "solid-js"
+import { FORK_NOTICE } from "@opencode/util/fork/brand" // fork_change
 import { useLanguage } from "@/runtime/i18n/language"
 import { usePlatform } from "@/runtime/platform/platform"
 import { ExternalLink } from "@/runtime/platform/external-link"
@@ -61,6 +62,14 @@ export function SettingsAbout(props: { active: boolean }) {
       </div>
 
       <AnimatedWordmark active={props.active} />
+
+      {/* fork_change start - every other line on this screen is upstream's credits
+          and attribution copy, kept verbatim by verbatimKey() in the brand module.
+          This is the one line that says which build is actually running. It borrows
+          the faint treatment rather than adding a class, so the CSS diff stays at
+          the one width the wider wordmark forces. */}
+      <p class="settings-about-faint">{FORK_NOTICE}</p>
+      {/* fork_change end */}
 
       <div class="settings-about-credits">
         <p>{language.rich("settings.about.writtenByNames", { names: language.list(writerCredits()) })}</p>

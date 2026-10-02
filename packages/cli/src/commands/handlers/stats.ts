@@ -2,6 +2,7 @@ import { ClientError, OpenCode, type SessionStatsInfo } from "@opencode/client"
 import { Service } from "@opencode/client/effect/service"
 import { TokenUsage } from "@opencode/schema/token-usage"
 import { activityCalendar } from "@opencode/util/activity-calendar"
+import { CLI_NAME, HOMEPAGE } from "@opencode/util/fork/brand" // fork_change
 import { Effect, Option } from "effect"
 import { EOL } from "node:os"
 import { Commands } from "../commands"
@@ -111,7 +112,8 @@ export function renderStats(stats: SessionStatsInfo, options: RenderOptions) {
       : `${style(formatPercent(toolRate), primary, options.color)} tool success`
   const details = options.models || options.tools || options.cost
   const empty = stats.sessions === 0 && stats.prompts === 0 && stats.steps === 0
-  const heading = `${style("opencode stats", primary, options.color)} ${style(`· ${options.label} · ${options.scope}`, "2", options.color)}`
+  // fork_change - renamed binary
+  const heading = `${style(`${CLI_NAME} stats`, primary, options.color)} ${style(`· ${options.label} · ${options.scope}`, "2", options.color)}` // fork_change
   const lines = details
     ? [style(`${options.label} · ${options.scope}`, "2", options.color)]
     : empty
@@ -120,7 +122,7 @@ export function renderStats(stats: SessionStatsInfo, options: RenderOptions) {
           "",
           style("no activity in this range", "2", options.color),
           "",
-          style("opencode.ai", "2", options.color),
+          style(HOMEPAGE.replace(/^https?:\/\//, ""), "2", options.color), // fork_change - was opencode.ai
         ]
       : [
           heading,
@@ -131,7 +133,7 @@ export function renderStats(stats: SessionStatsInfo, options: RenderOptions) {
           `${metricCount(stats.prompts, "prompt", options.color)} · ${metricCount(stats.steps, "step", options.color)} · ${metricCount(totalTokens, "token", options.color)}`,
           `${toolSummary} · ${metricCount(stats.activeDays, "active day", options.color)} · best streak ${style(stats.streak.toString(), primary, options.color)} day${stats.streak === 1 ? "" : "s"}`,
           "",
-          style("opencode.ai", "2", options.color),
+          style(HOMEPAGE.replace(/^https?:\/\//, ""), "2", options.color), // fork_change - was opencode.ai
         ]
 
   if (options.cost) lines.push(...(lines.length > 0 ? [""] : []), ...renderCost(stats))

@@ -10,6 +10,7 @@ import { RetainedImage } from "../../services/retained-image"
 import { Updater } from "../../services/updater"
 import { handlePromptErrors, prompt, requireInteractive } from "../../ui/prompt"
 import { errorMessage } from "../../util/error"
+import { PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed product
 
 export default Runtime.handler(
   Commands.commands.uninstall,
@@ -34,7 +35,7 @@ export default Runtime.handler(
     const shell = method === "curl" ? yield* shellConfigs(global.home) : []
 
     log.info(`Installation method: ${method ?? "unknown"}`)
-    log.message("The following global files will be removed (shared by OpenCode versions and channels):")
+    log.message(`The following global files will be removed (shared by ${PRODUCT_NAME} versions and channels):`) // fork_change
     yield* Effect.forEach(directories, (directory) =>
       Effect.gen(function* () {
         if (!(yield* fs.exists(directory.path))) return

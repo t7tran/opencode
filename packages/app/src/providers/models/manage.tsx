@@ -17,6 +17,7 @@ import { SettingsList } from "@/settings/list"
 import { SettingsRow } from "@/settings/row"
 import { consoleModelGroup, ProviderModelSections } from "@/providers/models/provider-group"
 import "@/settings/settings.css"
+import { forkProviderLocked } from "@/fork/policy" // fork_change - see the identical gating in settings/providers/providers.tsx
 
 type ModelItem = ReturnType<ReturnType<typeof useLocal>["model"]["list"]>[number]
 
@@ -91,9 +92,13 @@ export const DialogManageModels: Component = () => {
           title={language.t("dialog.model.manage")}
           description={language.t("dialog.model.manage.description")}
         />
-        <Button variant="neutral" icon="plus" onClick={handleConnectProvider}>
-          {language.t("command.provider.connect")}
-        </Button>
+        {/* fork_change start - no custom providers: the lock rejects every id but the locked one */}
+        <Show when={!forkProviderLocked()}>
+          <Button variant="neutral" icon="plus" onClick={handleConnectProvider}>
+            {language.t("command.provider.connect")}
+          </Button>
+        </Show>
+        {/* fork_change end */}
       </DialogHeader>
       <DialogBody class="flex min-h-0 flex-1 flex-col">
         <div class="px-4 pt-px pb-3">

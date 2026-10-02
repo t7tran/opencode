@@ -1,6 +1,7 @@
 import type { AuthenticateResponse, InitializeResponse } from "@agentclientprotocol/sdk"
 import { describe, expect, test } from "bun:test"
 import { createAcpFixture, expectOk, initialize } from "./subprocess"
+import { PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed product
 
 describe("acp initialize/auth subprocess", () => {
   test("initialize responds with capabilities", async () => {
@@ -18,7 +19,7 @@ describe("acp initialize/auth subprocess", () => {
     expect(initialized.agentCapabilities?.sessionCapabilities?.fork).toEqual({})
     expect(initialized.agentCapabilities?.sessionCapabilities?.list).toEqual({})
     expect(initialized.agentCapabilities?.sessionCapabilities?.resume).toEqual({})
-    expect(initialized.agentInfo?.name).toBe("OpenCode")
+    expect(initialized.agentInfo?.name).toBe(PRODUCT_NAME) // fork_change - renamed product
   }, 60_000)
 
   test("auth negotiation is explicit and safe", async () => {

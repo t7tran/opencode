@@ -1,0 +1,4 @@
+# fork_change - new file: src/fork/test-preload.ts keeps the provider lock off and
+# tests away from a real /etc/kilo.key
+[test]
+preload = ["./src/fork/test-preload.ts"]

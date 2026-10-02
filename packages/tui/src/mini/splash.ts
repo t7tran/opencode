@@ -16,6 +16,7 @@ import {
 import { Locale } from "../util/locale"
 import { stringWidth } from "../util/string-width"
 import { go } from "../logo"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 import { monoTruncate } from "./mono"
 import type { RunSplashTheme } from "./theme"
 
@@ -181,7 +182,7 @@ function buildExit(input: SplashWriterInput, ctx: ScrollbackRenderContext): Scro
   const body_left = (mark[0]?.length ?? 0) + 2
   const session = "Session  "
   const label = "Continue "
-  const command = `opencode mini -s ${meta.session_id}`
+  const command = `${CLI_NAME} mini -s ${meta.session_id}` // fork_change - renamed binary
   const wide = body_left + stringWidth(label + command) <= width
   const commandHeight = wide ? 1 : Math.ceil(stringWidth(command) / width)
 

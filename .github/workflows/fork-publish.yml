@@ -1,0 +1,329 @@
+# fork_change - new file
+#
+# Publishes fork builds: the CLI to npm under the "genixcode" package name, and
+# the desktop app as a Debian package, both with their artefacts attached to a
+# GitHub Release.
+#
+# Triggers on version tags (v*) and manual workflow_dispatch.
+#
+# The release is created as a draft first so users never see a partly uploaded
+# set of assets. The CLI and desktop jobs then upload into it in parallel, and
+# the final job checks every expected asset arrived — both .deb architectures
+# and a CLI archive per OS family — before flipping the draft off. If any upload
+# job fails the release simply stays a draft; rerun the failed job and the
+# release publishes on the retry.
+#
+# It reuses the existing packaging scripts:
+#   - packages/cli/script/build.ts        (CLI binaries, all platforms)
+#   - packages/cli/script/fork-release-assets.ts (CLI archives, attached to the release)
+#   - packages/cli/script/fork-publish.ts (release + npm publish with rename)
+#   - packages/desktop/scripts/prepare.ts      (desktop icons, metainfo, embedded server)
+#   - packages/desktop/electron-builder.config.ts (deb-only Linux target)
+#
+# It does NOT touch upstream's publish.yml, which publishes to registries and
+# package repos this fork does not own.
+#
+# Requires the GENIX_KEY_PEPPER secret: the pepper that seals managed API keys,
+# which lives outside the repository and is baked into the binary at build time.
+# The desktop build needs it too — it bundles a CLI built from packages/cli.
+
+name: fork-publish
+run-name: "Fork release ${{ inputs.version || github.ref_name }}"
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag to release (e.g. v1.0.0)"
+        required: false
+        type: string
+      skip-npm:
+        description: "Skip npm publish (build and attach release assets only)"
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency: fork-publish-${{ github.ref }}
+
+jobs:
+  # The CLI and desktop jobs both upload to the release, so it has to exist
+  # before either starts. Creating it here also lets them run in parallel.
+  release:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      tag: v${{ steps.ver.outputs.version }}
+    steps:
+      - name: Determine version
+        id: ver
+        run: |
+          raw="${{ inputs.version || github.ref_name }}"
+          # strip the leading "v" — build.ts and fork-publish.ts prepend it when tagging
+          echo "version=${raw#v}" >> "$GITHUB_OUTPUT"
+
+      # fork-release-assets.ts and electron-builder both upload with
+      # `gh release upload`, which needs the release to already exist.
+      # fork-publish.ts creates it too, and is idempotent, so it no-ops when this
+      # got there first.
+      - name: Create draft GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          tag="v${{ steps.ver.outputs.version }}"
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            echo "release ${tag} already exists"
+          else
+            pre_args=()
+            case "${{ steps.ver.outputs.version }}" in
+              *-alpha*|*-beta*|*-rc*|*-pre*) pre_args=(--prerelease) ;;
+            esac
+            gh release create "${tag}" -d "${pre_args[@]}" --title "${tag}" --notes ""
+          fi
+
+  publish:
+    name: CLI
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-bun
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      # The build fails without a pepper file — see .github/actions/fork-key-pepper
+      # and packages/core/src/fork/pepper.ts.
+      - name: Provision the key-sealing pepper
+        uses: ./.github/actions/fork-key-pepper
+        with:
+          pepper: ${{ secrets.GENIX_KEY_PEPPER }}
+
+      # Publish path: builds every platform, renames the packages, and pushes
+      # them to npm. The release archives are attached by the separate step
+      # below — neither build.ts nor fork-publish.ts touches the release assets.
+      - name: Build and publish
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.skip-npm == false }}
+        run: bun run packages/cli/script/fork-publish.ts
+        env:
+          OPENCODE_VERSION: ${{ needs.release.outputs.version }}
+          OPENCODE_CHANNEL: latest
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # Assets-only path: same build, no npm publish. This is the default for a
+      # tag push, where the `inputs` context is empty — testing `inputs.skip-npm`
+      # alone would leave both steps skipped and the release with no CLI assets.
+      - name: Build release assets only
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.skip-npm }}
+        run: ./packages/cli/script/build.ts
+        env:
+          OPENCODE_VERSION: ${{ needs.release.outputs.version }}
+          OPENCODE_CHANNEL: latest
+          OPENCODE_RELEASE: "true"
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+
+      # Upstream's publish.ts archives these same binaries but uploads them to
+      # the R2 bucket behind opencode.ai/files, which this fork does not own, so
+      # nothing here attached them to the GitHub release. No `if` — it runs
+      # after whichever of the two build steps above was selected.
+      - name: Attach CLI archives to release
+        run: bun run packages/cli/script/fork-release-assets.ts "${{ needs.release.outputs.tag }}"
+        env:
+          OPENCODE_VERSION: ${{ needs.release.outputs.version }}
+          OPENCODE_CHANNEL: latest
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+
+  # fork_change - desktop .deb, which upstream's publish.yml builds on native
+  # runners per architecture. Only Linux is built here: the fork holds neither
+  # Apple notarisation credentials nor a Windows signing certificate, and both
+  # matrix legs run on their own architecture because electron-vite resolves the
+  # node-pty and watcher native modules for the *host* arch (see
+  # electron.vite.config.ts), so a cross-build would ship the wrong ones.
+  desktop:
+    name: Desktop (.deb, ${{ matrix.arch }})
+    needs: release
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            arch: x64
+            electron_arch: --x64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+            electron_arch: --arm64
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup-bun
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # prebuild.ts builds the bundled CLI (packages/cli/script/build.ts),
+      # which bakes in the pepper exactly as the CLI build does.
+      - name: Provision the key-sealing pepper
+        uses: ./.github/actions/fork-key-pepper
+        with:
+          pepper: ${{ secrets.GENIX_KEY_PEPPER }}
+
+      # "prod" — not the CLI's "latest" — because electron-builder.config.ts reads
+      # OPENCODE_CHANNEL directly and falls back to "dev" for anything it does not
+      # recognise, which would name the package "genixcode-dev" and install under
+      # the .dev application id.
+      - name: Prepare
+        run: bun ./scripts/prepare.ts
+        working-directory: packages/desktop
+        env:
+          OPENCODE_VERSION: ${{ needs.release.outputs.version }}
+          OPENCODE_CHANNEL: prod
+
+      - name: Build
+        run: bun run build
+        working-directory: packages/desktop
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+          OPENCODE_VERSION: ${{ needs.release.outputs.version }}
+          OPENCODE_CHANNEL: prod
+
+      - name: Package
+        run: npx electron-builder --linux ${{ matrix.electron_arch }} --publish never --config electron-builder.config.ts
+        working-directory: packages/desktop
+        env:
+          OPENCODE_CHANNEL: prod
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          shopt -s nullglob
+          debs=(packages/desktop/dist/*.deb)
+          if [ ${#debs[@]} -eq 0 ]; then
+            echo "::error::electron-builder produced no .deb for ${{ matrix.arch }}"
+            exit 1
+          fi
+          gh release upload "${{ needs.release.outputs.tag }}" "${debs[@]}" --clobber
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: genixcode-desktop-linux-${{ matrix.arch }}
+          path: packages/desktop/dist/*.deb
+          if-no-files-found: error
+
+  # fork_change - the release is created as a draft so a half-uploaded set of
+  # assets is never visible to users; publishing it is the last step, once the
+  # CLI archives and both .deb packages have actually landed on it.
+  #
+  # This job only runs if every upload job succeeded. When one architecture fails
+  # the release stays a draft with whatever did upload, which is the safe
+  # outcome: rerun the failed leg, and this job publishes on the retry.
+  finalise:
+    name: Publish release
+    needs: [release, publish, desktop]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release view "${TAG}" --json assets --jq '.assets[].name' | sort > assets.txt
+          echo "attached assets:"
+          sed 's/^/  /' assets.txt
+
+          missing=()
+
+          # Both .deb names are fixed by electron-builder.config.ts's artifactName
+          # ("genixcode-desktop-${os}-${arch}.${ext}"), so check them exactly.
+          # ${arch} is the *Debian* architecture, not electron-builder's own name
+          # for it: getArtifactArchName() rewrites x64 to amd64 for deb and snap
+          # targets, so the x64 runner produces "...-linux-amd64.deb". arm64 is
+          # spelt the same either way.
+          for want in genixcode-desktop-linux-amd64.deb genixcode-desktop-linux-arm64.deb; do
+            grep -qxF -- "${want}" assets.txt || missing+=("${want}")
+          done
+
+          # The CLI archives are named "<cli name>-<target>" by
+          # script/fork-release-assets.ts, which also emits baseline and musl
+          # variants. Enumerating all of them here would break every time
+          # build.ts's target list changes, so require one archive per OS family
+          # instead: the linux targets are tarred and the rest zipped.
+          for pattern in '-linux-.*\.tar\.gz$' '-darwin-.*\.zip$' '-windows-.*\.zip$'; do
+            # -- : every pattern starts with "-", which grep would read as options.
+            grep -qE -- "${pattern}" assets.txt || missing+=("a CLI archive matching /${pattern}/")
+          done
+
+          if [ ${#missing[@]} -ne 0 ]; then
+            printf '::error::release %s is missing expected assets: %s\n' "${TAG}" "${missing[*]}"
+            exit 1
+          fi
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.release.outputs.tag }}
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          # `gh release edit` has no --generate-notes, so ask the API for the
+          # notes and prepend the install instructions the generator cannot know.
+          gh api "repos/${GH_REPO}/releases/generate-notes" \
+            -f tag_name="${TAG}" --jq '.body' > generated.md || : > generated.md
+
+          {
+            echo "## Install"
+            echo
+            echo '### CLI'
+            echo
+            echo '```bash'
+            echo "npm install -g genixcode@${VERSION}"
+            echo '```'
+            echo
+            echo '### Desktop (Debian/Ubuntu)'
+            echo
+            echo 'Download the `.deb` for your architecture below, then:'
+            echo
+            echo '```bash'
+            echo 'sudo apt install ./genixcode-desktop-linux-amd64.deb  # x86-64'
+            echo 'sudo apt install ./genixcode-desktop-linux-arm64.deb  # arm64'
+            echo '```'
+            echo
+            cat generated.md
+          } > notes.md
+
+          latest_args=()
+          case "${VERSION}" in
+            *-alpha*|*-beta*|*-rc*|*-pre*) latest_args=(--prerelease) ;;
+            *) latest_args=(--latest) ;;
+          esac
+
+          gh release edit "${TAG}" --draft=false --notes-file notes.md "${latest_args[@]}"
+          echo "published ${TAG}: $(gh release view "${TAG}" --json url --jq .url)"

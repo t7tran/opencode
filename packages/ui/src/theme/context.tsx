@@ -43,8 +43,18 @@ function knownThemes() {
   return known
 }
 
+// fork_change start - `oc-2` is the app's own bundled default theme, named after
+// the product rather than after a project of its own, so it follows the rename;
+// the third-party themes in the map below (Dracula, Nord, GitHub, Vercel, ...)
+// keep the names their authors gave them. Spelled out rather than imported from
+// PRODUCT_NAME in packages/util/src/fork/brand.ts because packages/ui depends on
+// no workspace package - the same reason logo.tsx and wordmark.tsx carry theirs
+// as literals. packages/app/src/fork/brand-literals.test.ts pins the two equal.
+const PRODUCT_NAME = "GenixCode"
+// fork_change end
+
 const names: Record<string, string> = {
-  "oc-2": "OpenCode",
+  "oc-2": PRODUCT_NAME, // fork_change
   amoled: "AMOLED",
   aura: "Aura",
   ayu: "Ayu",
@@ -81,7 +91,7 @@ const names: Record<string, string> = {
   vesper: "Vesper",
   zenburn: "Zenburn",
 }
-const oc2Theme = oc2ThemeJson as DesktopTheme
+const oc2Theme = { ...(oc2ThemeJson as DesktopTheme), name: PRODUCT_NAME } // fork_change
 
 function resolveStoredTheme(id: string | null | undefined, registered?: Record<string, DesktopTheme>) {
   if (id === "oc-2" || (id && (knownThemes().has(id) || registered?.[id]))) return id

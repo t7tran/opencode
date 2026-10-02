@@ -11,6 +11,7 @@ import {
 } from "@opencode/protocol/errors"
 import { response } from "../location"
 import { WellKnown } from "@opencode/core/wellknown"
+import { credentialRefusal } from "@opencode/util/fork/guard" // fork_change - provider lock
 
 const authorize = <A, R>(effect: Effect.Effect<A, Integration.AuthorizationError, R>) =>
   effect.pipe(
@@ -68,6 +69,16 @@ export const IntegrationHandler = HttpApiBuilder.group(Api, "server.integration"
         "integration.connect.key",
         Effect.fn(function* (ctx) {
           const service = yield* Integration.Service
+          // fork_change start - refused server-side, so a direct API or CLI call
+          // cannot connect a provider the lock forbids, or replace a managed key.
+          const refusal = credentialRefusal(ctx.params.integrationID)
+          if (refusal) {
+            yield* Effect.logWarning("fork: rejected integration.connect.key", {
+              integrationID: ctx.params.integrationID,
+            })
+            return yield* new InvalidRequestError({ message: refusal, kind: "integration_authorization" })
+          }
+          // fork_change end
           if (!(yield* service.get(ctx.params.integrationID)))
             return yield* new IntegrationNotFoundError({
               integrationID: ctx.params.integrationID,
@@ -88,6 +99,15 @@ export const IntegrationHandler = HttpApiBuilder.group(Api, "server.integration"
         "integration.oauth.connect",
         Effect.fn(function* (ctx) {
           const service = yield* Integration.Service
+          // fork_change start - same refusal as the key path; OAuth is not a way around the lock.
+          const refusal = credentialRefusal(ctx.params.integrationID)
+          if (refusal) {
+            yield* Effect.logWarning("fork: rejected integration.oauth.connect", {
+              integrationID: ctx.params.integrationID,
+            })
+            return yield* new InvalidRequestError({ message: refusal, kind: "integration_authorization" })
+          }
+          // fork_change end
           return yield* response(
             authorize(
               service.oauth.connect({

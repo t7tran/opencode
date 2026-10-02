@@ -1,6 +1,10 @@
-# OpenCode Desktop
+# GenixCode Desktop
 
-The OpenCode Desktop app, built with Electron.
+<!-- fork_change - Genix branding and build notes; see ../../FORK.md § Desktop app -->
+
+The GenixCode desktop app, built with Electron. It embeds the server from
+`packages/opencode`, so the provider lock and the managed key file apply here
+exactly as they do to the CLI.
 
 ## Development
 
@@ -18,7 +22,7 @@ bundle the assets as an application. The resulting app will be in `dist/`.
 bun run build && bun run package
 ```
 
-Production builds require a prebuilt V2 CLI distribution. The release workflow supplies the artifact from the same run:
+Production builds can be handed a prebuilt CLI distribution; the release workflow supplies the artifact from the same run:
 
 ```bash
 OPENCODE_CHANNEL=prod OPENCODE_CLI_DIST=/absolute/path/to/packages/cli/dist bun run build
@@ -28,13 +32,12 @@ OPENCODE_CHANNEL=prod bun run package
 Set `OPENCODE_CLI_TARGET` when packaging for a different architecture. The CLI is placed outside `app.asar` in the
 application's resources directory, and packaging fails if it is missing.
 
-CLI preparation uses these channel rules:
+<!-- fork_change start - upstream's table described a download path this fork does not have -->
 
-| Channel                                | Without `OPENCODE_CLI_DIST`    | With `OPENCODE_CLI_DIST`                      |
-| -------------------------------------- | ------------------------------ | --------------------------------------------- |
-| `dev`, `local`, unset, or unrecognized | Download the dev CLI           | Download the dev CLI; ignore the distribution |
-| `beta`                                 | Download the beta CLI          | Copy the supplied CLI; fail if it is missing  |
-| `prod`, `latest`                       | Fail before changing resources | Copy the supplied CLI; fail if it is missing  |
+CLI preparation is the same on every channel: copy the CLI `OPENCODE_CLI_DIST` points at, or build one from
+`packages/cli` for the host target. Nothing is ever downloaded.
+
+<!-- fork_change end -->
 
 `bun dev` is separate from packaging: it uses local renderer/server mode, the dev app identity, and the CLI source by
 default. `bun dev --download-server <version>` instead downloads that CLI version for local development. Neither path
@@ -75,3 +78,14 @@ written to `dist/bench-startup`.
 A packaged beta or prod build registers itself as the `opencode://` handler when it starts, even from the bench; the
 installed app takes the registration back on its next launch. Those channels run with `HTTPS_PROXY` pointed at a
 closed port (`--offline` forces it for dev) so the updater's first check fails fast instead of reaching GitHub.
+<!-- fork_change start -->
+
+`OPENCODE_CHANNEL` selects `dev` (default), `beta` or `prod`, which decides the application id, product name and
+icons. There is no auto-update feed: builds are distributed internally.
+
+This fork never bundles a *published* CLI. `scripts/prebuild.ts` builds one from `packages/cli` in this tree (or
+copies the one `OPENCODE_CLI_DIST` points at), because the published `@opencode/cli-<platform>` packages carry
+neither the provider lock nor the managed key file. `downloadCliToResources()` is gone; see `scripts/utils.ts` and
+FORK.md § Desktop app. The build also needs the key-sealing pepper — see FORK.md § The sealing pepper.
+
+<!-- fork_change end -->

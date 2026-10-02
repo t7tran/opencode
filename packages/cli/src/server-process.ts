@@ -16,6 +16,8 @@ import { RetainedImage } from "./services/retained-image"
 import { ServiceRegistration } from "./services/service-registration"
 import { WebUi } from "./services/web-ui"
 import { databasePath } from "./database-path"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
+import { NO_AUTH_PASSWORD, noAuthRefusal } from "@opencode/util/fork/server-auth" // fork_change - `--no-auth`
 
 export type Mode = "default" | "service" | "stdio"
 
@@ -24,6 +26,9 @@ export type Options = {
   readonly hostname?: string
   readonly port?: number
   readonly cors?: readonly string[]
+  // fork_change start - false serves unauthenticated; see fork/server-auth.ts
+  readonly auth?: boolean
+  // fork_change end
 }
 
 // The process effect lives until server shutdown; tracing it would parent every request to one process-lifetime trace.
@@ -75,13 +80,24 @@ const processEffect = Effect.fnUntraced(function* (options: Options) {
         delete process.env.OPENCODE_PASSWORD
         delete process.env.OPENCODE_SERVER_PASSWORD
       }
-      const password =
+      // fork_change start - `--no-auth` routes onto the empty password that
+      // ServerAuth.required() already reads as "no authentication", so nothing
+      // downstream needs a new auth mode. Refusals (non-loopback bind, service
+      // mode) are decided in fork/server-auth.ts, once `hostname` has defaulted.
+      const noAuth = options.auth === false
+      if (noAuth) {
+        const refusal = noAuthRefusal({ mode: options.mode, hostname })
+        if (refusal) return yield* Effect.fail(new Error(refusal))
+      }
+      // fork_change end
+      const generated = // fork_change - renamed so upstream's ternary below stays byte-identical
         options.mode === "service"
           ? config.password || randomBytes(32).toString("base64url")
           : environmentPassword
             ? Redacted.value(environmentPassword)
             : randomBytes(32).toString("base64url")
-      if (!password) return yield* Effect.fail(new Error("Missing server password"))
+      const password = noAuth ? NO_AUTH_PASSWORD : generated // fork_change - `--no-auth`
+      if (!noAuth && !password) return yield* Effect.fail(new Error("Missing server password")) // fork_change - an empty password is `--no-auth`, not a missing one
       const instanceID = randomUUID()
       const transform = yield* WebUi.handler()
       const server = yield* start(
@@ -103,7 +119,12 @@ const processEffect = Effect.fnUntraced(function* (options: Options) {
           models: {
             url: process.env.OPENCODE_MODELS_URL,
             file: process.env.OPENCODE_MODELS_PATH,
-            fetch: !truthy(process.env.OPENCODE_DISABLE_MODELS_FETCH),
+            // fork_change start - this build is locked to a single self-hosted
+            // provider, so there is no reason to contact the models.dev catalog
+            // endpoint on startup: it is wasted latency and it leaks usage
+            // metadata. Upstream read this from OPENCODE_DISABLE_MODELS_FETCH.
+            fetch: false,
+            // fork_change end
           },
           config: {
             directory: process.env.OPENCODE_CONFIG_DIR,
@@ -150,7 +171,7 @@ const processEffect = Effect.fnUntraced(function* (options: Options) {
                 : Effect.fail(
                     new Error(
                       `Managed service port ${port} on ${hostname} is already in use by another process. ` +
-                        "Configure another port with `opencode service set port <port>` and start the service again.",
+                        `Configure another port with \`${CLI_NAME} service set port <port>\` and start the service again.`, // fork_change - renamed binary
                       { cause: error },
                     ),
                   ),
@@ -161,7 +182,12 @@ const processEffect = Effect.fnUntraced(function* (options: Options) {
       if (server === undefined) return
       const url = HttpServer.formatAddress(server.address)
       console.log(options.mode === "stdio" ? JSON.stringify({ url }) : `server listening on ${url}`)
-      if (foreground && !environmentPassword) console.log(`server password ${password}`)
+      // fork_change start - do not print an empty password as if it were one,
+      // and say plainly that the server is open, since that is the whole point
+      // of the flag and the one thing an operator must not learn by accident.
+      if (foreground && noAuth) console.log("authentication disabled (--no-auth)")
+      else if (foreground && !environmentPassword) console.log(`server password ${password}`)
+      // fork_change end
       return yield* options.mode === "service"
         ? server.shutdown
         : options.mode === "stdio"
