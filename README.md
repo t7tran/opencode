@@ -2,7 +2,7 @@
 
 **Internal development tool — Genix employees only.**
 
-This repository contains an internal Genix development tool: the Genix Coding Agent CLI (`genixcode`). It is maintained by Genix for use by Genix employees on Genix work. It is not a public or general-purpose product.
+This repository contains an internal Genix development tool: the Genix Coding Agent CLI (`genixcode-cli`). It is maintained by Genix for use by Genix employees on Genix work. It is not a public or general-purpose product.
 
 ## Approved software only
 
@@ -25,7 +25,7 @@ Only this internal Genix build may be used.
 
 | Path | Contents |
 | --- | --- |
-| `packages/opencode/` | Agent core and the `genixcode` CLI |
+| `packages/cli/` | The `genixcode-cli` command |
 | `packages/core/` | Shared runtime, including the fork-owned provider lock and managed key file |
 | `packages/tui/` | Terminal UI components |
 | `packages/desktop/` | The GenixCode desktop app (Electron) |
@@ -38,10 +38,13 @@ Upstream code retained from opencode is kept as close to unmodified as practical
 Build the CLI binary for the current platform:
 
 ```bash
-cd packages/opencode && bun run build --single --skip-install
+cd packages/cli && bun run build --single --skip-install
 ```
 
-The binary is written to `packages/opencode/dist/opencode-<platform>-<arch>/bin/genixcode`.
+The binary is written to `packages/cli/dist/cli-<platform>-<arch>/bin/genixcode-cli`. It's
+`genixcode-cli` rather than `genixcode` so it can't collide with the desktop app, which installs
+under `genixcode`. Install it from npm with `npm install -g genixcode` — the package keeps the
+short name, the command it puts on your `PATH` is `genixcode-cli`.
 
 Build the desktop app (requires a desktop-capable machine — it runs Electron):
 

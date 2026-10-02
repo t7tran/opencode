@@ -66,10 +66,10 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     # fork_change start - renamed binary. The marker spans the wrapProgram block
     # because its first line changed and a comment cannot sit between a line
     # continuation and the line it continues.
-    install -Dm755 dist/cli-*/bin/genixcode $out/bin/genixcode
+    install -Dm755 dist/cli-*/bin/genixcode-cli $out/bin/genixcode-cli
 
     # OpenTUI dlopens Wayland for clipboard images.
-    wrapProgram $out/bin/genixcode \
+    wrapProgram $out/bin/genixcode-cli \
       --prefix PATH : ${
         lib.makeBinPath (
           [
@@ -83,7 +83,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
       ''}
     # fork_change end
 
-    ln -s genixcode $out/bin/genixcode2 # fork_change - renamed binary
+    ln -s genixcode-cli $out/bin/genixcode-cli2 # fork_change - renamed binary
 
     runHook postInstall
   '';
@@ -91,13 +91,13 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   postInstall = lib.optionalString (stdenvNoCC.buildPlatform.canExecute stdenvNoCC.hostPlatform) ''
     # trick yargs into also generating zsh completions
     # fork_change start - renamed binary
-    installShellCompletion --cmd genixcode \
-      --bash <($out/bin/genixcode completion) \
-      --zsh <(SHELL=/bin/zsh $out/bin/genixcode completion)
+    installShellCompletion --cmd genixcode-cli \
+      --bash <($out/bin/genixcode-cli completion) \
+      --zsh <(SHELL=/bin/zsh $out/bin/genixcode-cli completion)
 
-    installShellCompletion --cmd genixcode2 \
-      --bash <($out/bin/genixcode2 completion) \
-      --zsh <(SHELL=/bin/zsh $out/bin/genixcode2 completion)
+    installShellCompletion --cmd genixcode-cli2 \
+      --bash <($out/bin/genixcode-cli2 completion) \
+      --zsh <(SHELL=/bin/zsh $out/bin/genixcode-cli2 completion)
     # fork_change end
   '';
 
@@ -117,7 +117,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     description = "The open source coding agent";
     homepage = "https://opencode.ai";
     license = lib.licenses.mit;
-    mainProgram = "genixcode"; # fork_change - renamed binary
+    mainProgram = "genixcode-cli"; # fork_change - renamed binary
     inherit (node_modules.meta) platforms;
   };
 })

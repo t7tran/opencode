@@ -70,7 +70,7 @@ describe("channelFromVersion", () => {
 
   // A release version carries no channel, so this is the best the string can do — and
   // it is wrong for this fork, which releases on "prod". The desktop must therefore read
-  // the channel the build recorded (opencode-cli.channel) rather than derive it; this
+  // the channel the build recorded (genixcode-cli.channel) rather than derive it; this
   // test pins the gap so nobody re-adopts the derivation as the source of truth.
   test("a release version cannot recover this fork's prod channel", () => {
     expect(channelFromVersion("2.0.1100")).toBe("latest")

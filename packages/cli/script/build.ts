@@ -10,7 +10,7 @@ import pkg from "../package.json"
 import { buildAppArchive } from "./app-assets"
 import { verifyArtifact, verifySimulationGraph } from "./verify-artifact"
 import { resolveOpencodePty } from "./opencode-pty"
-import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
+import { BRAND_SLUG, CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary and product
 // fork_change start - the key-sealing pepper is not in the repo; read it from
 // the out-of-repo file and bake it in. Throws (and so fails the build) when the
 // file is absent, rather than shipping a binary that cannot unseal a key file.
@@ -157,7 +157,7 @@ export default { path: file, version: ${JSON.stringify(opencodePty.version)}, sh
       outfile: path.join(outdir, name, "bin", executableName), // fork_change - renamed binary
       execArgv: [
         "--smol",
-        `--user-agent=${CLI_NAME}/${Script.channel}/${Script.version}/cli`, // fork_change - renamed binary
+        `--user-agent=${BRAND_SLUG}/${Script.channel}/${Script.version}/cli`, // fork_change - renamed product, same as App.useragent
         "--use-system-ca",
         "--no-warnings",
         "--",

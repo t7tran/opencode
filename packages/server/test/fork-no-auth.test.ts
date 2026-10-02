@@ -1,4 +1,4 @@
-// `genixcode serve --no-auth` against the real server process.
+// `genixcode-cli serve --no-auth` against the real server process.
 //
 // The CLI turns the flag into an empty password (NO_AUTH_PASSWORD in
 // packages/util/src/fork/server-auth.ts), and the fork's three hunks in

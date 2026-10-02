@@ -1,6 +1,6 @@
 // fork_change - new file
 //
-// Fork policy for `genixcode serve --no-auth`.
+// Fork policy for `genixcode-cli serve --no-auth`.
 //
 // Upstream has no way to serve the v2 API and web UI unauthenticated. The server
 // refuses to start without a password (`packages/server/src/process.ts`) and the

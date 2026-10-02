@@ -5,8 +5,8 @@
   "type": "module",
   "license": "MIT",
   "bin": {
-    "genixcode": "./bin/genixcode.cjs",
-    "genixcode2": "./bin/genixcode2.cjs"
+    "genixcode-cli": "./bin/genixcode-cli.cjs",
+    "genixcode-cli2": "./bin/genixcode-cli2.cjs"
   },
   "files": [
     "bin"

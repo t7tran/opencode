@@ -2,7 +2,7 @@ import { Argument, Flag, GlobalFlag } from "effect/unstable/cli"
 import { Schema } from "effect"
 import { Spec } from "../framework/spec"
 import { Updater } from "../services/updater"
-import { CLI_NAME, PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
+import { CLI_NAME, CLI_PACKAGE_NAME, PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 export const PrintLogs = GlobalFlag.setting("print-logs")({
   flag: Flag.boolean("print-logs").pipe(
@@ -60,7 +60,7 @@ const Root = Spec.make(typeof OPENCODE_CLI_NAME === "string" ? OPENCODE_CLI_NAME
   commands: [
     Spec.make("upgrade", {
       // fork_change start - this build does not self-update; see src/fork/policy.ts
-      description: `Upgrade ${PRODUCT_NAME} (disabled: use npm install -g ${CLI_NAME}@<version>)`,
+      description: `Upgrade ${PRODUCT_NAME} (disabled: use npm install -g ${CLI_PACKAGE_NAME}@<version>)`,
       // fork_change end
       aliases: ["update"],
       params: {
@@ -537,7 +537,7 @@ const Root = Spec.make(typeof OPENCODE_CLI_NAME === "string" ? OPENCODE_CLI_NAME
         ),
       },
     }),
-    // fork_change start - `genixcode key seal` / `key status`; see core/src/fork/key-seal.ts
+    // fork_change start - `genixcode-cli key seal` / `key status`; see core/src/fork/key-seal.ts
     Spec.make("key", {
       description: "managed API key file tools",
       commands: [

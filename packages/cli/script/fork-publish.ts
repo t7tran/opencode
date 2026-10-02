@@ -1,7 +1,9 @@
 #!/usr/bin/env bun
 // fork_change - new file
 //
-// Publishes the fork's CLI to npm under the "genixcode" package name.
+// Publishes the fork's CLI to npm under the "genixcode" package name. The
+// command it installs is "genixcode-cli" — the package and the executable are
+// named separately (CLI_PACKAGE_NAME and CLI_NAME in util/src/fork/brand.ts).
 //
 // Upstream publishes the CLI with per-platform optional dependencies
 // (@opencode/cli-linux-x64, @opencode/cli-darwin-arm64, ...). This script leaves
@@ -14,7 +16,8 @@
 //      after a local run of this one if the release needs the CLI archives.
 //   2. Builds every platform binary via packages/cli/script/build.ts.
 //   3. Rewrites each dist/<pkg>/package.json name from @opencode/cli-* to genixcode-*.
-//   4. Assembles the super-package (launcher stub + postinstall + optional deps),
+//   4. Assembles the super-package (launcher stub + postinstall + optional deps,
+//      with a single `genixcode-cli` bin),
 //      mirroring what publish.ts does for upstream.
 //   5. Publishes each platform package and the super-package to npm.
 //
@@ -36,6 +39,7 @@
 
 import { $ } from "bun"
 import { Script } from "@opencode/script"
+import { CLI_NAME, CLI_PACKAGE_NAME } from "@opencode/util/fork/brand"
 import pkg from "../package.json"
 import { dirname, join } from "node:path"
 
@@ -61,10 +65,10 @@ if (repo) process.env.GH_REPO = repo
 
 /** Upstream's scope+stem for the platform packages, as build.ts writes them. */
 const ORIGINAL_STEM = "@opencode/cli"
-const FORK_NAME = "genixcode"
+const FORK_NAME = CLI_PACKAGE_NAME
 const ORIGINAL_PREFIX = `${ORIGINAL_STEM}-`
 const FORK_PREFIX = `${FORK_NAME}-`
-const LAUNCHER = `${FORK_NAME}.cjs`
+const LAUNCHER = `${CLI_NAME}.cjs`
 const distDir = join(dir, "dist")
 
 async function rewritePackageJson(path: string, fn: (pkg: any) => void) {
@@ -143,7 +147,7 @@ await Bun.file(join(superPkgDir, "package.json")).write(
   JSON.stringify(
     {
       name: FORK_NAME,
-      bin: { [FORK_NAME]: `./bin/${LAUNCHER}` },
+      bin: { [CLI_NAME]: `./bin/${LAUNCHER}` },
       scripts: { postinstall: "node ./postinstall.mjs" },
       version: Script.version,
       license: pkg.license,

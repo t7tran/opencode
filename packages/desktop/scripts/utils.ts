@@ -94,7 +94,7 @@ void tmpdir
 // fork_change end
 
 // fork_change - the only way a CLI reaches the bundle in this fork: a locally built one
-export async function copyBuiltCliToResources(root: string, dest = windowsify("resources/opencode-cli")) {
+export async function copyBuiltCliToResources(root: string, dest = windowsify(`resources/${CLI_NAME}`)) { // fork_change - renamed bundled CLI
   const cli = getCurrentCli()
   const directory = cli.package.replace("@opencode/", "")
   await copyCliToResources(join(root, directory), dest)
@@ -123,12 +123,12 @@ async function copyCliToResources(pkg: string, dest: string) {
 }
 
 export function versionFile(cli: string) {
-  return join(dirname(cli), "opencode-cli.version")
+  return join(dirname(cli), `${CLI_NAME}.version`) // fork_change - renamed bundled CLI
 }
 
 // fork_change start - sibling of versionFile; see copyCliToResources above.
 export function channelFile(cli: string) {
-  return join(dirname(cli), "opencode-cli.channel")
+  return join(dirname(cli), `${CLI_NAME}.channel`)
 }
 // fork_change end
 

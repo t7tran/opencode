@@ -7,7 +7,7 @@
 // `INSTALL_DIR=$HOME/.opencode/bin`, so on this build it copied the Genix
 // binary to `~/.opencode/bin/opencode` — over the top of a real OpenCode
 // install, if there was one — while desktop-cli.ts told the user it had gone to
-// `~/.genixcode/bin/genixcode`. The script is left alone (FORK.md § CLI name);
+// `~/.genixcode/bin/genixcode-cli`. The script is left alone (FORK.md § CLI name);
 // this does the two things it did for a local binary, under the fork's names.
 
 import { chmod, copyFile, mkdir, readFile, appendFile } from "node:fs/promises"

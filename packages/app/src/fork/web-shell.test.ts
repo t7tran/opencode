@@ -3,8 +3,8 @@ import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { PRODUCT_NAME } from "@opencode/util/fork/brand"
 
-// The web UI's shell — the document the CLI serves for `genixcode web` and
-// `genixcode serve` — carries its brand outside the dictionary seam:
+// The web UI's shell — the document the CLI serves for `genixcode-cli web` and
+// `genixcode-cli serve` — carries its brand outside the dictionary seam:
 // `<title>` and the PWA manifest are static files, so `rebrandDict()` never
 // sees them. Upstream writes "OpenCode" in both; these assertions are what
 // stop a rebase from quietly restoring the browser tab and the installed-app

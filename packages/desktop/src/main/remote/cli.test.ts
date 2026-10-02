@@ -5,7 +5,7 @@ import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import { HttpClient, HttpClientResponse } from "effect/unstable/http"
 import { testEffect } from "../../../../core/test/lib/effect"
 import { RemoteCli } from "./cli"
-import { CLI_NAME, HOME_CONFIG_DIRNAME } from "@opencode/util/fork/brand" // fork_change - renamed binary and install dir
+import { CLI_NAME, CLI_PACKAGE_NAME, HOME_CONFIG_DIRNAME } from "@opencode/util/fork/brand" // fork_change - renamed binary, package and install dir
 
 const it = testEffect(NodeServices.layer)
 // These scripts execute on the POSIX remote host, not the Windows desktop.
@@ -25,7 +25,7 @@ it.live(
         Effect.provideService(
           HttpClient.HttpClient,
           HttpClient.make((request) => {
-            expect(request.url).toBe(`https://registry.npmjs.org/${CLI_NAME}/beta`) // fork_change - the fork's own npm package
+            expect(request.url).toBe(`https://registry.npmjs.org/${CLI_PACKAGE_NAME}/beta`) // fork_change - the fork's own npm package
             return Effect.succeed(HttpClientResponse.fromWeb(request, response))
           }),
         ),
@@ -74,7 +74,7 @@ posix(
 // see packages/cli/script/fork-publish.ts.
 test("pins platform-specific artifacts and rejects unsafe inputs", () => {
   expect(RemoteCli.archiveUrl("linux-x64-baseline-musl", "2.0.0-beta.1")).toBe(
-    `https://registry.npmjs.org/${CLI_NAME}-linux-x64-baseline-musl/-/${CLI_NAME}-linux-x64-baseline-musl-2.0.0-beta.1.tgz`,
+    `https://registry.npmjs.org/${CLI_PACKAGE_NAME}-linux-x64-baseline-musl/-/${CLI_PACKAGE_NAME}-linux-x64-baseline-musl-2.0.0-beta.1.tgz`,
   )
   // fork_change end
   expect(() => RemoteCli.installScript({ version: '2.0.0"; whoami', source: { type: "installer" } })).toThrow()

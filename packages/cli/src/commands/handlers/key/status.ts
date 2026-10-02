@@ -1,6 +1,6 @@
 // fork_change - new file
 //
-// `genixcode key status` — report what a host currently has provisioned, plus a
+// `genixcode-cli key status` — report what a host currently has provisioned, plus a
 // short fingerprint of the key, so you can confirm a host holds the key you
 // provisioned without either side printing it. See FORK.md.
 

@@ -3,7 +3,7 @@
 // Managed API key file for the locked Genix provider.
 //
 // When `/etc/kilo.key` exists and is non-empty, its contents are the Genix API
-// key — either in plain text, or as a sealed blob produced by `genixcode key
+// key — either in plain text, or as a sealed blob produced by `genixcode-cli key
 // seal` (see key-seal.ts). The CLI loads it automatically, the provider is
 // always in the connected state, and the user cannot supply a different key or
 // connect/disconnect the provider. Deleting the file restores the normal

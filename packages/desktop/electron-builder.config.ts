@@ -24,6 +24,9 @@ const PRODUCT_NAME = "GenixCode"
 const APP_ID_BASE = "com.genixventures.genixcode"
 const PROTOCOL_SCHEME = "genixcode"
 const PACKAGE_NAME = "genixcode"
+// The bundled CLI sits in the app's resources as `genixcode-cli`, not upstream's
+// `opencode-cli`; main/service/desktop-cli.ts and scripts/utils.ts name it too.
+const CLI_NAME = "genixcode-cli"
 // fork_change end
 
 const metainfoFpm = (appId: string) =>
@@ -45,7 +48,7 @@ export function macSignOptions(options: CustomMacSignOptions): CustomMacSignOpti
     ...options,
     optionsForFile: (file) => {
       const defaults = options.optionsForFile?.(file)
-      if (file !== path.join(options.app, "Contents/Resources/opencode-cli")) return defaults ?? {}
+      if (file !== path.join(options.app, `Contents/Resources/${CLI_NAME}`)) return defaults ?? {} // fork_change - renamed bundled CLI
       // The Bun CLI loads bun-pty's native library; Electron and its helpers do not need this exception.
       return { ...defaults, entitlements: path.join(packageDir, "resources/entitlements.cli.plist") }
     },
@@ -84,7 +87,7 @@ const getBase = (appId: string): Configuration => ({
   files: [
     "out/**/*",
     "resources/**/*",
-    "!resources/opencode-cli*",
+    `!resources/${CLI_NAME}*`, // fork_change - renamed bundled CLI
     // Log export imports Zip.js as ESM. Keep index.js and lib, including its inline worker.
     "!**/node_modules/@zip.js/zip.js/dist{,/**/*}",
     "!**/node_modules/@zip.js/zip.js/{index.cjs,index.min.js,index-fflate.js,deno.json,eslint.config.mjs}",
@@ -104,25 +107,25 @@ const getBase = (appId: string): Configuration => ({
     {
       from: "resources/",
       to: "",
-      // fork_change start - opencode-cli.channel rides along with the version; see
+      // fork_change start - <cli>.channel rides along with the version; see
       // scripts/utils.ts copyCliToResources and main/service/desktop-cli.ts.
-      filter: ["opencode-cli", "opencode-cli.exe", "opencode-cli.version", "opencode-cli.channel"],
+      filter: [CLI_NAME, `${CLI_NAME}.exe`, `${CLI_NAME}.version`, `${CLI_NAME}.channel`],
       // fork_change end
     },
   ],
   afterPack: async (context) => {
     const cli = path.join(
       context.packager.getResourcesDir(context.appOutDir),
-      context.electronPlatformName === "win32" ? "opencode-cli.exe" : "opencode-cli",
+      context.electronPlatformName === "win32" ? `${CLI_NAME}.exe` : CLI_NAME, // fork_change - renamed bundled CLI
     )
     const file = await stat(cli)
     if (!file.isFile() || file.size === 0) throw new Error(`Bundled CLI must be a non-empty file: ${cli}`)
-    const version = path.join(path.dirname(cli), "opencode-cli.version")
+    const version = path.join(path.dirname(cli), `${CLI_NAME}.version`) // fork_change - renamed bundled CLI
     if ((await stat(version)).size === 0) throw new Error(`Bundled CLI version must be a non-empty file: ${version}`)
     // fork_change start - an empty or missing channel sends the desktop to the wrong
     // registration file, which fails as a 120 s splash-screen hang rather than an
     // error, so fail the pack instead.
-    const channel = path.join(path.dirname(cli), "opencode-cli.channel")
+    const channel = path.join(path.dirname(cli), `${CLI_NAME}.channel`)
     if ((await stat(channel)).size === 0) throw new Error(`Bundled CLI channel must be a non-empty file: ${channel}`)
     // fork_change end
   },

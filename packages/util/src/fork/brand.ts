@@ -38,8 +38,30 @@ export const UPSTREAM_PRODUCT_NAME = "OpenCode"
 /** Company/vendor name, for packaging metadata. */
 export const VENDOR_NAME = "Genix Ventures"
 
-/** Executable name of the CLI this fork ships. */
-export const CLI_NAME = "genixcode"
+/**
+ * Lower-case brand identifier. It names everything that isn't the CLI
+ * executable: the per-user directories, the npm package, the desktop's Linux
+ * package and the outbound user agent.
+ */
+export const BRAND_SLUG = "genixcode"
+
+/**
+ * Executable name of the CLI this fork ships — the compiled binary, the npm
+ * `bin` entry, the copy bundled inside the desktop package, and the command
+ * every hint tells the user to type. Upstream: "opencode".
+ *
+ * It's deliberately not `BRAND_SLUG`: the desktop's own launcher is
+ * `genixcode`, and a CLI of the same name would fight it for the same spot on
+ * `PATH`.
+ */
+export const CLI_NAME = "genixcode-cli"
+
+/**
+ * npm package the CLI is published under (`npm install -g genixcode`), and the
+ * stem of its per-platform packages (`genixcode-linux-x64`). It installs the
+ * `CLI_NAME` command.
+ */
+export const CLI_PACKAGE_NAME = BRAND_SLUG
 
 /** Deep-link scheme. Upstream: "opencode". */
 export const PROTOCOL_SCHEME = "genixcode"
@@ -49,14 +71,14 @@ export const PROTOCOL_SCHEME = "genixcode"
  * config and state roots: `~/.config/genixcode`, `~/.local/share/genixcode`,
  * and so on. Upstream: "opencode".
  */
-export const APP_DIRNAME = CLI_NAME
+export const APP_DIRNAME = BRAND_SLUG
 
 /**
  * Home-level configuration dotdir, scanned alongside the XDG config directory
  * for `opencode.json`, `tui.json`, skills, commands, agents, plugins and
  * themes. Upstream: ".opencode".
  */
-export const HOME_CONFIG_DIRNAME = `.${CLI_NAME}`
+export const HOME_CONFIG_DIRNAME = `.${BRAND_SLUG}`
 
 /** Reverse-DNS base for desktop application ids. Upstream: "ai.opencode.desktop". */
 export const APP_ID_BASE = "com.genixventures.genixcode"
@@ -99,13 +121,15 @@ export function productName(channel: Channel): string {
 
 /** Linux package name for a channel, e.g. "genixcode-beta". */
 export function packageName(channel: Channel): string {
-  return channel === "prod" ? CLI_NAME : `${CLI_NAME}-${channel}`
+  return channel === "prod" ? BRAND_SLUG : `${BRAND_SLUG}-${channel}`
 }
 
 // Ordered longest-match-first. "OpenCode Zen" and "OpenCode Go" are upstream's
 // hosted model service and subscription; a build locked to the Genix gateway
 // never reaches either, but neither name should survive as "GenixCode Zen" or
-// "GenixCode Go" in a string that does leak through.
+// "GenixCode Go" in a string that does leak through. A bare lower-case
+// "opencode" in upstream's copy is the command ("run opencode pair"), so it
+// becomes the CLI's executable name rather than the brand slug.
 const REPLACEMENTS: ReadonlyArray<readonly [RegExp, string]> = [
   [/OpenCode Zen/g, "Genix"],
   [/OpenCode Go/g, "Genix"],

@@ -91,29 +91,46 @@ so those steps are skipped there rather than failing.
 
 ## CLI name
 
-The CLI binary is `genixcode`, not `opencode`. The npm **package** names produced by
-`packages/cli/script/build.ts` are left as upstream writes them (`@opencode/cli-linux-x64`, …);
-`packages/cli/script/fork-publish.ts` rewrites them at publish time. What changes in-tree is the
-executable name and the places that produce or consume it:
+The CLI binary is `genixcode-cli`, not `opencode` — and not plain `genixcode` either. That's the
+name the desktop app's own Linux launcher and `.deb` package already use, and two things called
+`genixcode` on one machine end up fighting over the same spot on `PATH`. So wherever the CLI is
+compiled, released or installed — the npm `bin`, the release archives, the Docker image, the Nix
+package, and the copy bundled inside the desktop app — it's `genixcode-cli`.
+
+Only the executable carries the `-cli` suffix. `packages/util/src/fork/brand.ts` keeps three names
+apart, and mixing them up is the easy mistake:
+
+| Constant | Value | Names |
+|---|---|---|
+| `CLI_NAME` | `genixcode-cli` | the executable, the command every hint tells you to type, the bundled desktop resource |
+| `CLI_PACKAGE_NAME` | `genixcode` | the npm package (`npm install -g genixcode`) and its `genixcode-<target>` platform packages |
+| `BRAND_SLUG` | `genixcode` | per-user directories (`APP_DIRNAME`, `HOME_CONFIG_DIRNAME`), the desktop's Linux package, outbound user agents |
+
+The npm **package** names produced by `packages/cli/script/build.ts` are left as upstream writes
+them (`@opencode/cli-linux-x64`, …); `packages/cli/script/fork-publish.ts` rewrites them to
+`genixcode-*` at publish time and gives the super-package a single `genixcode-cli` bin. What changes
+in-tree is the executable name and the places that produce or consume it:
 
 | Concern | Where |
 |---|---|
-| Launcher stubs | `packages/cli/bin/genixcode.cjs`, `packages/cli/bin/genixcode2.cjs` |
+| Launcher stubs | `packages/cli/bin/genixcode-cli.cjs`, `packages/cli/bin/genixcode-cli2.cjs` |
 | `bin` entry | `packages/cli/package.json` |
 | Root command name, help output | `packages/cli/src/commands/commands.ts` (falls back to `CLI_NAME` when the `OPENCODE_CLI_NAME` define is absent) |
-| Compiled binary name, build user agent, `OPENCODE_CLI_NAME` define | `packages/cli/script/build.ts` |
+| Compiled binary name, build user agent (`BRAND_SLUG`), `OPENCODE_CLI_NAME` define | `packages/cli/script/build.ts` |
 | Node build's `OPENCODE_CLI_NAME` define | `packages/cli/vite.node.config.ts` |
 | Postinstall messages (binary resolution is generic — it reads `bin` from package.json) | `packages/cli/script/postinstall.mjs` |
-| Outbound `User-Agent` headers (providers, models.dev, websearch) | `packages/core/src/app.ts` — one seam, see below |
+| Outbound `User-Agent` headers (providers, models.dev, websearch) | `packages/core/src/app.ts` — one seam, see below; spelled with `BRAND_SLUG`, so it stays `genixcode/…` |
 | webfetch's browser-style `User-Agent` | `packages/core/src/tool/plugin/webfetch.ts` — names `GenixCode-User` and the Genix homepage |
 | Container entrypoint | `packages/cli/Dockerfile` |
 | Nix install path, `mainProgram`, completions | `nix/opencode.nix` |
 | Bundled CLI path in the Nix desktop build | `nix/desktop.nix` |
-| Remote/WSL install and binary lookup (desktop) | `packages/desktop/src/main/remote/cli.ts` |
+| Release archives, `genixcode-cli-<target>.{tar.gz,zip}` holding `genixcode-cli` | `packages/cli/script/fork-release-assets.ts` |
+| CLI bundled in the desktop package — `resources/genixcode-cli` plus `.version` / `.channel` beside it, where upstream ships `opencode-cli` | `packages/desktop/electron-builder.config.ts` (its own `CLI_NAME` literal), `scripts/utils.ts`, `src/main/service/desktop-cli.ts`, `src/main/service/sidecar-probe.ts` |
+| Remote/WSL install and binary lookup (desktop) — npm URLs use `CLI_PACKAGE_NAME`, binary paths `CLI_NAME` | `packages/desktop/src/main/remote/cli.ts` |
 | SSH staging directory (desktop) | `packages/desktop/src/main/ssh/bootstrap.ts` — `~/.genixcode/desktop-ssh/<version>`, the same place `binaryPath()` looks |
 | TUI resume hints | `packages/tui/src/mini/splash.ts` (mini) and `packages/tui/src/util/presentation.ts` (full-screen exit) |
 | "run `opencode …`" hints in errors and help text | see the list below |
-| Node (SEA) build's binary, `genixcode2-node` — what the launcher's `nodeBuild` branch runs | `packages/cli/script/build-node.ts` |
+| Node (SEA) build's binary, `genixcode-cli2-node` — what the launcher's `nodeBuild` branch runs | `packages/cli/script/build-node.ts` |
 | CI smoke test of the compiled binaries | `packages/cli/script/service-smoke.ts` |
 
 The hints are the easy ones to miss, because each is one string in a file nobody thinks of as
@@ -392,10 +409,10 @@ Produce it with the CLI — the key comes from stdin so it stays out of the shel
 the process list:
 
 ```bash
-printf %s "$GENIX_API_KEY" | genixcode key seal
+printf %s "$GENIX_API_KEY" | genixcode-cli key seal
 ```
 
-`genixcode key status` reports what a host currently has (`plain`, `sealed`, `absent`, or sealed by a
+`genixcode-cli key status` reports what a host currently has (`plain`, `sealed`, `absent`, or sealed by a
 build that cannot unseal it) plus a short fingerprint of the key, so you can confirm a host holds the
 key you provisioned without either side printing it. There is deliberately no `key unseal`.
 
@@ -421,7 +438,7 @@ Terraform, so it never lands in state or in a plan output:
 
 ```hcl
 variable "genix_sealed_key" {
-  description = "Output of `genixcode key seal`. Obfuscated, not secret — see FORK.md."
+  description = "Output of `genixcode-cli key seal`. Obfuscated, not secret — see FORK.md."
   type        = string
   sensitive   = true
 }
@@ -488,7 +505,7 @@ The fork replaces upstream's visual identity with Genix branding, using the bran
 | Surface | Where | Change |
 |---|---|---|
 | TUI home-screen wordmark | `packages/tui/src/logo.ts`, `packages/tui/src/component/logo.tsx` | `open`→`genix` block art; the `code` half is drawn in Genix blue (truecolor) instead of `theme.text.base` |
-| TUI resume hints | `packages/tui/src/mini/splash.ts`, `packages/tui/src/util/presentation.ts` | `opencode mini -s …` / `opencode -s …` → `genixcode …` |
+| TUI resume hints | `packages/tui/src/mini/splash.ts`, `packages/tui/src/util/presentation.ts` | `opencode mini -s …` / `opencode -s …` → `genixcode-cli …` |
 | Terminal title | `packages/tui/src/app.tsx`, `attention.ts`, `mini/runtime.lifecycle.ts` | `OpenCode` → `PRODUCT_NAME` |
 | Product name in prompts | `routes/session/permission.tsx`, `mini/footer.permission.tsx`, `mini/footer.prompt.tsx`, `component/terminal-pane.tsx` | "Tell OpenCode what to do differently", "close OpenCode", "restart OpenCode" → `PRODUCT_NAME` |
 | Crash screen | `packages/tui/src/component/error-component.tsx` | headline and footer use `PRODUCT_NAME`; see [What no longer reaches upstream](#what-no-longer-reaches-upstream) for the report it copies |
@@ -530,7 +547,7 @@ flowchart TB
   A["scripts/prebuild.ts"] --> B{"OPENCODE_CLI_DIST set?"}
   B -- "yes" --> C["Copy that build"]
   B -- "no" --> D["Build packages/cli<br/>for the host target"]
-  C --> E["resources/opencode-cli"]
+  C --> E["resources/genixcode-cli"]
   D --> E
   E --> F["Provider lock + managed key file<br/>+ models.dev fetch off"]
   F --> G["Renderer asks main:<br/>is the key managed?"]
@@ -730,7 +747,7 @@ Two web-facing surfaces are knowingly still upstream's:
   icons went through `packages/desktop/icons/fork-generate.py` for exactly that reason, and a web set
   can be generated the same way once someone decides a placeholder beats upstream's logo.
 - **`packages/enterprise/`** — a separately deployed SolidStart app for share links, not something
-  `genixcode web` serves. It still titles its pages `OpenCode`. It is not one of the annotation
+  `genixcode-cli web` serves. It still titles its pages `OpenCode`. It is not one of the annotation
   checker's shared scopes, and this fork does not deploy it.
 
 ### What no longer reaches upstream
@@ -746,7 +763,7 @@ Two web-facing surfaces are knowingly still upstream's:
 | TUI crash screen's "Copy report" | a pre-filled `github.com/anomalyco/opencode/issues/new` link | a plain-text report (version, OS, terminal, error, stack) for whoever supports the build |
 | Notification icon (desktop and web) | `opencode.ai/favicon-96x96-v3.png`, fetched per notification | the same file, served by the app itself |
 | Settings → About contributor count | `api.github.com/repos/anomalyco/opencode/contributors` each time the screen opens | off — `forkContributorCountEnabled()`; the baked-in fallback count is shown |
-| Remote / WSL install | upstream's installer piped into bash, and `@opencode/cli-*` tarballs | `npm install -g genixcode@<version>`, and `genixcode-*` tarballs; discovery looks for `genixcode` (`src/main/remote/cli.ts`) |
+| Remote / WSL install | upstream's installer piped into bash, and `@opencode/cli-*` tarballs | `npm install -g genixcode@<version>`, and `genixcode-*` tarballs; discovery looks for `genixcode-cli` (`src/main/remote/cli.ts`) |
 | "Install CLI" (desktop, macOS) | the root `install` script with `--binary`, which writes `~/.opencode/bin/opencode` | `src/main/fork-install-cli.ts` copies the bundled binary to `~/.genixcode/bin/genixcode` and adds it to `PATH` |
 
 Still pointing at upstream, knowingly: docs links (the TUI's `docs.open`, the themes and skills pages
@@ -857,7 +874,7 @@ affordances stay as written. Enforcement is server-side regardless; this only re
 
 Early on, the lock refused every integration but Genix's, which quietly took MCP down with it. MCP
 servers register integrations of their own (`mcp_` plus 16 hex digits of a hash over the server's
-name and URL), so a locked build couldn't sign in to a single one. `genixcode mcp auth`, the TUI's
+name and URL), so a locked build couldn't sign in to a single one. `genixcode-cli mcp auth`, the TUI's
 MCP dialog and the app's MCP settings all hit the same refusal.
 
 MCP isn't a provider, so the lock now leaves it alone (`isMcpIntegration()` in
@@ -909,7 +926,7 @@ filtered, nor are the shell commands the agent runs.
 
 ## Serving without authentication
 
-`genixcode serve --no-auth` starts the v2 API and web UI with HTTP Basic turned off.
+`genixcode-cli serve --no-auth` starts the v2 API and web UI with HTTP Basic turned off.
 
 Upstream has no such switch, and the reason is sound for a laptop: `packages/server/src/process.ts`
 refuses to start without a password, and `packages/cli/src/server-process.ts` mints a random one per
@@ -1092,14 +1109,16 @@ therefore need it to exist first.
 
 `publish` runs `packages/cli/script/fork-publish.ts`, which builds every platform binary,
 rewrites the platform package names from `@opencode/cli-*` to `genixcode-*`, assembles the `genixcode`
-super-package (launcher stub + postinstall + optional dependencies), and publishes the lot to npm.
+super-package (launcher stub + postinstall + optional dependencies, installing a `genixcode-cli`
+command), and publishes the lot to npm.
 
 Neither `build.ts` nor `fork-publish.ts` puts anything on the release, which is easy to miss because
 upstream's `publish.ts` looks like it does: it archives the same binaries, but uploads them to the R2
 bucket behind `opencode.ai/files` that feeds upstream's updater and install script — infrastructure
 the fork does not own. So the `publish` job runs `packages/cli/script/fork-release-assets.ts` after
 the build, which tars the linux targets, zips the darwin and windows ones, and attaches the lot to
-the release as `genixcode-<target>.tar.gz` / `.zip`. Those names are what the `finalise` job matches
+the release as `genixcode-cli-<target>.tar.gz` / `.zip`, each holding a single `genixcode-cli`
+executable. Those names are what the `finalise` job matches
 on, so don't rename them casually.
 
 `desktop` builds the Linux `.deb` for x64 and arm64, each on a runner of its own architecture, and

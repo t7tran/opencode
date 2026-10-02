@@ -4,7 +4,7 @@ import type { Configuration } from "electron-builder"
 // electron-builder.config.ts repeats it as literals because electron-builder
 // loads that file outside the workspace resolver. These tests are what keep the
 // two in step, and what keep upstream's identity from creeping back in.
-import { appId as brandAppId, packageName, productName, PROTOCOL_SCHEME } from "@opencode/util/fork/brand"
+import { appId as brandAppId, CLI_NAME, packageName, productName, PROTOCOL_SCHEME } from "@opencode/util/fork/brand"
 // fork_change end
 
 // fork_change start
@@ -101,7 +101,12 @@ for (const channel of channels) {
   test(`bundles the sidecar CLI in ${channel.channel} builds`, async () => {
     const config = await load(channel.channel, "cli-bundled")
 
-    expect(JSON.stringify(config.extraResources)).toContain("opencode-cli")
+    // The bundled executable is named after the fork's CLI, not upstream's
+    // `opencode-cli` and not the desktop's own `genixcode` launcher.
+    const resources = JSON.stringify(config.extraResources)
+    expect(resources).toContain(`"${CLI_NAME}"`)
+    expect(resources).not.toContain("opencode")
+    expect(config.files).toContain(`!resources/${CLI_NAME}*`)
   })
   // fork_change end
 }

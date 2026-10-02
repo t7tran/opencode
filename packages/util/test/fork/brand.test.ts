@@ -12,7 +12,11 @@ import { describe, expect, test } from "bun:test"
 import {
   APP_ID_BASE,
   BRAND_COLOR,
+  APP_DIRNAME,
+  BRAND_SLUG,
   CLI_NAME,
+  CLI_PACKAGE_NAME,
+  HOME_CONFIG_DIRNAME,
   PRODUCT_NAME,
   appId,
   packageName,
@@ -39,7 +43,15 @@ describe("channel identity", () => {
     expect(productName("dev")).toBe("GenixCode Dev")
   })
 
-  test("linux package names follow the CLI name", () => {
+  test("the CLI executable is genixcode-cli, everything else stays genixcode", () => {
+    expect(CLI_NAME).toBe("genixcode-cli")
+    expect(BRAND_SLUG).toBe("genixcode")
+    expect(CLI_PACKAGE_NAME).toBe("genixcode")
+    expect(APP_DIRNAME).toBe("genixcode")
+    expect(HOME_CONFIG_DIRNAME).toBe(".genixcode")
+  })
+
+  test("linux package names follow the brand slug, not the CLI name", () => {
     expect(packageName("prod")).toBe("genixcode")
     expect(packageName("beta")).toBe("genixcode-beta")
   })
@@ -52,7 +64,7 @@ describe("channel identity", () => {
   })
 
   test("no upstream identity survives in the constants", () => {
-    for (const value of [APP_ID_BASE, PRODUCT_NAME, CLI_NAME]) {
+    for (const value of [APP_ID_BASE, PRODUCT_NAME, CLI_NAME, BRAND_SLUG]) {
       expect(value.toLowerCase()).not.toContain("opencode")
     }
     expect(BRAND_COLOR).toBe("#0186CD")
@@ -62,7 +74,7 @@ describe("channel identity", () => {
 describe("rebrand", () => {
   test("rewrites each casing we ship", () => {
     expect(rebrand("Welcome to OpenCode")).toBe("Welcome to GenixCode")
-    expect(rebrand("run the 'opencode' command")).toBe("run the 'genixcode' command")
+    expect(rebrand("run the 'opencode' command")).toBe("run the 'genixcode-cli' command")
     expect(rebrand("Opencode window")).toBe("Genixcode window")
     expect(rebrand("OPENCODE")).toBe("GENIXCODE")
   })

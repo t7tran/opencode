@@ -6,17 +6,17 @@ RUN apk add --no-cache libgcc libstdc++ ripgrep
 
 FROM base AS build-amd64
 # fork_change start - renamed binary
-COPY dist/cli-linux-x64-baseline-musl/bin/genixcode /usr/local/bin/genixcode
+COPY dist/cli-linux-x64-baseline-musl/bin/genixcode-cli /usr/local/bin/genixcode-cli
 # fork_change end
 
 FROM base AS build-arm64
 # fork_change start - renamed binary
-COPY dist/cli-linux-arm64-musl/bin/genixcode /usr/local/bin/genixcode
+COPY dist/cli-linux-arm64-musl/bin/genixcode-cli /usr/local/bin/genixcode-cli
 # fork_change end
 
 ARG TARGETARCH
 FROM build-${TARGETARCH}
 # fork_change start - renamed binary
-RUN ln -s genixcode /usr/local/bin/genixcode2 && genixcode --version && genixcode2 --version
-ENTRYPOINT ["genixcode"]
+RUN ln -s genixcode-cli /usr/local/bin/genixcode-cli2 && genixcode-cli --version && genixcode-cli2 --version
+ENTRYPOINT ["genixcode-cli"]
 # fork_change end

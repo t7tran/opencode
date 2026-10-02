@@ -5,6 +5,7 @@ import type { Endpoint } from "@opencode/client/service"
 // fork_change start - the registration this fork writes is neither in `opencode/`
 // nor necessarily called `service.json`, so the probe has to be told where to look.
 import { channelFromVersion, registrationFile } from "@opencode/util/fork/service-registration"
+import { CLI_NAME } from "@opencode/util/fork/brand"
 // fork_change end
 
 // The main thread idles between showing the first window and evaluating the main bundle, waiting
@@ -32,7 +33,7 @@ export function sidecarProbe() {
 
 function bundledVersion() {
   try {
-    return readFileSync(path.join(process.resourcesPath, "opencode-cli.version"), "utf8").trim()
+    return readFileSync(path.join(process.resourcesPath, `${CLI_NAME}.version`), "utf8").trim() // fork_change - renamed bundled CLI
   } catch {
     return ""
   }
@@ -43,7 +44,7 @@ function bundledVersion() {
 // carry it for a plain-semver release. Empty means fall back to the derivation.
 function bundledChannel() {
   try {
-    return readFileSync(path.join(process.resourcesPath, "opencode-cli.channel"), "utf8").trim()
+    return readFileSync(path.join(process.resourcesPath, `${CLI_NAME}.channel`), "utf8").trim()
   } catch {
     return ""
   }

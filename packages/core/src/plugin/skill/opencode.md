@@ -115,13 +115,13 @@ for themselves without limiting it to the current project; omit it when they
 explicitly want project-local configuration.
 
 ```sh
-genixcode mcp add <name> --global --url <remote-url>
-genixcode mcp list
+genixcode-cli mcp add <name> --global --url <remote-url>
+genixcode-cli mcp list
 ```
 
 Remote servers use OAuth by default. If `mcp list` reports that a server needs
 authentication, tell the user to run `/mcps`, select the server, and sign in.
-Do not run `genixcode mcp auth` through the shell tool: it starts an interactive
+Do not run `genixcode-cli mcp auth` through the shell tool: it starts an interactive
 flow whose authorization link can be hidden in background process output.
 Use the user-facing MCP interface instead.
 
@@ -172,13 +172,13 @@ OpenCode normally discovers or starts the shared background service
 automatically. If the service is stuck or unhealthy, restart it:
 
 ```sh
-genixcode service restart
+genixcode-cli service restart
 ```
 
 Check its status after restarting:
 
 ```sh
-genixcode service status
+genixcode-cli service status
 ```
 
 ## [API](https://opencode.ai/v2/docs/api)
@@ -194,15 +194,15 @@ HTTP method and path or an OpenAPI operation ID.
 Call an endpoint with an HTTP method and path:
 
 ```sh
-genixcode api get /api/info
+genixcode-cli api get /api/info
 ```
 
 Pass a request body with `--data` or `-d`, and additional headers with
 `--header` or `-H`:
 
 ```sh
-genixcode api post /api/example --data '{"key":"value"}'
-genixcode api get /api/example --header 'X-Example:value'
+genixcode-cli api post /api/example --data '{"key":"value"}'
+genixcode-cli api get /api/example --header 'X-Example:value'
 ```
 
 Request bodies default to `Content-Type: application/json`. When OpenCode is
@@ -244,9 +244,9 @@ Effect applications. For Cloudflare Durable Objects, use the
 OpenCode runs a client and a background server. Start by determining whether a
 problem belongs to the client, the shared server, or one project.
 
-- Check the service with `genixcode service status` and verify the API with
-  `genixcode api get /api/info`.
-- Compare with `genixcode --standalone`, which runs the TUI with a private
+- Check the service with `genixcode-cli service status` and verify the API with
+  `genixcode-cli api get /api/info`.
+- Compare with `genixcode-cli --standalone`, which runs the TUI with a private
   server, to isolate shared-service issues.
 - Inspect `~/.local/share/genixcode/log/opencode.log`. Filter `role=cli` for
   client startup and `role=server` for sessions, providers, plugins,

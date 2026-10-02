@@ -2,6 +2,7 @@ import { $ } from "bun"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { prepareDevElectron } from "./dev-electron"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed bundled CLI
 // fork_change start - `downloadCliToResources()` is deliberately gone from
 // ./utils (this fork never pulls a published CLI into the bundle; see the note
 // at the top of that file). The import was top-level, so `bun dev:desktop` died
@@ -59,7 +60,7 @@ async function prepareServer(_source: ServerSource) { // fork_change - source is
   await $`bun run --cwd ${process.env.OPENCODE_DESKTOP_CLI_DEV} --define=OPENCODE_VERSION=${JSON.stringify(process.env.OPENCODE_VERSION)} src/index.ts --version`
   if (process.platform !== "win32") return
   process.env.OPENCODE_DESKTOP_WSL_CLI_BUILD = join(import.meta.dirname, "../../cli/script/build.ts")
-  process.env.OPENCODE_DESKTOP_WSL_CLI_OUTPUT = join(import.meta.dirname, "../resources/opencode-cli-wsl")
+  process.env.OPENCODE_DESKTOP_WSL_CLI_OUTPUT = join(import.meta.dirname, `../resources/${CLI_NAME}-wsl`) // fork_change - renamed bundled CLI
 }
 
 async function startDesktop(args: string[]) {

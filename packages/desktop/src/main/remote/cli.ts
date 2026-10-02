@@ -8,7 +8,7 @@ import { parseCliVersion } from "../service/cli-version"
 // installer and its npm packages, which carry neither the provider lock nor the
 // managed key file; a Genix desktop must not put that build on a remote host or
 // in a WSL distro. See FORK.md § What no longer reaches upstream.
-import { CLI_NAME, HOME_CONFIG_DIRNAME } from "@opencode/util/fork/brand"
+import { CLI_NAME, CLI_PACKAGE_NAME, HOME_CONFIG_DIRNAME } from "@opencode/util/fork/brand"
 // fork_change end
 
 export class Failure extends Schema.TaggedError<Failure>()("RemoteCliFailure", {
@@ -78,8 +78,9 @@ export function archiveUrl(target: string, version: string) {
   if (!/^(linux|darwin)-(x64-baseline|arm64)(-musl)?$/.test(target))
     throw new Failure({ code: "platform", detail: target })
   // fork_change start - the fork's platform packages are unscoped
-  // `genixcode-<target>`; see packages/cli/script/fork-publish.ts.
-  return `https://registry.npmjs.org/${CLI_NAME}-${target}/-/${CLI_NAME}-${target}-${requireVersion(version)}.tgz`
+  // `genixcode-<target>`, each holding a `genixcode-cli` binary; see
+  // packages/cli/script/fork-publish.ts.
+  return `https://registry.npmjs.org/${CLI_PACKAGE_NAME}-${target}/-/${CLI_PACKAGE_NAME}-${target}-${requireVersion(version)}.tgz`
   // fork_change end
 }
 
@@ -95,7 +96,7 @@ export function installScript(input: { version: string; directory?: string; sour
   // curl and bash; a locally staged binary still installs by archive below.
   if (input.source.type === "installer")
     return `set -eu
-npm install -g ${quote(`${CLI_NAME}@${version}`)}
+npm install -g ${quote(`${CLI_PACKAGE_NAME}@${version}`)}
 ${verifyScript(`"$(command -v ${CLI_NAME})"`, version)}
 `
   // fork_change end
@@ -134,13 +135,13 @@ const Beta = Schema.Struct({ version: Schema.String.check(Schema.isPattern(/^0\.
 export const latestBeta = Effect.fn("RemoteCli.latestBeta")(function* () {
   const http = yield* HttpClient.HttpClient
   // fork_change start - the fork's own npm package, not upstream's
-  const metadata = yield* http.get(`https://registry.npmjs.org/${CLI_NAME}/beta`).pipe(
+  const metadata = yield* http.get(`https://registry.npmjs.org/${CLI_PACKAGE_NAME}/beta`).pipe(
     // fork_change end
     Effect.flatMap(HttpClientResponse.filterStatusOk),
     Effect.flatMap(HttpClientResponse.schemaBodyJson(Beta)),
     Effect.timeout("30 seconds"),
     Effect.mapError(
-      () => new Failure({ code: "install", detail: `https://registry.npmjs.org/${CLI_NAME}/beta` }), // fork_change
+      () => new Failure({ code: "install", detail: `https://registry.npmjs.org/${CLI_PACKAGE_NAME}/beta` }), // fork_change
     ),
   )
   return metadata.version

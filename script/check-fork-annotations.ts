@@ -138,7 +138,7 @@ type FileDiff = { added: Set<number>; revert: boolean }
 // the pathspec to the new path hides the old one, so git falls back to
 // add-plus-delete and a renamed upstream file reads as every-line-added. `-M`
 // over the full diff pairs them up, so only the lines we actually changed are
-// reported — which is the whole point for files like bin/genixcode.
+// reported — which is the whole point for files like bin/genixcode-cli.cjs.
 function diffByFile(): Map<string, FileDiff> {
   const diff = run("git", ["diff", "--unified=0", "-M", "--diff-filter=AMRT", `${base}...HEAD`])
   const byFile = new Map<string, FileDiff>()

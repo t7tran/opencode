@@ -34,12 +34,12 @@ const envPath = process.env.OPENCODE_BIN_PATH
 const scriptDir = path.dirname(fs.realpathSync(__filename))
 const command = path.basename(__filename).replace(/\.cjs$/, "")
 // fork_change start - renamed binary. `command` is this stub's own filename
-// (genixcode / genixcode-node); `sourceCommand` is the executable inside the
-// platform package, which script/build.ts now emits as "genixcode". The package
+// (genixcode-cli / genixcode-cli-node); `sourceCommand` is the executable inside
+// the platform package, which script/build.ts now emits as "genixcode-cli". The package
 // names themselves stay upstream's and are rewritten at publish time by
 // script/fork-publish.ts. See FORK.md § CLI name.
-const nodeBuild = command === "genixcode-node"
-const sourceCommand = nodeBuild ? "genixcode2-node" : "genixcode"
+const nodeBuild = command === "genixcode-cli-node"
+const sourceCommand = nodeBuild ? "genixcode-cli2-node" : "genixcode-cli"
 // fork_change end
 const cached = path.join(scriptDir, `.${command}`)
 const platform = { darwin: "darwin", linux: "linux", win32: "windows" }[os.platform()] || os.platform()

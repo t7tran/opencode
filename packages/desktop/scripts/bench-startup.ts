@@ -35,6 +35,7 @@ import { createServer } from "node:net"
 import { tmpdir } from "node:os"
 import { basename, dirname, join, relative, resolve } from "node:path"
 import { parseArgs } from "node:util"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed bundled CLI
 
 const args = parseArgs({
   args: process.argv.slice(2),
@@ -754,14 +755,14 @@ function summarize(list: Sample[]) {
 // whose version differs from its bundled CLI, which would turn a warm run into a cold one.
 function bundledCli(exe: string) {
   const resources = process.platform === "darwin" ? join(dirname(exe), "..", "Resources") : join(dirname(exe), "resources")
-  return join(resources, process.platform === "win32" ? "opencode-cli.exe" : "opencode-cli")
+  return join(resources, process.platform === "win32" ? `${CLI_NAME}.exe` : CLI_NAME) // fork_change - renamed bundled CLI
 }
 
 async function warmService() {
   await stopService()
   const clis = builds.map((build) => bundledCli(build.exe))
   const identity = (cli: string) => {
-    const version = join(dirname(cli), "opencode-cli.version")
+    const version = join(dirname(cli), `${CLI_NAME}.version`) // fork_change - renamed bundled CLI
     return existsSync(version) ? readFileSync(version, "utf8").trim() : String(statSync(cli).size)
   }
   if (new Set(clis.map(identity)).size > 1)

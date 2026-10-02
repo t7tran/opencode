@@ -18,6 +18,7 @@ const posix = process.platform === "win32" ? it.live.skip : it.live
 // fork_change start - upstream's test drives its own `install` shell script end
 // to end through a fake curl. This fork does not use that script: the installer
 // path is `npm install -g genixcode@<version>` (see src/main/remote/cli.ts),
+// which puts a `genixcode-cli` binary on PATH,
 // because upstream's installer puts the *public* OpenCode CLI in the distro —
 // a build with neither the provider lock nor the managed key file. What is worth
 // pinning is that the generated command installs the fork's package and verifies
@@ -25,11 +26,11 @@ const posix = process.platform === "win32" ? it.live.skip : it.live
 posix(
   "installs through the fork's npm package, never upstream's install script",
   Effect.gen(function* () {
-    const command = wslCliInstallCommand({ version: "0.0.0-dev-16365", binary: "C:\\local build's\\genixcode" })
+    const command = wslCliInstallCommand({ version: "0.0.0-dev-16365", binary: "C:\\local build's\\genixcode-cli" })
 
     expect(command).toContain("npm install -g")
     expect(command).toContain("genixcode@0.0.0-dev-16365")
-    expect(command).toContain("command -v genixcode")
+    expect(command).toContain("command -v genixcode-cli")
     expect(command).not.toContain("opencode.ai")
     expect(command).not.toContain("githubusercontent.com")
     expect(command).not.toContain("anomalyco")

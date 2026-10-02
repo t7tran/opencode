@@ -5,7 +5,7 @@
 //
 // The Genix gateway has no models.dev catalog entry, so a provider with no
 // models in config ends up with zero models and is dropped from the provider
-// map (see provider.ts) — i.e. it never appears connected. `genixcode providers login`
+// map (see provider.ts) — i.e. it never appears connected. `genixcode-cli providers login`
 // fetches the list once and persists it to config; the managed key file path
 // has no login step, so it discovers the list at provider state init instead.
 //
@@ -15,13 +15,13 @@
 //
 // See FORK.md.
 
-import { CLI_NAME } from "./brand.js"
+import { BRAND_SLUG } from "./brand.js"
 
 // Upstream v2 centralised the outbound user agent into `App.useragent(app)`,
 // which needs the App service and so cannot be read from a plain module. The
 // callers that have it (the lock plugin) pass it in; the default keeps this
 // module usable — and directly testable — without an Effect context.
-const DEFAULT_USER_AGENT = `${CLI_NAME}/unknown`
+const DEFAULT_USER_AGENT = `${BRAND_SLUG}/unknown`
 
 const cache = new Map<string, Record<string, { name: string }>>()
 

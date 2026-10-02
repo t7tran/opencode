@@ -1,6 +1,6 @@
 // fork_change - new file
 //
-// `genixcode key seal` — turn a plain API key into the single-line blob the
+// `genixcode-cli key seal` — turn a plain API key into the single-line blob the
 // managed key file accepts. See core/src/fork/key-seal.ts and FORK.md.
 //
 // There is deliberately no `key unseal`: printing the plain key back out is
@@ -35,7 +35,7 @@ export default Runtime.handler(
       process.stderr.write("that key is already sealed\n")
       return yield* Effect.fail(new Error("already sealed"))
     }
-    // Bare blob on stdout, nothing else, so `$(genixcode key seal ...)` and
+    // Bare blob on stdout, nothing else, so `$(genixcode-cli key seal ...)` and
     // pipes into a provisioning tool work without post-processing.
     process.stdout.write(seal(plain) + "\n")
   }),

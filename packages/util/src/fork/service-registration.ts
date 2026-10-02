@@ -67,7 +67,7 @@ export function registrationFilename(channel: string): string {
  * spawned found its own registration and exited 0, so nothing logged an error.
  *
  * Callers that can know the real channel must use it. The desktop build records
- * it beside the bundled binary as `opencode-cli.channel` (see
+ * it beside the bundled binary as `genixcode-cli.channel` (see
  * `packages/cli/script/build.ts` and `packages/desktop/scripts/utils.ts`), and
  * `DesktopCli.bundledChannel` reads that first. This function is the fallback for
  * bundles predating that file, where a preview version still answers correctly.

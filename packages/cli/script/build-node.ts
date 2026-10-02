@@ -112,7 +112,7 @@ for (const target of targets) {
   if (bundleOnly) continue
 
   const name = `cli-node-${targetName(target)}`
-  const binary = target.platform === "win32" ? `${CLI_NAME}2-node.exe` : `${CLI_NAME}2-node` // fork_change - what bin/genixcode.cjs launches
+  const binary = target.platform === "win32" ? `${CLI_NAME}2-node.exe` : `${CLI_NAME}2-node` // fork_change - what bin/genixcode-cli.cjs launches
   const output = path.join(outdir, name, "bin", binary)
   if (!builder) throw new Error("Node SEA builder is unavailable")
   await mkdir(path.dirname(output), { recursive: true })
