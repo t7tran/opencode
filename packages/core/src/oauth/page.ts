@@ -11,6 +11,8 @@
 // the wordmark is the same geometry as `packages/ui/src/components/logo.tsx`.
 // Keep this file in sync with those sources when the brand changes.
 
+import { BRAND_COLOR, PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed product
+
 export interface CallbackPageOptions {
   /** Friendly integration name shown as a subtitle, e.g. "xAI", "Snowflake", "MCP". */
   provider?: string
@@ -25,7 +27,9 @@ export function success(options?: CallbackPageOptions) {
     body: renderCard({
       status: "success",
       headline: "Authorization successful",
-      message: provider ? `OpenCode is now connected to ${escapeHtml(provider)}.` : "OpenCode is now authorized.",
+      // fork_change start - renamed product
+      message: provider ? `${PRODUCT_NAME} is now connected to ${escapeHtml(provider)}.` : `${PRODUCT_NAME} is now authorized.`,
+      // fork_change end
       footnote: "You can close this window.",
     }),
     script: options?.autoClose === false ? undefined : AUTO_CLOSE_SCRIPT,
@@ -39,11 +43,13 @@ export function error(detail: string, options?: CallbackPageOptions) {
     body: renderCard({
       status: "error",
       headline: "Authorization failed",
+      // fork_change start - renamed product
       message: provider
-        ? `OpenCode couldn't finish connecting to ${escapeHtml(provider)}.`
-        : "OpenCode couldn't complete authorization.",
+        ? `${PRODUCT_NAME} couldn't finish connecting to ${escapeHtml(provider)}.`
+        : `${PRODUCT_NAME} couldn't complete authorization.`,
       detail,
-      footnote: "Close this window and try again from OpenCode.",
+      footnote: `Close this window and try again from ${PRODUCT_NAME}.`,
+      // fork_change end
     }),
   })
 }
@@ -100,7 +106,7 @@ function renderDocument(input: { title: string; body: string; script?: string })
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
-    <title>${escapeHtml(input.title)} · OpenCode</title>
+    <title>${escapeHtml(input.title)} · ${PRODUCT_NAME}</title><!-- fork_change - renamed product -->
     <style>${STYLES}</style>
   </head>
   <body>
@@ -111,13 +117,14 @@ function renderDocument(input: { title: string; body: string; script?: string })
 
 const AUTO_CLOSE_SCRIPT = `setTimeout(function(){try{window.close()}catch(e){}},2500)`
 
+// fork_change - renamed product: the copy below says PRODUCT_NAME where upstream says "OpenCode"
 function bootstrapScript(options: BootstrapOptions) {
   return `var PROVIDER=${scriptString(options.provider ?? "")};
 var TOKEN_URL=new URL(${scriptString(options.tokenPath)},window.location.origin).href;
 (function(){
   var card=document.getElementById("oc-card"),headline=document.getElementById("oc-headline"),message=document.getElementById("oc-message"),detail=document.getElementById("oc-detail"),footnote=document.getElementById("oc-footnote");
-  function fail(text){card.dataset.status="error";headline.textContent="Authorization failed";message.textContent=PROVIDER?("OpenCode couldn't finish connecting to "+PROVIDER+"."):"OpenCode couldn't complete authorization.";if(text){detail.textContent=text;detail.hidden=false}footnote.textContent="Close this window and try again from OpenCode."}
-  function ok(){card.dataset.status="success";headline.textContent="Authorization successful";message.textContent=PROVIDER?("OpenCode is now connected to "+PROVIDER+"."):"OpenCode is now authorized.";detail.hidden=true;footnote.textContent="You can close this window.";setTimeout(function(){try{window.close()}catch(e){}},2500)}
+  function fail(text){card.dataset.status="error";headline.textContent="Authorization failed";message.textContent=PROVIDER?("${PRODUCT_NAME} couldn't finish connecting to "+PROVIDER+"."):"${PRODUCT_NAME} couldn't complete authorization.";if(text){detail.textContent=text;detail.hidden=false}footnote.textContent="Close this window and try again from ${PRODUCT_NAME}."}
+  function ok(){card.dataset.status="success";headline.textContent="Authorization successful";message.textContent=PROVIDER?("${PRODUCT_NAME} is now connected to "+PROVIDER+"."):"${PRODUCT_NAME} is now authorized.";detail.hidden=true;footnote.textContent="You can close this window.";setTimeout(function(){try{window.close()}catch(e){}},2500)}
   try{
     var hash=new URLSearchParams((window.location.hash||"").slice(1));
     var search=new URLSearchParams(window.location.search||"");
@@ -183,6 +190,7 @@ const DARK_VARS = `
 
 const STYLES = `
   :root { color-scheme: light dark;${LIGHT_VARS}
+    --oc-brand: ${BRAND_COLOR}; /* fork_change - Genix blue for the "code" half of the wordmark */
     --oc-font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --oc-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   }
@@ -249,25 +257,27 @@ const STYLES = `
   @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
 `
 
-// OpenCode wordmark — same path geometry as packages/ui/src/components/logo.tsx (Logo).
-const WORDMARK = `<svg class="wordmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 234 42" fill="none" aria-label="OpenCode" role="img">
-        <path d="M18 30H6V18H18V30Z" fill="var(--oc-icon-weak)" />
-        <path d="M18 12H6V30H18V12ZM24 36H0V6H24V36Z" fill="var(--oc-icon-base)" />
-        <path d="M48 30H36V18H48V30Z" fill="var(--oc-icon-weak)" />
-        <path d="M36 30H48V12H36V30ZM54 36H36V42H30V6H54V36Z" fill="var(--oc-icon-base)" />
-        <path d="M84 24V30H66V24H84Z" fill="var(--oc-icon-weak)" />
-        <path d="M84 24H66V30H84V36H60V6H84V24ZM66 18H78V12H66V18Z" fill="var(--oc-icon-base)" />
-        <path d="M108 36H96V18H108V36Z" fill="var(--oc-icon-weak)" />
-        <path d="M108 12H96V36H90V6H108V12ZM114 36H108V12H114V36Z" fill="var(--oc-icon-base)" />
-        <path d="M144 30H126V18H144V30Z" fill="var(--oc-icon-weak)" />
-        <path d="M144 12H126V30H144V36H120V6H144V12Z" fill="var(--oc-icon-strong)" />
-        <path d="M168 30H156V18H168V30Z" fill="var(--oc-icon-weak)" />
-        <path d="M168 12H156V30H168V12ZM174 36H150V6H174V36Z" fill="var(--oc-icon-strong)" />
-        <path d="M198 30H186V18H198V30Z" fill="var(--oc-icon-weak)" />
-        <path d="M198 12H186V30H198V12ZM204 36H180V6H198V0H204V36Z" fill="var(--oc-icon-strong)" />
-        <path d="M234 24V30H216V24H234Z" fill="var(--oc-icon-weak)" />
-        <path d="M216 12V18H228V12H216ZM234 24H216V30H234V36H210V6H234V24Z" fill="var(--oc-icon-strong)" />
+// fork_change start - "genixcode" wordmark, same path geometry as packages/ui/src/components/logo.tsx
+// (Logo): "genix" replaces "open" (so it's 246 wide, not 234) and "code" is drawn in Genix blue.
+const WORDMARK = `<svg class="wordmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 246 42" fill="none" aria-label="${PRODUCT_NAME}" role="img">
+        <path d="M6 18H18V24H6V18Z" fill="var(--oc-icon-weak)" />
+        <path d="M0 6H24V12H0V6ZM0 12H6V24H0V12ZM18 12H24V24H18V12ZM0 24H24V30H0V24ZM18 30H24V36H18V30ZM0 36H24V42H0V36Z" fill="var(--oc-icon-base)" />
+        <path d="M54 24V30H36V24H54Z" fill="var(--oc-icon-weak)" />
+        <path d="M54 24H36V30H54V36H30V6H54V24ZM36 18H48V12H36V18Z" fill="var(--oc-icon-base)" />
+        <path d="M78 36H66V18H78V36Z" fill="var(--oc-icon-weak)" />
+        <path d="M78 12H66V36H60V6H78V12ZM84 36H78V12H84V36Z" fill="var(--oc-icon-base)" />
+        <path d="M90 6H96V12H90V6ZM90 18H96V36H90V18Z" fill="var(--oc-icon-base)" />
+        <path d="M102 6H108V18H102V6ZM120 6H126V18H120V6ZM108 18H120V24H108V18ZM102 24H108V36H102V24ZM120 24H126V36H120V24Z" fill="var(--oc-icon-base)" />
+        <path d="M156 30H138V18H156V30Z" fill="var(--oc-icon-weak)" />
+        <path d="M156 12H138V30H156V36H132V6H156V12Z" fill="var(--oc-brand)" />
+        <path d="M180 30H168V18H180V30Z" fill="var(--oc-icon-weak)" />
+        <path d="M180 12H168V30H180V12ZM186 36H162V6H186V36Z" fill="var(--oc-brand)" />
+        <path d="M210 30H198V18H210V30Z" fill="var(--oc-icon-weak)" />
+        <path d="M210 12H198V30H210V12ZM216 36H192V6H210V0H216V36Z" fill="var(--oc-brand)" />
+        <path d="M246 24V30H228V24H246Z" fill="var(--oc-icon-weak)" />
+        <path d="M246 24H228V30H246V36H222V6H246V24ZM228 18H240V12H228V18Z" fill="var(--oc-brand)" />
       </svg>`
+// fork_change end
 
 const ICON_CHECK = `<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.5 12.5 2.4 2.4 4.6-5.4" /></svg>`
 

@@ -510,6 +510,7 @@ The fork replaces upstream's visual identity with Genix branding, using the bran
 | Product name in prompts | `routes/session/permission.tsx`, `mini/footer.permission.tsx`, `mini/footer.prompt.tsx`, `component/terminal-pane.tsx` | "Tell OpenCode what to do differently", "close OpenCode", "restart OpenCode" → `PRODUCT_NAME` |
 | Crash screen | `packages/tui/src/component/error-component.tsx` | headline and footer use `PRODUCT_NAME`; see [What no longer reaches upstream](#what-no-longer-reaches-upstream) for the report it copies |
 | Sidebar "Getting started" | `packages/tui/src/feature-plugins/sidebar/footer.tsx` | hidden while a key is managed; otherwise says to connect Genix instead of advertising free models and 75+ providers |
+| OAuth callback page (MCP, ChatGPT, GitLab, Poe, Snowflake, DigitalOcean) | `packages/core/src/oauth/page.ts` | inline `opencode` wordmark → `genixcode`, same geometry as `packages/ui/src/components/logo.tsx` with the `code` half in `BRAND_COLOR`; "OpenCode" in the copy, tab title and bootstrap script → `PRODUCT_NAME` |
 
 The TUI's update dialog still says "Update OpenCode". It's left alone because nothing can open it:
 the updater is compiled off (see [The CLI updater](#the-cli-updater)).
