@@ -1000,6 +1000,34 @@ updater's compile-time `define` in `packages/cli/src/fork/policy.ts`. That one g
 build replacing itself with an upstream one, so it must not be reachable at runtime at all. This one
 guards a deployment decision the operator is entitled to make.
 
+### When the proxy's session runs out
+
+Here's the catch with handing auth to the thing in front: its session has a lifetime, and the web UI
+doesn't know about it. Cloudflare Access issues a cookie that's good for a fixed time from login —
+activity doesn't extend it — and once it lapses, every request gets a 302 to the team's
+`cloudflareaccess.com` login. A page navigation would follow that and come straight back signed in
+(Google usually doesn't even ask). A `fetch` can't: it follows the redirect cross-origin, the login
+host sends no CORS headers, and the browser reports a bare `TypeError`. The SPA never navigates on its
+own, so the tab just fails every call until someone hits reload. On the Genix workspaces that's
+exactly 24 hours after login.
+
+`packages/app/src/fork/proxy-session.ts` wraps the transport's `fetch` (one marked line in
+`packages/app/src/runtime/server/client.tsx`, plus its import). When a same-origin request fails at
+the network level, it asks `GET /api/info` with `redirect: "manual"`. An `opaqueredirect` means
+something in front wants the browser back at its login page, so it reloads — once the tab is visible,
+and at most once a minute, so a proxy that keeps redirecting after login can't spin the page. Any
+other answer, including a second network error, is left to upstream's reconnect logic.
+
+| Choice | Why |
+|---|---|
+| Probe only after a failure | the happy path is upstream's request, byte for byte — no redirect mode change on API calls |
+| `/api/info`, not `/` | the PWA's service worker precaches `index.html` and would answer `/` itself |
+| Same-origin only | the desktop renderer talks to a sidecar on another origin, so it never matches and the wrapper is inert there |
+| Aborts and timeouts ignored | the request queue's own header timeout is a `DOMException`, not a proxy problem |
+
+`packages/app/src/fork/proxy-session.test.ts` covers the reload, the outage and normal-answer cases,
+probe sharing across a burst, the hidden tab and the cooldown.
+
 ## Rebase workflow
 
 1. Rebase against `upstream/dev`.

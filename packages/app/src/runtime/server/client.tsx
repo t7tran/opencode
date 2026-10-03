@@ -9,6 +9,7 @@ import { createRefCountMap } from "@/runtime/server/refcount"
 import { createRequestQueue } from "@/runtime/server/request-queue"
 import { ServerScope } from "@/runtime/server/scope"
 import { useServer } from "./current"
+import { withProxySessionRecovery } from "@/fork/proxy-session" // fork_change
 
 type OpenCodeEventMap = { [Type in OpenCodeEvent["type"]]: Extract<OpenCodeEvent, { type: Type }> }
 
@@ -125,7 +126,7 @@ export function createServerTransport(input: { http: ServerConnection.HttpBase; 
   readonly api: ServerApi
   readonly pty: ReturnType<typeof createPtyClient>
 } {
-  const queue = createRequestQueue({ fetch: input.fetch ?? globalThis.fetch })
+  const queue = createRequestQueue({ fetch: withProxySessionRecovery(input.fetch ?? globalThis.fetch) }) // fork_change
   const build = (http: ServerConnection.HttpBase) => {
     const api = createApiForServer({ server: http, fetch: queue.fetch })
     return { http, api, pty: createPtyClient(api, { url: http.url }) }
