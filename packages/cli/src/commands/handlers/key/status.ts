@@ -8,7 +8,7 @@ import fs from "node:fs"
 import { EOL } from "node:os"
 import { Effect } from "effect"
 import { keyFilePath } from "@opencode/util/fork/key-file"
-import { isSealed, keyFingerprint, unseal } from "@opencode/util/fork/key-seal"
+import { isSealed, keyFingerprint, sealingAvailable, unseal } from "@opencode/util/fork/key-seal"
 import { Commands } from "../../commands"
 import { Runtime } from "../../../framework/runtime"
 
@@ -36,7 +36,10 @@ export default Runtime.handler(
     const plain = unseal(raw)
     // Almost always a blob sealed by a build with a different pepper, so the
     // provider falls back to interactive login rather than failing at the gateway.
-    if (plain === undefined) return line("state", "sealed, but this build cannot unseal it — the key is not in use")
+    if (plain === undefined) {
+      const why = sealingAvailable() ? "sealed by a different build" : "this run has no key-sealing pepper"
+      return line("state", `sealed, but this build cannot unseal it (${why}) — the key is not in use`)
+    }
     line("state", "sealed")
     line("fingerprint", keyFingerprint(plain))
   }),

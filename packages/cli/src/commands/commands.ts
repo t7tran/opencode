@@ -537,7 +537,7 @@ const Root = Spec.make(typeof OPENCODE_CLI_NAME === "string" ? OPENCODE_CLI_NAME
         ),
       },
     }),
-    // fork_change start - `genixcode-cli key seal` / `key status`; see core/src/fork/key-seal.ts
+    // fork_change start - `genixcode-cli key seal` / `key status`; see util/src/fork/key-seal.ts
     Spec.make("key", {
       description: "managed API key file tools",
       commands: [

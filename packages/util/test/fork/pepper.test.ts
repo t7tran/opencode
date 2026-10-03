@@ -17,7 +17,9 @@ import {
   MissingPepperError,
   PEPPER_ENV,
   PEPPER_FILE_ENV,
+  SYSTEM_PEPPER_FILE,
   pepperFilePath,
+  pepperFilePaths,
   readPepperFile,
   requirePepper,
   resetPepperCache,
@@ -64,6 +66,17 @@ describe("fork.pepper path", () => {
     delete process.env[PEPPER_FILE_ENV]
     process.env["XDG_CONFIG_HOME"] = dir
     expect(pepperFilePath()).toBe(path.join(dir, "genix", "key-pepper"))
+  })
+
+  test("the override is the only candidate, so CI never picks up a host's file", () => {
+    expect(pepperFilePaths()).toEqual([file])
+  })
+
+  test("without the override, the per-user file comes before the system-wide one", () => {
+    delete process.env[PEPPER_FILE_ENV]
+    process.env["XDG_CONFIG_HOME"] = dir
+    expect(pepperFilePaths()).toEqual([path.join(dir, "genix", "key-pepper"), SYSTEM_PEPPER_FILE])
+    expect(SYSTEM_PEPPER_FILE).toBe(path.join("/etc", "genix", "key-pepper"))
   })
 
   test("falls back to ~/.config when XDG_CONFIG_HOME is unset", () => {

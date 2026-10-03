@@ -11,10 +11,18 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import { SEALED_PREFIX, isSealed, keyFingerprint, seal, unseal, unwrapKey } from "../../src/fork/key-seal.js"
+import {
+  SEALED_PREFIX,
+  isSealed,
+  keyFingerprint,
+  seal,
+  sealingAvailable,
+  unseal,
+  unwrapKey,
+} from "../../src/fork/key-seal.js"
 import { managedKey, managedKeyActive } from "../../src/fork/key-file.js"
 import { lockedManagedSettings, lockedProviderManaged } from "../../src/fork/lock.js"
-import { pepperFilePath, readPepperFile } from "../../src/fork/pepper.js"
+import { PEPPER_FILE_ENV, pepperFilePaths, readPepperFile, resetPepperCache } from "../../src/fork/pepper.js"
 
 const KEY = "sk-genix-abc123-XYZ_secret"
 
@@ -132,6 +140,31 @@ describe("fork.key-seal unwrapKey", () => {
   })
 })
 
+describe("fork.key-seal sealingAvailable", () => {
+  // What `key seal` and `key status` check before reaching for the pepper, so
+  // an unbuilt run without one gets a plain message rather than a stack trace.
+  const pepperFile = process.env[PEPPER_FILE_ENV]
+
+  afterEach(() => {
+    if (pepperFile === undefined) delete process.env[PEPPER_FILE_ENV]
+    else process.env[PEPPER_FILE_ENV] = pepperFile
+    resetPepperCache()
+  })
+
+  test("is true under the override", () => {
+    expect(sealingAvailable()).toBe(true)
+  })
+
+  test("is false with no override and no pepper file, and unseal reads as absent", () => {
+    const blob = seal(KEY)
+    delete process.env.GENIXCODE_FORK_KEY_PEPPER
+    process.env[PEPPER_FILE_ENV] = path.join(dir, "no-such-pepper")
+    resetPepperCache()
+    expect(sealingAvailable()).toBe(false)
+    expect(unseal(blob)).toBeUndefined()
+  })
+})
+
 describe("fork.key-seal fingerprint", () => {
   test("is stable, short, and not the key", () => {
     const print = keyFingerprint(KEY)
@@ -155,7 +188,7 @@ const GOLDEN = "v1.zfVk706lAlnSiOQlxkOHAsZ0zXTaJCx49PnWjjAsDS1Fip6Xj8vqWJ6wwqiMh
 // but never silently: a build is what must fail when the pepper is missing.
 const provisioned = readPepperFile() !== undefined
 if (!provisioned) {
-  console.warn(`fork.key-seal: no pepper at ${pepperFilePath()} — skipping the golden-vector tests`)
+  console.warn(`fork.key-seal: no pepper at ${pepperFilePaths().join(" or ")} — skipping the golden-vector tests`)
 }
 const describeGolden = provisioned ? describe : describe.skip
 

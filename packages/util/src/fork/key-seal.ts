@@ -39,7 +39,7 @@
 // See FORK.md.
 
 import crypto from "node:crypto"
-import { MissingPepperError, pepperFilePath, readPepperFile } from "./pepper.js"
+import { MissingPepperError, pepperFilePaths, readPepperFile } from "./pepper.js"
 
 /** Marker that distinguishes a sealed blob from a plain key. */
 export const SEALED_PREFIX = "v1."
@@ -75,14 +75,27 @@ const TAG_BYTES = 16
  * nothing to an attacker: sealing with a pepper of your choosing produces a blob
  * only your own build can read.
  */
-function pepper(): Buffer {
+function pepperValue(): string | undefined {
   const override = process.env.GENIXCODE_FORK_KEY_PEPPER?.trim()
-  if (override && override.length > 0) return Buffer.from(override, "utf8")
-  const value = BUILD_PEPPER ?? readPepperFile()
+  if (override && override.length > 0) return override
+  return BUILD_PEPPER ?? readPepperFile()
+}
+
+function pepper(): Buffer {
+  const value = pepperValue()
   // Only reachable from an unbuilt run with no pepper file: unseal() catches it
   // and reads as "no managed key", seal() surfaces it as the CLI error it is.
-  if (!value) throw new MissingPepperError(pepperFilePath())
+  if (!value) throw new MissingPepperError(pepperFilePaths())
   return Buffer.from(value, "utf8")
+}
+
+/**
+ * True when this build can seal and unseal at all. False only for an unbuilt run
+ * with no override and no pepper file, since a build without one fails. Lets the
+ * `key` commands say so plainly instead of surfacing MissingPepperError.
+ */
+export function sealingAvailable(): boolean {
+  return pepperValue() !== undefined
 }
 
 /** Sub-key for one purpose. HMAC-SHA256 rather than a password KDF: the pepper is already high-entropy. */

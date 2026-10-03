@@ -6,11 +6,18 @@ features themselves.
 
 This document is the authoritative reference for the fork's divergence-tracking convention.
 
-The same fork exists on top of [Kilo-Org/kilocode](https://github.com/Kilo-Org/kilocode) (itself a
-fork of opencode). The two share the marker convention, the provider identity, the managed key file
-path, and the sealing pepper — a host provisioned with a key serves either build. They no longer share
-environment variable names: this fork's overrides are `GENIXCODE_FORK_*`, where kilocode's are
-`KILO_FORK_*`, so a host that sets an override for one build has to set it for the other as well.
+The same fork used to exist on top of [Kilo-Org/kilocode](https://github.com/Kilo-Org/kilocode)
+(itself a fork of opencode), shipped as `genix-cli` and a VS Code extension. That one's deprecated
+now — no more releases, no more fixes — and this fork is the one that carries the Genix key tooling
+forward. `genixcode-cli key seal` is the sealing tool of record; anything that used to call
+`genix-cli key seal` should call it instead.
+
+The two still share the provider identity, the managed key file path, and the sealing pepper, and
+that's on purpose: hosts that haven't uninstalled `genix-cli` yet keep working off the same
+`/etc/kilo.key`, and a blob sealed by either CLI is byte-for-byte the one the other would produce. So
+switching a provisioning pipeline from one sealer to the other is a no-op diff. They don't share
+environment variable names: this fork's overrides are `GENIXCODE_FORK_*`, where kilocode's were
+`KILO_FORK_*`.
 
 ## Marker token: `fork_change`
 
@@ -1060,8 +1067,8 @@ chmod 600 ~/.config/genix/key-pepper
 
 | | |
 |---|---|
-| Default path | `~/.config/genix/key-pepper` (`$XDG_CONFIG_HOME` is honoured) |
-| Path override | `GENIXCODE_FORK_KEY_PEPPER_FILE` — used by CI to point at a runner temp path |
+| Default paths | `~/.config/genix/key-pepper` (`$XDG_CONFIG_HOME` is honoured), then `/etc/genix/key-pepper` — the same pair kilocode's build looked in |
+| Path override | `GENIXCODE_FORK_KEY_PEPPER_FILE` — used by CI to point at a runner temp path; when set, it's the only file read |
 | Value override | `GENIXCODE_FORK_KEY_PEPPER` — the pepper itself, no file; also the tests' override |
 | Contents | the pepper and nothing else, one line; surrounding whitespace is trimmed |
 | Resolution order | `packages/util/src/fork/pepper.ts` |
@@ -1070,9 +1077,16 @@ The workflows materialise it from the `GENIX_KEY_PEPPER` repository secret befor
 value is the one this fork has always shipped: it must not change, or every provisioned host needs
 re-sealing.
 
-Running from source — `bun dev`, `bun test` — there is no build and so no `define`, and the same file
-is read at runtime instead. A dev machine without the pepper file still runs: sealed key files simply
-read as *no managed key*, and the normal interactive login flow applies.
+The system-wide path is for a machine an administrator sets up to build or seal — a shared build
+host, or the box that runs the Terraform plan that seals staff keys — so nobody's home directory has to
+hold the pepper.
+
+Running from source — `bun dev`, `bun test` — there is no build and so no `define`, and the same files
+are read at runtime instead. A dev machine without a pepper file still runs: sealed key files simply
+read as *no managed key*, and the normal interactive login flow applies. `key seal` refuses with a
+one-line message and a non-zero exit, and `key status` says the run has no pepper rather than blaming
+the blob. Neither prints a stack trace, because Terraform's external data source shows stderr to
+whoever ran the plan.
 
 `nix/opencode.nix` builds inside a sandbox with no access to `~/.config`, so a nix build needs
 `GENIXCODE_FORK_KEY_PEPPER` (or a `GENIXCODE_FORK_KEY_PEPPER_FILE` path) threaded into the derivation. The
