@@ -186,8 +186,27 @@ Three things are deliberately **not** renamed:
   other tools read, not a brand name.
 - **Config filenames stay `opencode.json` / `opencode.jsonc` / `tui.json`.** Renaming them would
   invalidate every `$schema` reference and every existing project config.
-- **Environment variables stay `OPENCODE_*`.** They are touched by too many call sites to be worth
-  the rebase cost, and `OPENCODE_CONFIG_DIR` still overrides the config directory.
+- **Environment variables stay `OPENCODE_*`** — with one exception, below. They're touched by too
+  many call sites to be worth the rebase cost, and `OPENCODE_CONFIG_DIR` still overrides the config
+  directory.
+
+The exception is the pair handed to a project's worktree startup script. Core exports them as
+`GENIXCODE_WORKTREE_BASE` (the worktree it branched from) and `GENIXCODE_WORKTREE_PATH` (the one it
+just made). They're the only ones a user types into the app's own UI, and project settings names
+them in the hint under the script box. That hint goes through `rebrandDict()` like the rest of the
+copy, so it was already showing `$GENIXCODE_WORKTREE_*` while core still exported
+`OPENCODE_WORKTREE_*`. Anyone who copied the name off the screen got an empty variable and no error.
+So the export moved to match the screen, not the other way round.
+
+| What | Where |
+|---|---|
+| The export (two `fork_change` lines) | `packages/core/src/worktree.ts` |
+| Its test's startup script | `packages/core/test/worktree.test.ts` |
+| Hint copy — left as upstream's `$OPENCODE_WORKTREE_*` in every locale; the seam renames it | `packages/app/src/runtime/i18n/*.ts` |
+| Pins the export and the rebranded hint to the same names | `packages/app/src/fork/worktree-env.test.ts` |
+
+There's no fallback: a startup script still reading `$OPENCODE_WORKTREE_*` now gets empty values,
+so it has to be renamed by hand.
 
 The switch is a hard one — the old `opencode`-named directories are not read as a fallback and are
 not migrated. Anyone with existing config moves it by hand.
