@@ -9,6 +9,7 @@ export const ServerInfo = Schema.Struct({
   urls: Schema.Array(Schema.String),
   paths: Schema.Struct({
     tmp: Schema.String,
+    home: Schema.optional(Schema.String), // fork_change - expands `~` in /open links; see FORK.md § Opening a folder from a link
   }),
 }).annotate({ identifier: "ServerInfo" })
 export type ServerInfo = typeof ServerInfo.Type

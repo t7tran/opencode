@@ -10,6 +10,7 @@ import { tmpdir } from "../../core/test/fixture/tmpdir"
 import { it } from "../../core/test/lib/effect"
 import { ServerFetch } from "../src/fetch"
 import { APP_DIRNAME } from "@opencode/util/fork/brand" // fork_change
+import { Global } from "@opencode/util/global" // fork_change
 
 const options = {
   app: { version: "test-version" },
@@ -109,6 +110,7 @@ it.live("serves the HttpApi and enforces Basic auth like the Node server", () =>
     const body = yield* Effect.promise(() => response.json()).pipe(Effect.flatMap(Schema.decodeUnknownEffect(ServerInfo)))
     expect(body.version).toBe("test-version")
     expect(body.paths.tmp).toEndWith(APP_DIRNAME) // fork_change - per-user dirs are rooted on the fork name
+    expect(body.paths.home).toBe(Global.Path.home) // fork_change - /open links expand `~` against it
   }),
 )
 

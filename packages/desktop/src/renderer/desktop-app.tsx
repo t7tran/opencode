@@ -13,6 +13,7 @@ import {
   useLanguage,
   useTabs,
   useWslServers,
+  OpenDeepLinks, // fork_change
   useSsh,
   type LayoutRoute,
   type UpdaterPlatform,
@@ -133,6 +134,9 @@ export function DesktopApp(props: { api: ElectronAPI; updater: UpdaterPlatform; 
                 onReady={() => setStartup("onboardingReady", true)}
               />
               <DesktopEffects api={props.api} />
+              {/* fork_change start - genixcode://open?dir=… */}
+              <OpenDeepLinks />
+              {/* fork_change end */}
               <Suspense fallback={null}>
                 <Show when={initializationData(sidecar)} keyed>
                   {(server) => <MigrationStatus server={server} />}

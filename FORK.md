@@ -1144,6 +1144,82 @@ guards. One fails if a rebase takes upstream's `composer-adapter.ts` wholesale. 
 anything besides the new-session composer, in `packages/app` or `packages/desktop`, starts creating
 sessions, because a new path upstream adds would skip the rule.
 
+## Opening a folder from a link
+
+A workspace landing page lists agents, and clicking one should drop you into that agent's folder.
+Not the home screen, and not "pick a project" first. Upstream has no URL for that: the only
+new-session route is `/new-session?draftId=…`, and the draft it names has to already be sitting in
+the browser's tab storage. So we added one.
+
+```
+https://<host>/open?dir=~/agents/writer          resume the newest session there, or start one
+https://<host>/open?dir=~/agents/writer&new=1    always start a new one
+genixcode://open?dir=~/agents/writer[&new=1]     the same, in the desktop app
+```
+
+Here's what happens when the link lands:
+
+```mermaid
+---
+config:
+  layout: elk
+---
+flowchart LR
+  link["/open?dir=…"] --> wait["wait for the server<br/>and tab storage"]
+  wait --> home{"starts with ~?"}
+  home -- yes --> info["GET /api/info<br/>paths.home"]
+  home -- no --> exists
+  info --> exists["GET /api/fs/list<br/>folder exists?"]
+  exists -- no --> toast["error toast, home screen"]
+  exists -- yes --> fresh{"new=1?"}
+  fresh -- yes --> draft["new draft in the folder"]
+  fresh -- no --> latest{"top-level session<br/>in exactly this folder?"}
+  latest -- yes --> session["open the newest one"]
+  latest -- no --> reuse{"draft already open<br/>for this folder?"}
+  reuse -- yes --> select["switch to it"]
+  reuse -- no --> draft
+```
+
+"Exactly this folder" is deliberate. A session in `~/agents/writer/drafts` or in a linked worktree
+belongs to that place, not to the writer agent, so it never gets resumed by a link to `writer`.
+Archived and subagent sessions are skipped too. Reusing an open draft is there for people who click
+the same link twice before typing anything; without it they'd end up with a row of empty tabs.
+
+The route swaps itself for `/` before it opens anything. That way Back doesn't land on `/open` and
+fire it again, and neither does a reload. Since `serve` hands the app's `index.html` to any path it
+doesn't recognise, a cold load of `/open?…` works too, and so does a trip through a fronting proxy's
+login (Cloudflare Access sends you back to the URL you first asked for).
+
+### The `~`
+
+The browser has no idea where the server's home folder is, and upstream doesn't tell it: the app's
+`path.home` is hard-coded to `""` in v2. So `GET /api/info` now carries `paths.home` next to
+`paths.tmp`, filled from `Global.Path.home`. That's the same home core uses when it expands `~` for
+moving a session. It's optional in the schema, because the pre-boot `/api/info` answer doesn't have
+it and an older server won't either. When it's missing, a `~` link fails with a toast that asks for
+the full path.
+
+### Where it lives
+
+| What | Where |
+|---|---|
+| Reading links, expanding `~`, picking the session | `packages/app/src/fork/open-link.ts` |
+| The route and the desktop link listener | `packages/app/src/fork/open-route.tsx` |
+| Registering `/open` | one marked line plus its import in `packages/app/src/shell/routes/routes.tsx` |
+| Telling the shell `/open` isn't an unknown route | one marked line in `currentRoute`, `packages/app/src/shell/state/layout.tsx` |
+| Desktop: `genixcode://open` → `/open` | `OpenDeepLinks`, exported from `packages/app/src/desktop.ts` and rendered in `packages/desktop/src/renderer/desktop-app.tsx` |
+| `paths.home` | `packages/protocol/src/groups/server.ts`, `packages/server/src/handlers/server.ts`, and the regenerated `packages/client` types (generated, so they can't carry markers; `bun run generate` brings them back) |
+
+The desktop main process already registered `genixcode://` and passed incoming links to the
+renderer as `window.__OPENCODE__.deepLinks` plus an `opencode:deep-link` event. Nothing read them,
+though. `OpenDeepLinks` takes the `open` links off that list and leaves everything else where it
+was. One quirk is upstream's, not ours: main queues every link for the *next* window that starts as
+well as sending it to the focused one. So a window you open later can replay the most recent link.
+
+`packages/app/src/fork/open-link.test.ts` covers parsing, `~` and Windows paths, the session pick,
+the deep-link mapping, and guards on each wiring line. `packages/server/test/fetch.test.ts` checks
+`paths.home` comes back from `/api/info`.
+
 ## Rebase workflow
 
 1. Rebase against `upstream/dev`.

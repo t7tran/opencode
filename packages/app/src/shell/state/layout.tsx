@@ -109,6 +109,7 @@ export const currentRoute = (pathname: string, search: string): LayoutRoute => {
   if (parts.length === 0) return { type: "home" }
   if (parts[0] === "settings") return { type: "settings" }
   if (parts[0] === "connect") return { type: "connect" }
+  if (parts[0] === "open") return { type: "home" } // fork_change - /open replaces itself as soon as it knows where to go
 
   if (parts[0] === "new-session") {
     const draftID = new URLSearchParams(search).get("draftId")

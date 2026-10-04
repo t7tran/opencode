@@ -11,6 +11,7 @@ import { SettingsSurfaceProvider } from "@/settings/surface"
 import Shell from "@/shell/shell"
 import { requireServerKey } from "./session"
 import { DesktopPairingCommand } from "@/shell/commands/desktop"
+import { OpenRoute } from "@/fork/open-route" // fork_change - see FORK.md § Opening a folder from a link
 
 export const File = lazy(() => import("@opencode/session-ui/file").then((module) => ({ default: module.File })))
 const loadSessionRoute = () => Promise.all([import("@/session/route"), File.preload()]).then(([module]) => module)
@@ -56,6 +57,7 @@ export function AppRoutes() {
         )}
       />
       <Route path="/new-session" component={DraftRoute} />
+      <Route path="/open" component={OpenRoute /* fork_change */} />
     </Route>
   )
 }

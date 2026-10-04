@@ -7,6 +7,7 @@ import { ServerAuth } from "../auth"
 import { ServerInfo } from "../server-info"
 import { ServerPairing } from "../pairing"
 import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
+import { Global } from "@opencode/util/global" // fork_change
 
 export const ServerHandler = HttpApiBuilder.group(Api, "server.server", (handlers) =>
   Effect.gen(function* () {
@@ -21,7 +22,7 @@ export const ServerHandler = HttpApiBuilder.group(Api, "server.server", (handler
             version: info.app.version ?? "unknown",
             pid: process.pid ?? 0,
             urls: info.urls(),
-            paths: info.paths,
+            paths: { ...info.paths, home: Global.Path.home }, // fork_change - expands `~` in /open links
           }
         }),
       )
