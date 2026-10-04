@@ -131,6 +131,12 @@ describe("open link wiring", () => {
     expect(layout).toContain('if (parts[0] === "open") return { type: "home" } // fork_change')
   })
 
+  // Workbox tests the denylist against path *and* query, so `\/|$` alone misses `/open?dir=…`.
+  test("the service worker sends /open to the server instead of the cached shell", async () => {
+    const source = await Bun.file(resolve(app, "vite.pwa.ts")).text()
+    expect(source).toContain("/^\\/open(?:[/?]|$)/],\n      // fork_change end")
+  })
+
   test("the desktop app listens for genixcode://open links", async () => {
     const exports = await Bun.file(resolve(app, "src/desktop.ts")).text()
     expect(exports).toContain('export { OpenDeepLinks } from "./fork/open-route" // fork_change')

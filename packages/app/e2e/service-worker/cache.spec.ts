@@ -347,6 +347,22 @@ fixture("does not substitute cached HTML for API or missing asset navigations", 
   expect(await asset?.text()).toBe("Not found")
 })
 
+// fork_change start - /open links always load the deployed app, even while an
+// open tab keeps an older build in charge. See FORK.md § Opening a folder from a link.
+fixture("loads /open from the server while an older build is still active", async ({ page, context, site }) => {
+  await install(page, site.url)
+  site.deploy()
+  await update(page)
+  await waiting(page)
+  const link = await context.newPage()
+  const response = await link.goto(`${site.url}/open?dir=~/agents/writer`)
+  expect(response?.fromServiceWorker()).toBe(false)
+  await expect(link.getByRole("heading")).toHaveText("new")
+  await link.goto(`${site.url}/workspace/elsewhere`)
+  await expect(link.getByRole("heading")).toHaveText("old")
+})
+// fork_change end
+
 test("the production build precaches every deployable file", async ({ page, context }) => {
   const directory = new URL("../../dist/", import.meta.url)
   const files = (await readdir(directory, { recursive: true, withFileTypes: true }))

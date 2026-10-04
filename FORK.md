@@ -1190,6 +1190,25 @@ fire it again, and neither does a reload. Since `serve` hands the app's `index.h
 doesn't recognise, a cold load of `/open?…` works too, and so does a trip through a fronting proxy's
 login (Cloudflare Access sends you back to the URL you first asked for).
 
+### The service worker
+
+This one bit us on the first deploy. The PWA's service worker answers every page load with the
+`index.html` it precached, and upstream keeps the old worker in charge until every tab of the site
+has closed (`skipWaiting: false`, and there's no "update available" prompt). Keep one GenixCode tab
+open all day and a link from the landing page gets the *previous* build. If that build predates
+`/open`, it doesn't know the route, and you get "Unrecognised route!" until a hard refresh.
+
+So `/open` is on the worker's `navigateFallbackDenylist` in `packages/app/vite.pwa.ts`. The link
+always fetches the deployed page from the server, which it needs to reach anyway. The other routes
+keep upstream's stay-on-your-build behaviour. Watch the pattern: Workbox tests it against the path
+*and* the query string, so `/^\/open(?:[/?]|$)/` has to allow a `?`. The first attempt, ending
+`(?:\/|$)`, never matched a real link.
+
+That only helps once a worker that carries the denylist is the active one. A browser still running
+a worker from before this change shows the error once more, until its tabs close or someone hard
+refreshes. `packages/app/e2e/service-worker/cache.spec.ts` covers it: an old build stays in charge
+behind an open tab, `/open` still loads the new one from the network, and other routes keep the old.
+
 ### The `~`
 
 The browser has no idea where the server's home folder is, and upstream doesn't tell it: the app's

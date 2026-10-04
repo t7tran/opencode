@@ -19,7 +19,10 @@ export function serviceWorker(directory: string) {
       inlineWorkboxRuntime: true,
       navigateFallback: "/index.html",
       // Pairing links must reach the server so it can set the session cookie.
-      navigateFallbackDenylist: [/^\/(?:api|auth)(?:\/|$)/, /^\/(?:_assets|assets)(?:\/|$)/],
+      // fork_change start - /open links always load the deployed app, not an older cached build
+      // (FORK.md § Opening a folder from a link). Workbox tests these against path + query.
+      navigateFallbackDenylist: [/^\/(?:api|auth)(?:\/|$)/, /^\/(?:_assets|assets)(?:\/|$)/, /^\/open(?:[/?]|$)/],
+      // fork_change end
       // Include lazy chunks and non-JS dependencies, not just the startup bundle.
       globPatterns: ["**/*"],
       globIgnores: ["**/*.map", "_headers", "_redirects"],
