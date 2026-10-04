@@ -1104,6 +1104,46 @@ other answer, including a second network error, is left to upstream's reconnect 
 `packages/app/src/fork/proxy-session.test.ts` covers the reload, the outage and normal-answer cases,
 probe sharing across a burst, the hidden tab and the cooldown.
 
+## Sessions start where the project was opened
+
+Run `genixcode-cli` in `~/agents/fox-spirit` and the session lives there: that folder's `AGENTS.md`,
+its `genixcode.json` and its `.genixcode/agent/` all apply. Open the same folder in the web UI or the
+desktop app and, upstream, the first message quietly moves the session to the top of the git
+repository it belongs to. Everything the folder configured is gone, and you're talking to Build.
+
+That's upstream's 3355c93efd ("create local sessions in project root"). The new-session composer
+resolves the "Local repository" choice to `project.canonical`, the main checkout's root. What it was
+fixing is real: a draft opened in a linked worktree and switched to Local belongs in the main
+checkout, not the worktree. But it also lifts every *subfolder* of the main checkout to the root,
+which nothing asked for. And it bites exactly where folders have their own setup inside a bigger
+repo: the agent templates (one shared clone, one agent per folder), or one package of a monorepo.
+
+`packages/app/src/fork/session-directory.ts` narrows it back down. Core already tells the two cases
+apart: for a git checkout, `project.directory` is the top of the checkout the folder is in and
+`project.canonical` the main checkout's, and they only differ inside a linked worktree.
+
+| Draft opened in | Upstream | Here |
+|---|---|---|
+| The main checkout's root | the root | the root |
+| A subfolder of the main checkout | the root | **the subfolder** |
+| A linked worktree, or a folder inside one | the main checkout's root | the main checkout's root |
+| A folder outside version control | that folder | that folder |
+
+Comparing the two directories, rather than testing whether the folder sits under `canonical`,
+matters because worktrees can be configured to live inside the repository. Path containment would
+mistake one of those for a subfolder and undo upstream's fix.
+
+The hook is a few marked lines in `packages/app/src/new-session/composer-adapter.ts`.
+`projectDirectory` stays the main checkout, because creating a *new* worktree still starts from
+there. Only the Local result goes through the fork's rule. The desktop renderer runs the same
+`@opencode/app` code, so it gets the same rule without a change of its own.
+
+`packages/app/src/fork/session-directory.test.ts` covers the cases in the table, a worktree inside
+the repository, and path spellings (`C:\repo` against `c:/repo`, a trailing slash). It also has two
+guards. One fails if a rebase takes upstream's `composer-adapter.ts` wholesale. The other fails if
+anything besides the new-session composer, in `packages/app` or `packages/desktop`, starts creating
+sessions, because a new path upstream adds would skip the rule.
+
 ## Rebase workflow
 
 1. Rebase against `upstream/dev`.
