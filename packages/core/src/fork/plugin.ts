@@ -109,7 +109,7 @@ export const ForkLockPlugin = define({
           baseURL: locked.baseURL,
           ...provider.settings,
           provider: locked.id,
-          // The managed key and its base URL go on last so an opencode.json
+          // The managed key and its base URL go on last so a genixcode.json
           // entry cannot shadow either. Without a managed key the user's own
           // credential stands, exactly as upstream wrote it.
           ...(managed ?? {}),
@@ -126,7 +126,7 @@ export const ForkLockPlugin = define({
 
       // `package` is user-settable per model as well as per provider, and the
       // package it names is loaded and handed the API key — so leaving it open
-      // lets an opencode.json entry exfiltrate the managed key (and run
+      // lets a genixcode.json entry exfiltrate the managed key (and run
       // arbitrary code) without touching the key file.
       if (!managed) return
       for (const model of providers.get(lockedID)?.models.values() ?? []) {
@@ -139,7 +139,7 @@ export const ForkLockPlugin = define({
     // The pins above hold in the provider state, but the model catalogue is a
     // separate State seeded from it, and upstream's ConfigProviderPlugin edits it
     // in its own model transform: a per-model `package`, `settings` or variant
-    // `settings` in opencode.json lands there, and the resolver lets model and
+    // `settings` in genixcode.json lands there, and the resolver lets model and
     // variant settings win over the provider's. Left alone, `models.<id>.settings.baseURL`
     // sends the managed key to a host of the user's choosing and
     // `models.<id>.package` hands it to a package of theirs. This plugin is

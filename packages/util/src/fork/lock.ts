@@ -11,7 +11,7 @@
 // Base URL=https://ai.gateway.genixventures.com/v1.
 //
 // Other configuration (API key and model list) is entered by the user via the
-// normal provider config (opencode.json). The lock supplies the identity and
+// normal provider config (genixcode.json). The lock supplies the identity and
 // base URL; user config is merged on top by upstream's config provider plugin,
 // and `plugin.ts` re-applies the managed key afterwards so it cannot be
 // shadowed.
@@ -85,7 +85,7 @@ export function isLockedProvider(id: string): boolean {
 /**
  * The settings the lock pins onto the locked provider once user config has been
  * folded in. `baseURL` is pinned alongside the key, not just at registration:
- * an `options.baseURL` in opencode.json would otherwise win, and the managed key
+ * an `options.baseURL` in genixcode.json would otherwise win, and the managed key
  * would then be sent as a bearer token to a user-chosen endpoint — key
  * exfiltration with no reverse engineering required.
  *

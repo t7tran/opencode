@@ -104,7 +104,7 @@ describe("LocationServiceMap", () => {
           if (failure === "config reference") {
             yield* Effect.promise(() => fs.mkdir(directory))
             yield* Effect.promise(() =>
-              fs.writeFile(path.join(directory, "opencode.json"), JSON.stringify({ username: "{file:username.txt}" })),
+              fs.writeFile(path.join(directory, "genixcode.json"), JSON.stringify({ username: "{file:username.txt}" })), // fork_change
             )
           }
           const first = yield* Effect.exit(load)
@@ -148,7 +148,7 @@ describe("LocationServiceMap", () => {
         if (failure === "config reference") {
           yield* Effect.promise(() => fs.mkdir(directory))
           yield* Effect.promise(() =>
-            fs.writeFile(path.join(directory, "opencode.json"), JSON.stringify({ username: "{file:username.txt}" })),
+            fs.writeFile(path.join(directory, "genixcode.json"), JSON.stringify({ username: "{file:username.txt}" })), // fork_change
           )
         }
 
@@ -526,7 +526,7 @@ describe("LocationServiceMap", () => {
         Effect.gen(function* () {
           yield* Effect.promise(() =>
             fs.writeFile(
-              path.join(dir.path, "opencode.json"),
+              path.join(dir.path, "genixcode.json"), // fork_change
               JSON.stringify({ agents: { plan: { disabled: true } } }),
             ),
           )
@@ -555,7 +555,7 @@ describe("LocationServiceMap", () => {
           const location = Location.Ref.make({ directory: AbsolutePath.make(dir.path) })
           yield* Effect.promise(() =>
             fs.writeFile(
-              path.join(dir.path, "opencode.json"),
+              path.join(dir.path, "genixcode.json"), // fork_change
               JSON.stringify({
                 providers: {
                   unavailable: {

@@ -173,19 +173,19 @@ Both names come from `packages/util/src/fork/brand.ts` (`APP_DIRNAME`, `HOME_CON
 
 | Directory | Upstream | Fork |
 |---|---|---|
-| XDG config (skills, commands, agents, plugins, themes, `opencode.json`, `tui.json`) | `~/.config/opencode` | `~/.config/genixcode` |
+| XDG config (skills, commands, agents, plugins, themes, `genixcode.json`, `tui.json`) | `~/.config/opencode` | `~/.config/genixcode` |
 | XDG data (logs, repos) | `~/.local/share/opencode` | `~/.local/share/genixcode` |
 | XDG cache (`bin`, pulled skills, models.dev) | `~/.cache/opencode` | `~/.cache/genixcode` |
 | XDG state (locks) | `~/.local/state/opencode` | `~/.local/state/genixcode` |
 | Temp | `$TMPDIR/opencode` | `$TMPDIR/genixcode` |
 | Home-level config dotdir | `~/.opencode` | `~/.genixcode` |
+| Project config dotdir (see [below](#project-config-the-dotdir-and-the-config-file)) | `<repo>/.opencode/` | `<repo>/.genixcode/` |
+| Config file, everywhere it's read | `opencode.json(c)` | `genixcode.json(c)` |
 
-Three things are deliberately **not** renamed:
+Two things are deliberately **not** renamed:
 
-- **The project dotdir stays `.opencode/`.** It is a repository convention shared with checkouts that
-  other tools read, not a brand name.
-- **Config filenames stay `opencode.json` / `opencode.jsonc` / `tui.json`.** Renaming them would
-  invalidate every `$schema` reference and every existing project config.
+- **`tui.json` keeps its name.** It's only ever read from inside the config directory or a
+  `.genixcode/` folder, both of which are already GenixCode's alone, so there's nothing to untangle.
 - **Environment variables stay `OPENCODE_*`** — with one exception, below. They're touched by too
   many call sites to be worth the rebase cost, and `OPENCODE_CONFIG_DIR` still overrides the config
   directory.
@@ -210,6 +210,56 @@ so it has to be renamed by hand.
 
 The switch is a hard one — the old `opencode`-named directories are not read as a fallback and are
 not migrated. Anyone with existing config moves it by hand.
+
+### Project config: the dotdir and the config file
+
+Both of these used to be on the "not renamed" list, on the theory that `.opencode/` and
+`opencode.json` were repo conventions rather than a brand. They've moved for the same reason the user
+directories did. With both tools on one machine, a repo's `.opencode/` agents and plugins, and
+everything in its root `opencode.json` (plugins, MCP servers, providers), would load in GenixCode as
+well as OpenCode. Renaming only the folder wasn't enough, because the root file alone carries most of
+that.
+
+So a project's settings now live in `genixcode.json(c)` at the root and in a `.genixcode/` folder,
+both discovered in the working directory and every ancestor just like upstream's. `opencode.json(c)`
+and `.opencode/` are ignored outright. Core reads the global config directory, project directories
+and dotdirs with one shared filename list, so the global file is `~/.config/genixcode/genixcode.json`
+too. One name everywhere beats explaining which name goes where.
+
+The file's *contents* don't change, and neither does the `$schema` URL — it still points at
+upstream's `config.json`. If your editor attached that schema to `opencode.json` by filename, it
+won't do it for `genixcode.json`, so keep the `$schema` line in the file if you want completion.
+
+Inside the folder, core's loaders still take either spelling of their subfolder. So
+`.genixcode/agent/` loads just like `.genixcode/agents/`, and the same goes for `mode(s)/`,
+`command(s)/`, `plugin(s)/` and `skill(s)/`. That's the loaders' own doing (`agent.ts` and its
+siblings under `packages/core/src/config/plugin/` don't care what the parent's called), and the
+fork test below pins the agent case so a rebase can't quietly take it away.
+
+Moving a project over is a pair of renames: `git mv .opencode .genixcode` and
+`git mv opencode.json genixcode.json` (plus any `opencode.json` inside the folder). The global file
+needs the same rename. There's no fallback, for the same reason as the user directories above.
+
+Upstream's UI copy names `opencode.json` in several places, and `rebrand()` used to turn the bare
+`opencode` in it into the CLI's name, so the app told people to edit `genixcode-cli.json`. It now
+maps `opencode.json(c)` to the brand slug first.
+
+| Concern | Where |
+|---|---|
+| The names (`PROJECT_CONFIG_DIRNAME`, `CONFIG_FILENAMES`), and `rebrand()` for the copy | `packages/util/src/fork/brand.ts` |
+| Config discovery — core's single config loader, and the global-file write fallback | `packages/core/src/config/discovery.ts`, `packages/core/src/config.ts` |
+| TUI theme and plugin discovery, which walk the tree themselves | `packages/tui/src/util/config-directories.ts`, `packages/tui/src/plugin/discovery.ts` |
+| Where `mcp add` writes, and its OAuth hint | `packages/cli/src/commands/handlers/mcp/{add,auth}.ts` |
+| The updater's policy read from the global config | `packages/cli/src/services/updater.ts` |
+| Hand-written error copy outside the dictionaries | `packages/tui/src/util/error.ts`, `packages/app/src/runtime/server/errors.ts` |
+| The compiled-binary smoke test's plugin fixture | `packages/cli/script/service-smoke.ts` |
+| Built-in skills that tell the agent where config lives | `packages/core/src/plugin/skill/opencode.md`, `report.md` |
+| Pins `.genixcode/` (singular `agent/` included) and `genixcode.json`, and ignores both upstream names | `packages/core/test/fork/project-dotdir.test.ts` |
+| Pins the copy mapping | `packages/util/test/fork/brand.test.ts` |
+
+This repository's own `.opencode/` folder is upstream's development setup and stays where it is. It
+only matters to anyone running an agent on this checkout, and renaming it would turn every upstream
+edit to it into a rebase conflict.
 
 ### The background service registration
 
@@ -258,7 +308,7 @@ for skills, commands, agents, plugins, themes and a config file. Keeping that wo
 name needed a helper (`ConfigPaths.isConfigDirectory()`), because callers tested
 `dir.endsWith(".opencode")` inline and that test stops matching once the directory is `~/.genixcode`.
 v2 has one loader — `packages/core/src/config/discovery.ts` — and it reads the XDG config directory
-plus project `.opencode` directories only. It never walked the home-level dotdir, so the helper and
+plus project `.genixcode` directories only. It never walked the home-level dotdir, so the helper and
 its test have no v2 equivalent and are gone. `HOME_CONFIG_DIRNAME` survives in `brand.ts` because the
 remote, WSL and SSH installers still use it as the install prefix (`$HOME/.genixcode/bin/genixcode`),
 and because Plan mode writes its plans to `~/.genixcode/plan` (`packages/core/src/plugin/plan.ts`)
@@ -273,7 +323,7 @@ This fork is permanently locked to a single OpenAI-compatible provider (Genix). 
 in the provider pipeline and at the server/handler layer, not just in the UI:
 
 - **Provider pipeline** (`packages/core/src/fork/plugin.ts`): every provider but the locked one is removed from the provider map, and every integration but the locked one from the connect surface.
-- **Plugin removal** (`packages/core/src/plugin/internal.ts`): `ForkLockPlugin` is in upstream's `guarded` set, so `"plugins": ["-*"]` in a repository's `opencode.json` cannot switch the lock off.
+- **Plugin removal** (`packages/core/src/plugin/internal.ts`): `ForkLockPlugin` is in upstream's `guarded` set, so `"plugins": ["-*"]` in a repository's `genixcode.json` cannot switch the lock off.
 - **List handlers** (`packages/server/src/handlers/{provider,model}.ts`): `provider.list`, `provider.get`, `model.list` and `model.default` redact `settings.apiKey` while the key is managed.
 - **Connect handlers** (`packages/server/src/handlers/integration.ts`): `integration.connect.key` and `integration.oauth.connect` are rejected for any non-locked integration, and for Genix's own while a key is managed. MCP servers' integrations are not providers and pass; see [MCP outbound domains](#mcp-outbound-domains).
 - **Credential handler** (`packages/server/src/handlers/credential.ts`): `credential.create` is rejected on the same terms as a connect (it is what `auth import` calls); `credential.remove` and `credential.activate` are rejected for a Genix credential while a key is managed. Logging out of, or switching accounts on, an MCP server is still allowed.
@@ -304,7 +354,7 @@ transform fills in whatever user config did not set, which is the head's job.
 There's a second State to watch, and it's the one that bit. The model catalogue isn't read out of
 the provider map at resolution time: it's its own State, seeded from the provider snapshot, and
 `ConfigProviderPlugin` edits it again in a `ctx.model.transform` of its own. Per-model `package`,
-`settings` and variant `settings` from `opencode.json` land *there*, and the resolver lets model and
+`settings` and variant `settings` from `genixcode.json` land *there*, and the resolver lets model and
 variant settings win over the provider's. So pinning `baseURL` and `package` on the provider alone
 looked right and did nothing: `models.<id>.settings.baseURL` still sent the managed key wherever it
 pointed. `ForkLockPlugin` therefore registers a model transform too, after upstream's, and re-pins
@@ -313,7 +363,7 @@ runs the real config plugin first and the lock second, the way `internal.ts` ord
 if either pin stops holding.
 
 The user supplies the remaining configuration (API key and model list) via normal provider config in
-`opencode.json`:
+`genixcode.json`:
 
 ```jsonc
 {
@@ -370,13 +420,13 @@ config:
 ---
 flowchart TB
   A["Provider state init"] --> P{"/etc/kilo.key<br/>exists and non-empty?"}
-  P -- "no" --> C["Normal flow: key from auth.json,<br/>env, or opencode.json"]
+  P -- "no" --> C["Normal flow: key from auth.json,<br/>env, or genixcode.json"]
   P -- "yes" --> Q{"starts with<br/>v1. ?"}
   Q -- "no" --> B["Plain key, used as-is"]
   Q -- "yes" --> R["AES-256-GCM unseal<br/>with the built-in pepper"]
   R -- "auth fails: sealed by<br/>another build" --> C
   R -- "ok" --> B
-  B --> D["ConfigProviderPlugin applies<br/>user config from opencode.json"]
+  B --> D["ConfigProviderPlugin applies<br/>user config from genixcode.json"]
   D --> E["ForkLockPlugin runs last:<br/>drops every other provider"]
   E --> F["Managed apiKey + baseURL re-applied<br/>over user config, package pinned"]
   F --> G["activation forced to enabled,<br/>models discovered from /models"]
@@ -389,15 +439,15 @@ flowchart TB
 Mechanics worth knowing:
 
 - **Key precedence.** `ForkLockPlugin` runs after upstream's config provider plugin, so the managed
-  key and gateway URL land *over* user config and an `options.apiKey` in `opencode.json` cannot
+  key and gateway URL land *over* user config and an `options.apiKey` in `genixcode.json` cannot
   shadow them. Anything the user set that the lock does not pin — the display name, extra models —
   survives.
-- **`baseURL` is pinned alongside the key.** A `baseURL` in `opencode.json` would otherwise win, and
+- **`baseURL` is pinned alongside the key.** A `baseURL` in `genixcode.json` would otherwise win, and
   the managed key would then be sent as a bearer token to a user-chosen endpoint — key exfiltration
   with no reverse engineering required.
 - **The provider package is pinned per model.** `package` is user-settable both per provider and per
   model, and the package it names is loaded and handed the API key, so leaving it open lets an
-  `opencode.json` entry exfiltrate the managed key (and run arbitrary code) without touching the key
+  `genixcode.json` entry exfiltrate the managed key (and run arbitrary code) without touching the key
   file. While a managed key is in play, every model of the locked provider has it forced back to
   `@opencode/ai/providers/openai-compatible` — in the model catalogue as well as the provider map,
   for the reason under [How the lock attaches to v2](#how-the-lock-attaches-to-v2).

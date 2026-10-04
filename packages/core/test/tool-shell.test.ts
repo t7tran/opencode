@@ -236,7 +236,7 @@ const withScanner = <A, E, R>(
         yield* Effect.promise(() => Promise.all([fs.mkdir(fixture.active), fs.mkdir(fixture.outside)]))
         yield* Effect.promise(() =>
           Bun.write(
-            path.join(fixture.active, "opencode.json"),
+            path.join(fixture.active, "genixcode.json"), // fork_change
             JSON.stringify({ experimental: { portable_shell_scanner: portable } }),
           ),
         )
@@ -1259,7 +1259,7 @@ describe("ShellTool", () => {
               reset()
               yield* Effect.promise(() =>
                 Bun.write(
-                  path.join(tmp.path, "opencode.json"),
+                  path.join(tmp.path, "genixcode.json"), // fork_change
                   JSON.stringify({ experimental: { portable_shell_scanner: portable } }),
                 ),
               )
@@ -1307,7 +1307,7 @@ describe("ShellTool", () => {
                   reset()
                   yield* Effect.promise(() =>
                     Bun.write(
-                      path.join(tmp.path, "opencode.json"),
+                      path.join(tmp.path, "genixcode.json"), // fork_change
                       JSON.stringify({ experimental: { portable_shell_scanner: portable } }),
                     ),
                   )
@@ -1411,7 +1411,7 @@ describe("ShellTool", () => {
         return Effect.gen(function* () {
           yield* Effect.promise(() =>
             Bun.write(
-              path.join(tmp.path, "opencode.json"),
+              path.join(tmp.path, "genixcode.json"), // fork_change
               JSON.stringify({ tool_output: { max_lines: 2, max_bytes: 1_000 } }),
             ),
           )

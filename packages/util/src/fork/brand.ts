@@ -75,10 +75,26 @@ export const APP_DIRNAME = BRAND_SLUG
 
 /**
  * Home-level configuration dotdir, scanned alongside the XDG config directory
- * for `opencode.json`, `tui.json`, skills, commands, agents, plugins and
+ * for `genixcode.json`, `tui.json`, skills, commands, agents, plugins and
  * themes. Upstream: ".opencode".
  */
 export const HOME_CONFIG_DIRNAME = `.${BRAND_SLUG}`
+
+/**
+ * Project-level configuration dotdir, discovered in the working directory and
+ * every ancestor: `genixcode.json(c)` plus the `agent(s)/`, `command(s)/`,
+ * `mode(s)/`, `plugin(s)/`, `skill(s)/` and `themes/` folders beside it.
+ * Upstream: ".opencode".
+ */
+export const PROJECT_CONFIG_DIRNAME = `.${BRAND_SLUG}`
+
+/**
+ * Config file names, in load order (the `.jsonc` wins when both exist). Read
+ * from the global config directory, from every project directory up to the
+ * root, and from inside each `PROJECT_CONFIG_DIRNAME`. Upstream:
+ * "opencode.json", "opencode.jsonc".
+ */
+export const CONFIG_FILENAMES = [`${BRAND_SLUG}.json`, `${BRAND_SLUG}.jsonc`] as const
 
 /** Reverse-DNS base for desktop application ids. Upstream: "ai.opencode.desktop". */
 export const APP_ID_BASE = "com.genixventures.genixcode"
@@ -127,9 +143,10 @@ export function packageName(channel: Channel): string {
 // Ordered longest-match-first. "OpenCode Zen" and "OpenCode Go" are upstream's
 // hosted model service and subscription; a build locked to the Genix gateway
 // never reaches either, but neither name should survive as "GenixCode Zen" or
-// "GenixCode Go" in a string that does leak through. A bare lower-case
-// "opencode" in upstream's copy is the command ("run opencode pair"), so it
-// becomes the CLI's executable name rather than the brand slug.
+// "GenixCode Go" in a string that does leak through. "opencode.json(c)" in
+// upstream's copy is the config file, which this fork names after the brand
+// slug. Any other bare lower-case "opencode" is the command ("run opencode
+// pair"), so it becomes the CLI's executable name rather than the brand slug.
 const REPLACEMENTS: ReadonlyArray<readonly [RegExp, string]> = [
   [/OpenCode Zen/g, "Genix"],
   [/OpenCode Go/g, "Genix"],
@@ -137,6 +154,7 @@ const REPLACEMENTS: ReadonlyArray<readonly [RegExp, string]> = [
   [/OpenCode/g, PRODUCT_NAME],
   [/Opencode/g, "Genixcode"],
   [/OPENCODE/g, "GENIXCODE"],
+  [/opencode(?=\.jsonc?\b)/g, BRAND_SLUG],
   [/opencode/g, CLI_NAME],
 ]
 

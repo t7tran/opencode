@@ -26,7 +26,7 @@ export function cliErrorMessage(input: unknown): string | undefined {
       `Model not found: ${field(model, "providerID")}/${field(model, "modelID")}`,
       ...(suggestions.length ? ["Did you mean: " + suggestions.join(", ")] : []),
       `Try: \`${CLI_NAME} models\` to list available models`, // fork_change - renamed binary
-      "Or check your config (opencode.json) provider/model names",
+      "Or check your config (genixcode.json) provider/model names", // fork_change - renamed config file
     ].join("\n")
   }
 

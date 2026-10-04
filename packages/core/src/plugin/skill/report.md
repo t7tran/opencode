@@ -34,11 +34,11 @@ Collect these values when possible:
   Windows when relevant.
 - Install/channel context: include whether this appears to be local, dev, beta,
   or release if the version output or environment reveals it.
-- Active plugins: inspect opencode config for configured plugins when possible.
-  Check likely config locations such as `opencode.json`, `opencode.jsonc`,
-  `.opencode/opencode.json`, and `~/.config/genixcode/opencode.json`. Record
-  configured plugin entries, local plugin files under `.opencode/plugin/` or
-  `.opencode/plugins/`, and note if plugin status could not be determined.
+- Active plugins: inspect GenixCode config for configured plugins when possible.
+  Check likely config locations such as `genixcode.json`, `genixcode.jsonc`,
+  `.genixcode/genixcode.json`, and `~/.config/genixcode/genixcode.json`. Record
+  configured plugin entries, local plugin files under `.genixcode/plugin/` or
+  `.genixcode/plugins/`, and note if plugin status could not be determined.
 
 If a diagnostic command fails, include `Unavailable` with the reason instead of
 guessing.

@@ -11,7 +11,7 @@ it.live("lists models without blocking on plugin initialization", () =>
     const tmp = yield* Effect.acquireDisposable(Effect.promise(() => tmpdir("opencode-model-endpoint-")))
     yield* Effect.promise(() =>
       fs.writeFile(
-        path.join(tmp.path, "opencode.json"),
+        path.join(tmp.path, "genixcode.json"), // fork_change
         JSON.stringify({
           providers: {
             custom: {

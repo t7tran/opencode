@@ -79,6 +79,11 @@ describe("rebrand", () => {
     expect(rebrand("OPENCODE")).toBe("GENIXCODE")
   })
 
+  test("names the config file after the brand, not the CLI", () => {
+    expect(rebrand("Manage in opencode.json")).toBe("Manage in genixcode.json")
+    expect(rebrand("Edit opencode.jsonc, then run opencode")).toBe("Edit genixcode.jsonc, then run genixcode-cli")
+  })
+
   test("collapses upstream's hosted services rather than renaming them", () => {
     expect(rebrand("OpenCode Zen gives you access")).toBe("Genix gives you access")
     expect(rebrand("Subscribe to OpenCode Go for $10/month")).toBe("Subscribe to Genix for $10/month")

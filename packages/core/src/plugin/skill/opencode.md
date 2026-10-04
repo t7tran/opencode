@@ -52,7 +52,7 @@ Fetch the full [CLI settings reference](https://opencode.ai/v2/docs/cli/config)
 before editing `cli.json`. It documents every terminal-only setting, accepted
 values, and examples, including themes, input, sessions, tabs, diffs, alerts,
 Mini, keybindings, terminal plugins, and debugging. Do not put these settings
-in `opencode.json(c)`.
+in `genixcode.json(c)`.
 
 ### [Keybinds](https://opencode.ai/v2/docs/cli/keybinds)
 
@@ -78,17 +78,17 @@ autocomplete:
 }
 ```
 
-Global configuration lives at `~/.config/genixcode/opencode.json(c)` and applies
+Global configuration lives at `~/.config/genixcode/genixcode.json(c)` and applies
 to every project for that user. Project configuration can live in any directory
-as `opencode.json(c)` or `.opencode/opencode.json(c)`, including nested packages
+as `genixcode.json(c)` or `.genixcode/genixcode.json(c)`, including nested packages
 in a monorepo.
 
 During ordinary project discovery, OpenCode searches the current Location
 directory and every ancestor through the filesystem root, including directories
 above the detected project or repository root. It merges direct
-`opencode.json(c)` files from the farthest ancestor to the current directory,
-then does the same for `.opencode/opencode.json(c)` files. This means every
-discovered `.opencode` config overrides every discovered direct config. Global
+`genixcode.json(c)` files from the farthest ancestor to the current directory,
+then does the same for `.genixcode/genixcode.json(c)` files. This means every
+discovered `.genixcode` config overrides every discovered direct config. Global
 filesystem configuration has lower precedence than these discovered documents.
 
 Common configuration fields include `model`, `default_agent`, `permissions`,
@@ -141,7 +141,7 @@ plugins, integrations, or other behavior from V1 to V2, read the full
 [migration guide](https://opencode.ai/v2/docs/migrate-v1) before acting. In
 the repository, its source is `services/www/src/docs/content/migrate-v1.mdx`.
 
-V1 config files and `.opencode/` definitions are intended to remain compatible.
+V1 config files and `.genixcode/` definitions are intended to remain compatible.
 The only intentional breaking changes are the server API and plugin API. Native
 V2 config uses more ergonomic shapes, but conversion is optional. When the user
 requests conversion, inspect the complete configuration, preserve behavior and

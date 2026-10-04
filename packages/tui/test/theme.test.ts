@@ -134,9 +134,9 @@ test("theme directories include global config before project directories", async
   const global = path.join(tmp.path, "global")
   const project = path.join(tmp.path, "repo", "package")
   await mkdir(path.join(global, "themes"), { recursive: true })
-  await mkdir(path.join(project, ".opencode", "themes"), { recursive: true })
+  await mkdir(path.join(project, ".genixcode", "themes"), { recursive: true }) // fork_change
   await writeFile(path.join(global, "themes", "global.json"), JSON.stringify({ source: "global" }))
-  await writeFile(path.join(project, ".opencode", "themes", "project.json"), JSON.stringify({ source: "project" }))
+  await writeFile(path.join(project, ".genixcode", "themes", "project.json"), JSON.stringify({ source: "project" })) // fork_change
 
   await expect(discoverThemes(configDirectories(global, project))).resolves.toEqual({
     global: { source: "global" },

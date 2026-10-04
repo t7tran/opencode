@@ -7,7 +7,7 @@ import { Effect, Schema } from "effect"
 import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
-import { APP_DIRNAME, CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary and app dir
+import { APP_DIRNAME, CLI_NAME, PROJECT_CONFIG_DIRNAME } from "@opencode/util/fork/brand" // fork_change - renamed binary, app dir and project dotdir
 
 const nodeBuild = process.argv.includes("--node")
 const target = `cli${nodeBuild ? "-node" : ""}-${process.platform === "win32" ? "windows" : process.platform}-${process.arch}`
@@ -34,7 +34,7 @@ const processes: Array<ReturnType<typeof Bun.spawn>> = []
 const errors: Array<Promise<string>> = []
 let failure: unknown
 try {
-  await fs.mkdir(path.join(root, ".opencode", "plugins"), { recursive: true })
+  await fs.mkdir(path.join(root, PROJECT_CONFIG_DIRNAME, "plugins"), { recursive: true }) // fork_change
   spawnService()
   spawnService()
   const registration = await waitForRegistration()
@@ -54,7 +54,7 @@ try {
   })
   if (tokenOpenApi.status !== 200) throw new Error("Compiled application rejected query authentication")
   if ((await pluginIDs(info.url, headers)).includes("smoke")) throw new Error("Smoke plugin existed before creation")
-  const plugin = path.join(root, ".opencode", "plugins", "smoke.ts")
+  const plugin = path.join(root, PROJECT_CONFIG_DIRNAME, "plugins", "smoke.ts") // fork_change
   await fs.writeFile(plugin, pluginSource())
   await waitForPlugin(info.url, headers, plugin)
 

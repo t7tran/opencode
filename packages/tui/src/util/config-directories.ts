@@ -1,15 +1,16 @@
 import path from "node:path"
 import { stat } from "node:fs/promises"
+import { PROJECT_CONFIG_DIRNAME } from "@opencode/util/fork/brand" // fork_change - renamed project dotdir
 
 export function configDirectories(config: string, cwd: string) {
-  return [...new Set([config, ...ancestors(cwd).map((directory) => path.join(directory, ".opencode"))])]
+  return [...new Set([config, ...ancestors(cwd).map((directory) => path.join(directory, PROJECT_CONFIG_DIRNAME))])] // fork_change
 }
 
 export function projectConfigDirectories(project: string, cwd: string) {
   const directories = ancestors(cwd)
   return directories
     .slice(directories.indexOf(path.resolve(project)))
-    .map((directory) => path.join(directory, ".opencode"))
+    .map((directory) => path.join(directory, PROJECT_CONFIG_DIRNAME)) // fork_change
 }
 
 export async function localProjectDirectory(cwd: string) {

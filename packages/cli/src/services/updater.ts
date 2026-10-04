@@ -9,7 +9,7 @@ import { stripVTControlCharacters } from "node:util"
 import { RetainedImage } from "./retained-image"
 import { action, parseReleaseVersion, type Policy } from "./updater-action"
 import { errorMessage } from "../util/error"
-import { PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed product
+import { CONFIG_FILENAMES, PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed product and config files
 import { forkUpdaterEnabled, forkUpgradeRefusal } from "../fork/policy" // fork_change - no self-update
 
 export const methods = ["curl", "npm", "pnpm", "bun", "yarn", "vp", "brew"] as const
@@ -144,7 +144,7 @@ const make = Effect.gen(function* () {
   }).pipe(Effect.orElseSucceed(() => undefined))
 
   const readPolicy = Effect.fnUntraced(function* () {
-    const values = yield* Effect.forEach(["config.json", "opencode.json", "opencode.jsonc"], (name) =>
+    const values = yield* Effect.forEach(["config.json", ...CONFIG_FILENAMES /* fork_change */], (name) =>
       fs.readFileString(path.join(global.config, name)).pipe(
         Effect.map(decodePolicy),
         Effect.orElseSucceed(() => undefined),
