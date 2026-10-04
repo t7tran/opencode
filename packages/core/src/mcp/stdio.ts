@@ -5,6 +5,8 @@ import { Cause, Duration, Effect, Queue, Scope, Stream } from "effect"
 import { ChildProcess } from "effect/unstable/process"
 import type { ChildProcessHandle } from "effect/unstable/process/ChildProcessSpawner"
 import { Environment } from "../environment/index.js"
+import { privacyPolicy } from "@opencode/util/fork/privacy-file" // fork_change - data privacy guard
+import { stripSecretEnv } from "@opencode/util/fork/redact" // fork_change - data privacy guard
 
 /** Mirrors StdioClientTransport: wait this long for a graceful exit after stdin closes. */
 const CLOSE_GRACE = Duration.seconds(2)
@@ -80,7 +82,13 @@ export const make = Effect.fnUntraced(function* (options: Options) {
           const handle = yield* environment.spawner.spawn(
             ChildProcess.make(options.command, [...options.args], {
               cwd: options.cwd,
-              env: options.environment,
+              // fork_change start - an MCP server is a process the agent drives, so it
+              // does not inherit the host's secret-named env vars (fork/privacy.ts).
+              // They are unset by name rather than by replacing the env, so the spawner
+              // still extends with whichever environment it runs in. What the server's
+              // own config declares is kept.
+              env: { ...hostSecretUnsets(), ...options.environment },
+              // fork_change end
               extendEnv: true,
               stdin: { stream: Stream.encodeText(Stream.fromQueue(outgoing)), endOnDone: true },
               stdout: "pipe",
@@ -175,3 +183,14 @@ export const make = Effect.fnUntraced(function* (options: Options) {
 
   return transport
 })
+
+// fork_change start - see the spawn above
+function hostSecretUnsets(): Record<string, string> {
+  const policy = privacyPolicy()
+  const kept = stripSecretEnv(globalThis.process.env, policy.unreadable ? new Set() : policy.keepEnv)
+  const unsets: Record<string, undefined> = {}
+  for (const name of Object.keys(globalThis.process.env)) if (!(name in kept)) unsets[name] = undefined
+  // Node's spawn skips undefined values, which is what unsets them.
+  return unsets as unknown as Record<string, string>
+}
+// fork_change end

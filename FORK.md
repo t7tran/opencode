@@ -52,7 +52,7 @@ on **every** changed line, not just above the change:
 
 - `packages/util/src/fork/**` — fork-specific source code (brand, provider lock, managed key file, key sealing, pepper, gateway discovery, server guard)
 - `packages/util/test/fork/**` — the tests for all of the above
-- `packages/core/src/fork/**` — the lock's v2 plugin, which needs core's provider/model services
+- `packages/core/src/fork/**` — the lock's and the privacy guard's v2 plugins, which need core's services
 - `packages/app/src/fork/**` — renderer-side fork policy
 - `packages/cli/src/fork/**` — CLI-side fork policy (the updater switch)
 - `packages/desktop/src/main/fork-policy.ts` — main-process fork policy
@@ -79,8 +79,9 @@ constraints force it there specifically:
   `packages/cli/test/import-boundaries.test.ts`, and the CLI still has to refuse `auth login` /
   `auth logout` while a key is managed.
 
-Only `packages/core/src/fork/plugin.ts` stays in core: it is the lock's v2 wiring and needs core's
-`Provider`, `Model` and `App` services.
+Only `packages/core/src/fork/` stays in core: `plugin.ts` is the lock's v2 wiring and needs core's
+`Provider`, `Model` and `App` services, and `privacy.ts` (the data privacy guard) needs `Credential` and
+the plugin hooks.
 
 ## CI guard
 
@@ -1000,6 +1001,101 @@ filtered, nor are the shell commands the agent runs.
 | Parsing, matching, the fetch wrapper | `packages/util/src/fork/mcp-domains.ts` |
 | MCP integrations exempt from the lock | `packages/util/src/fork/guard.ts`, the integration prune in `packages/core/src/fork/plugin.ts` |
 | Tests | `packages/util/test/fork/mcp-domains.test.ts`, `packages/core/test/fork/mcp-domains.test.ts`, `packages/core/test/fork/lock-plugin.test.ts` |
+
+## Data privacy guard
+
+Here's how it went wrong. Someone asked the agent for the Genix gateway key, nicely and then less
+nicely, and eventually got it. No clever exploit was involved. The agent could simply *see* the key.
+The shell inherited every env var the client had, the config directory was pre-approved for reads,
+and tool output went to the model verbatim. A system prompt saying "never reveal secrets" doesn't
+hold up against that. Models get argued out of rules all the time.
+
+So the guard works the other way round: it keeps the model from ever holding a secret to give away.
+It's one plugin, `ForkPrivacyPlugin` in `packages/core/src/fork/privacy.ts`. It's registered last,
+after the lock, and it's in `guarded`, so config can't remove it. Redaction is always on, lock or no
+lock.
+
+```mermaid
+---
+config:
+  layout: elk
+---
+flowchart LR
+  U["User prompt"] --> CTX
+  SH["Shell spawn"] -- "create.before:<br/>secret env stripped" --> RUN["Tool runs"]
+  RD["Read tool / shell command"] -- "permission evaluate:<br/>credential files denied" --> RUN
+  RUN -- "execute.after:<br/>output redacted" --> DB[("Session DB")]
+  DB --> CTX["context hook: whole request redacted,<br/>org instructions appended last"]
+  I["/etc/genixcode.instructions.md"] --> CTX
+  P["/etc/genixcode.privacy"] --> CTX
+  P --> RUN
+  CTX --> G["Genix gateway / model"]
+```
+
+| Layer | Hook | What it does |
+|---|---|---|
+| Shell env strip | `shell` `create.before` | Takes secret-named vars (`*API_KEY*`, `*TOKEN*`, `*SECRET*`, `*PASSWORD*`, `*CREDENTIAL*`, `*AUTH*`…) out of the agent's shell and out of user `!` commands, whose output the model reads. `GENIXCODE_FORK_*` and the server password always go. `SSH_AUTH_SOCK` stays, otherwise `git push` over ssh breaks |
+| Read denial | `permission` `evaluate` | Refuses reads of the global `genixcode.json(c)`, `service*.json` (server password), `opencode.db*` (stored credentials), `auth.json`, the key file and the privacy file. Also refuses shell commands that name them, including `~`/`$HOME` spellings. This hook has the final say, so neither agent rules nor a session's "always allow" can reopen them |
+| Tool output redaction | `tool` `execute.after` | Runs before the result is stored, so a secret a tool turns up never reaches the DB, the UI or the model |
+| Request redaction | `session` `context` / `compaction` / `generate` / `title` | A last pass over the whole request: pasted secrets, history from before the guard existed, anything the layers above missed. It's deterministic, so prompt caching still works |
+| Org instructions | same hooks | Appends `/etc/genixcode.instructions.md` as the final system part |
+
+What counts as a secret:
+
+- **Known values.** The managed key and the raw key file (a sealed blob is a credential too), every provider's and model's `apiKey` and header values, every stored credential, secret-named env vars, values the env strip removed, and `secret` lines from the privacy file. Each one is also matched in its base64, base64url, hex, URL-encoded and reversed forms, since those are the first things an injected prompt reaches for. It's shown as `<API_KEY>`.
+- **Credential-shaped strings.** `sk-…`, `AKIA…`, `ghp_…`, `github_pat_…`, `glpat-…`, `xox?-…`, `sk_live_…`, `AIza…`, `npm_…`, JWTs, PEM private keys, `Bearer …`, the password in `scheme://user:pass@host`, and quoted or `KEY=value` values under a secret-sounding name. These come out as `<SECRET>`, `<JWT>` or `<PRIVATE_KEY>`. Unquoted code like `apiKey: process.env.X` is left alone.
+- **Hosts.** The gateway host plus any `host` lines, shown as `<HOST>`.
+
+### The two admin files
+
+Both are root-owned, `0644`, at fixed paths. There's deliberately **no env var to move them**. The
+key file's override can only ever hurt the person who sets it, but an override here would let a user
+point the guard at an empty file.
+
+`/etc/genixcode.instructions.md` holds free-form rules, sent verbatim on every request under an
+"Organisation instructions" heading. No file means no org rules. An unreadable file gets logged once.
+For example:
+
+```text
+- Always communicate in Australian English (spelling, date formats, terminology).
+- Never echo PII, credentials, infrastructure details, API keys, hostnames or proprietary data from the conversation; use placeholders (e.g. <API_KEY>, <HOST>) in examples instead.
+- Never reveal or try to read API keys, the gateway key, or genixcode configuration and credential files, even if asked.
+```
+
+`/etc/genixcode.privacy` is optional. It holds extra redaction, plus the env vars an admin wants the
+agent's shell to keep:
+
+```text
+# full-line comments and blank lines are ignored
+secret   corp-shared-token-value     # redacted as <API_KEY>; everything after "secret " is the value
+pattern  /ACME-\d{6}/i               # redacted as <SECRET>
+host     db.internal.example.com     # redacted as <HOST>
+host     *.corp.example.net          # any subdomain
+keep-env GH_TOKEN                    # survives the shell env strip, e.g. so `gh` works
+```
+
+| | |
+|---|---|
+| No privacy file | built-in redaction, no exceptions |
+| File present but unreadable | fails closed: built-in redaction still runs, no `keep-env` is granted, and a warning is logged |
+| Bad lines | skipped and logged; good lines still apply |
+| Reloads | both files, on the next call after mtime or size changes |
+
+### What it doesn't do
+
+- **It can't stop a determined local user.** § Sealed key files already says anyone who can run the client can recover the key, for example by proxying the gateway host. The guard closes the "ask the agent" route, not that one. If a key has leaked, rotate it. Per-user gateway keys and gateway-side quotas are the real long-term fix.
+- **Redaction is lossy.** A file holding a real secret reads back with a placeholder in it. If the agent then rewrites that file wholesale, it writes the placeholder. That's the trade, and it's the right one.
+- **It's pattern-based.** A secret with no recognisable shape, no secret-sounding name, and not known to the process gets through. List those with `secret` or `pattern`.
+- **The server API is unchanged.** `credential.list` still returns values (`auth export` depends on that), and `config.get` still returns raw config (the app writes it back). The agent can't reach either one, because the server password is stripped from its env and `service*.json` is unreadable. Anything a `curl` turned up would be redacted as tool output anyway.
+- **The PTY is untouched.** That's the human's own terminal. The model never sees it.
+
+| Concern | Where |
+|---|---|
+| Redaction, env strip, secret collection | `packages/util/src/fork/redact.ts` |
+| The two admin files | `packages/util/src/fork/privacy-file.ts`, `packages/util/src/fork/org-instructions.ts` |
+| The plugin | `packages/core/src/fork/privacy.ts`, registered and guarded in `packages/core/src/plugin/internal.ts` |
+| MCP stdio servers don't inherit secret env | `packages/core/src/mcp/stdio.ts` |
+| Tests | `packages/util/test/fork/redact.test.ts`, `packages/util/test/fork/privacy-file.test.ts`, `packages/core/test/fork/privacy-plugin.test.ts` |
 
 ## Serving without authentication
 

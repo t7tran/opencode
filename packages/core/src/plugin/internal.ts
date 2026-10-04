@@ -24,6 +24,7 @@ import { ConfigLocationWatcherPlugin } from "../config/plugin/location-watcher.j
 import { ConfigMcpPlugin } from "../config/plugin/mcp.js"
 import { ConfigProviderPlugin } from "../config/plugin/provider.js"
 import { ForkLockPlugin } from "../fork/plugin.js" // fork_change - hard provider lock
+import { ForkPrivacyPlugin } from "../fork/privacy.js" // fork_change - data privacy guard
 import { ConfigPolicyPlugin } from "../config/plugin/policy.js"
 import { ConfigReferencePlugin } from "../config/plugin/reference.js"
 import { ConfigShellPlugin } from "../config/plugin/shell.js"
@@ -268,12 +269,15 @@ const post = [
   // fork_change start - last, so it folds over every other contributor. This is
   // where the v1 head/tail `configProviders` entries went; see fork/plugin.ts.
   ForkLockPlugin,
+  // After the lock, so the provider settings it pins are in the secret set; and
+  // last, so its permission and request hooks have the final say. See fork/privacy.ts.
+  ForkPrivacyPlugin,
   // fork_change end
 ] as const satisfies readonly InternalPlugin[]
 
 // Repository config must not switch off policy enforcement or the Console connection that delivers
 // organization statements, so plugin remove operations skip these IDs.
-export const guarded: ReadonlySet<string> = new Set([OpencodePlugin.id, ConfigPolicyPlugin.Plugin.id, ForkLockPlugin.id]) // fork_change - config cannot remove the provider lock
+export const guarded: ReadonlySet<string> = new Set([OpencodePlugin.id, ConfigPolicyPlugin.Plugin.id, ForkLockPlugin.id, ForkPrivacyPlugin.id]) // fork_change - config cannot remove the provider lock or the privacy guard
 
 export const list = Effect.fn("PluginInternal.list")(function* () {
   // Capture only services; activation supplies the child Scope and batching context.
