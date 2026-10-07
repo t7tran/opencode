@@ -58,8 +58,11 @@ function isRouteNotFound(error: unknown) {
   return error instanceof HttpServerError.HttpServerError && error.reason._tag === "RouteNotFound"
 }
 
+// Artifact tabs show PDFs and HTML in an iframe, and video and audio in media elements, all from blob:
+// URLs. A blob: URL never matches 'self', so frame-src, object-src (Chromium's PDF viewer) and
+// media-src have to name it.
 function csp(hash = "") {
-  return `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'${hash ? ` 'sha256-${hash}'` : ""}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; media-src 'self' data:; connect-src * data: blob:`
+  return `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'${hash ? ` 'sha256-${hash}'` : ""}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; media-src 'self' data: blob:; frame-src 'self' blob:; object-src 'self' blob:; connect-src * data: blob:`
 }
 
 function cspForHtml(body: string) {
