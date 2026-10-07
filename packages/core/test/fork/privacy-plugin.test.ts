@@ -186,6 +186,66 @@ describe("ForkPrivacyPlugin", () => {
   )
 })
 
+describe("ForkPrivacyPlugin without the admin files", () => {
+  it.effect("does nothing when neither file exists", () =>
+    Effect.gen(function* () {
+      fs.rmSync(files.privacy)
+      fs.rmSync(files.instructions)
+      const hooks = yield* install()
+
+      const message = Message.user(`here is my key ${PASTED}`)
+      const event = context([message])
+      const system = [...event.system]
+      yield* hooks.trigger("session", "context", event)
+      expect(event.messages[0]).toBe(message)
+      expect(event.system).toEqual(system)
+
+      const after = yield* hooks.trigger("tool", "execute.after", toolEvent(`OPENAI_API_KEY=abc123def456`))
+      if (after.status !== "completed") throw new Error("expected a completed event")
+      expect(after.result.content).toBe("OPENAI_API_KEY=abc123def456")
+
+      const env = { PATH: "/usr/bin", GENIX_API_KEY: "session-only-key-12345" }
+      const shell = yield* hooks.trigger("shell", "create.before", {
+        command: "printenv",
+        cwd: dir,
+        timeout: 0,
+        shell: "/bin/sh",
+        env: { ...env },
+      })
+      expect(shell.env).toEqual(env)
+
+      const read = yield* hooks.trigger("permission", "evaluate", {
+        sessionID: Session.ID.make("ses_privacy"),
+        action: "read",
+        resources: [path.join(paths().data, "opencode.db").replaceAll("\\", "/")],
+        effect: "allow",
+      })
+      expect(read.effect).toBe("allow")
+    }),
+  )
+
+  it.effect("still appends the instructions when only the privacy file is missing", () =>
+    Effect.gen(function* () {
+      fs.rmSync(files.privacy)
+      const hooks = yield* install()
+      const event = context([Message.user(`here is my key ${PASTED}`)])
+      yield* hooks.trigger("session", "context", event)
+      expect(JSON.stringify(event.messages)).toContain(PASTED)
+      expect(event.system.at(-1)!.text).toContain("Always communicate in Australian English.")
+    }),
+  )
+
+  it.effect("an empty privacy file turns on built-in redaction", () =>
+    Effect.gen(function* () {
+      fs.writeFileSync(files.privacy, "")
+      const hooks = yield* install()
+      const event = context([Message.user(`here is my key ${PASTED}`)])
+      yield* hooks.trigger("session", "context", event)
+      expect(JSON.stringify(event.messages)).not.toContain(PASTED)
+    }),
+  )
+})
+
 describe("sensitiveCommandMarkers", () => {
   it.effect("spells home-relative paths every way a shell would", () =>
     Effect.sync(() => {

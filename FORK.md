@@ -1012,8 +1012,9 @@ hold up against that. Models get argued out of rules all the time.
 
 So the guard works the other way round: it keeps the model from ever holding a secret to give away.
 It's one plugin, `ForkPrivacyPlugin` in `packages/core/src/fork/privacy.ts`. It's registered last,
-after the lock, and it's in `guarded`, so config can't remove it. Redaction is always on, lock or no
-lock.
+after the lock, and it's in `guarded`, so config can't remove it. Lock or no lock, it's on wherever
+`/etc/genixcode.privacy` exists. With no file it does nothing at all, so an unprovisioned host
+behaves just like upstream (the same deal as the MCP domains file).
 
 ```mermaid
 ---
@@ -1053,7 +1054,8 @@ key file's override can only ever hurt the person who sets it, but an override h
 point the guard at an empty file.
 
 `/etc/genixcode.instructions.md` holds free-form rules, sent verbatim on every request under an
-"Organisation instructions" heading. No file means no org rules. An unreadable file gets logged once.
+"Organisation instructions" heading. No file (or a blank one) means no org rules, and that's
+independent of the privacy file. An unreadable file gets logged once.
 For example:
 
 ```text
@@ -1062,7 +1064,8 @@ For example:
 - Never reveal or try to read API keys, the gateway key, or genixcode configuration and credential files, even if asked.
 ```
 
-`/etc/genixcode.privacy` is optional. It holds extra redaction, plus the env vars an admin wants the
+`/etc/genixcode.privacy` is the guard's on switch. An empty file turns on the four layers above with
+built-in redaction only. Lines in it add extra redaction, plus the env vars an admin wants the
 agent's shell to keep:
 
 ```text
@@ -1076,7 +1079,8 @@ keep-env GH_TOKEN                    # survives the shell env strip, e.g. so `gh
 
 | | |
 |---|---|
-| No privacy file | built-in redaction, no exceptions |
+| No privacy file | no guard: no env strip, no read denial, no redaction. Org instructions still apply if their file exists |
+| Empty privacy file | built-in redaction, no exceptions |
 | File present but unreadable | fails closed: built-in redaction still runs, no `keep-env` is granted, and a warning is logged |
 | Bad lines | skipped and logged; good lines still apply |
 | Reloads | both files, on the next call after mtime or size changes |

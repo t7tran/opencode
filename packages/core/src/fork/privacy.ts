@@ -23,8 +23,11 @@
 //   5. Organisation instructions. /etc/genixcode.instructions.md, appended as the
 //      last system part, for the rules an organisation wants on every session.
 //
-// Redaction is always on, lock or no lock. The plugin is registered after
-// ForkLockPlugin and guarded, so config cannot remove it.
+// Layers 1–4 are on whenever /etc/genixcode.privacy exists, lock or no lock;
+// an empty file turns them on with built-in redaction only. With no file they
+// are a no-op, so an unprovisioned host behaves as upstream does. Layer 5
+// depends only on its own file. The plugin is registered after ForkLockPlugin
+// and guarded, so config cannot remove it.
 //
 // What it cannot do: FORK.md § Sealed key files explains why anyone who can run
 // the client can recover the managed key without the agent's help. This closes
@@ -174,6 +177,10 @@ export const makeForkPrivacyPlugin = (files: PrivacyFiles = DEFAULT_FILES) =>
         return Effect.succeed(current)
       }
 
+      // No privacy file, no guard. Checked per call (a stat, cached parse), so
+      // provisioning or removing the file takes effect on the next one.
+      const off = () => privacyPolicy(files.privacy).absent
+
       const build = Effect.gen(function* () {
         const current = yield* policy()
         const literals = new Set<string>([...stripped, ...current.secrets, ...secretEnvValues(process.env)])
@@ -225,6 +232,7 @@ export const makeForkPrivacyPlugin = (files: PrivacyFiles = DEFAULT_FILES) =>
       // 1. Shell env strip.
       yield* ctx.shell.hook("create.before", (invocation) =>
         Effect.gen(function* () {
+          if (off()) return
           const current = yield* policy()
           const before = stripped.size
           invocation.env = stripSecretEnv(invocation.env, current.unreadable ? new Set() : current.keepEnv, (value) => {
@@ -239,7 +247,7 @@ export const makeForkPrivacyPlugin = (files: PrivacyFiles = DEFAULT_FILES) =>
       const markers = sensitiveCommandMarkers(sensitive, global.home)
       yield* ctx.permission.hook("evaluate", (event) =>
         Effect.sync(() => {
-          if (event.effect === "deny") return
+          if (event.effect === "deny" || off()) return
           if (event.action === "read") {
             if (!event.resources.some((resource) => sensitive.some((glob) => Wildcard.match(resource, glob)))) return
             event.effect = "deny"
@@ -257,6 +265,7 @@ export const makeForkPrivacyPlugin = (files: PrivacyFiles = DEFAULT_FILES) =>
       // 3. Tool output redaction, before the result is stored.
       yield* ctx.tool.hook("execute.after", (event) =>
         Effect.gen(function* () {
+          if (off()) return
           const redact = yield* redactor
           if (event.status === "error") {
             const message = redact(event.error.message)
@@ -288,16 +297,18 @@ export const makeForkPrivacyPlugin = (files: PrivacyFiles = DEFAULT_FILES) =>
       // provider's prompt cache still hits.
       const request = (event: SessionRequest) =>
         Effect.gen(function* () {
-          const redact = yield* redactor
-          for (let i = 0; i < event.system.length; i++) {
-            const part = event.system[i]!
-            const text = redact(part.text)
-            if (text !== part.text) event.system[i] = { ...part, text }
-          }
-          for (let i = 0; i < event.messages.length; i++) {
-            const message = event.messages[i]!
-            const next = redactMessage(message, redact)
-            if (next !== message) event.messages[i] = next
+          if (!off()) {
+            const redact = yield* redactor
+            for (let i = 0; i < event.system.length; i++) {
+              const part = event.system[i]!
+              const text = redact(part.text)
+              if (text !== part.text) event.system[i] = { ...part, text }
+            }
+            for (let i = 0; i < event.messages.length; i++) {
+              const message = event.messages[i]!
+              const next = redactMessage(message, redact)
+              if (next !== message) event.messages[i] = next
+            }
           }
           const instructions = orgInstructions(files.instructions)
           if (instructions.status === "unreadable" && !warned.instructions) {

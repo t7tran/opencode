@@ -187,6 +187,7 @@ export const make = Effect.fnUntraced(function* (options: Options) {
 // fork_change start - see the spawn above
 function hostSecretUnsets(): Record<string, string> {
   const policy = privacyPolicy()
+  if (policy.absent) return {}
   const kept = stripSecretEnv(globalThis.process.env, policy.unreadable ? new Set() : policy.keepEnv)
   const unsets: Record<string, undefined> = {}
   for (const name of Object.keys(globalThis.process.env)) if (!(name in kept)) unsets[name] = undefined

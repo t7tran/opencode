@@ -24,6 +24,7 @@
 // See FORK.md § Data privacy guard.
 
 import fs from "node:fs"
+import { isMissing } from "./privacy-file.js"
 
 export const DEFAULT_INSTRUCTIONS_FILE = "/etc/genixcode.instructions.md"
 
@@ -43,8 +44,7 @@ export function orgInstructions(path: string = DEFAULT_INSTRUCTIONS_FILE): OrgIn
   try {
     stat = fs.statSync(path)
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return ABSENT
-    return UNREADABLE
+    return isMissing(error) ? ABSENT : UNREADABLE
   }
   const cached = cache.get(path)
   if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) return cached.value

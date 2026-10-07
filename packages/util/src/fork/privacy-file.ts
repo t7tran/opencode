@@ -12,10 +12,13 @@
 //   host     *.corp.example.com      any subdomain of corp.example.com
 //   keep-env GH_TOKEN                survives the agent shell's env strip
 //
-// No file means built-in redaction only, with no exceptions. A file that exists
-// but cannot be read fails closed: built-in redaction still runs, and no
-// `keep-env` is granted — an administrator who wrote one meant to restrict, and
-// a permissions mistake should not lift that. The same rule as mcp-domains.ts.
+// No file means no guard at all: the privacy plugin and the MCP env strip are
+// a no-op, so an unprovisioned host behaves exactly as upstream does. A file
+// that exists, even an empty one, turns the guard on with built-in redaction.
+// A file that exists but cannot be read fails closed: built-in redaction still
+// runs, and no `keep-env` is granted — an administrator who wrote one meant to
+// restrict, and a permissions mistake should not lift that. The same rule as
+// mcp-domains.ts.
 //
 // Unlike the key file and the domains file, there is no env var to move the
 // path. Those overrides only ever hurt the person who sets them; this one would
@@ -36,10 +39,27 @@ export interface PrivacyPolicy {
   readonly errors: readonly string[]
   /** The file exists but could not be read; everything above is empty. */
   readonly unreadable: boolean
+  /** There is no file, so the guard does nothing. */
+  readonly absent: boolean
 }
 
-const EMPTY: PrivacyPolicy = { secrets: [], patterns: [], hosts: [], keepEnv: new Set(), errors: [], unreadable: false }
+const EMPTY: PrivacyPolicy = {
+  secrets: [],
+  patterns: [],
+  hosts: [],
+  keepEnv: new Set(),
+  errors: [],
+  unreadable: false,
+  absent: false,
+}
+const ABSENT: PrivacyPolicy = { ...EMPTY, absent: true }
 const UNREADABLE: PrivacyPolicy = { ...EMPTY, unreadable: true }
+
+/** A missing file, or a missing directory on the way to it. */
+export function isMissing(error: unknown): boolean {
+  const code = (error as NodeJS.ErrnoException).code
+  return code === "ENOENT" || code === "ENOTDIR"
+}
 
 export function parsePrivacy(text: string): PrivacyPolicy {
   const secrets: string[] = []
@@ -86,21 +106,20 @@ export function parsePrivacy(text: string): PrivacyPolicy {
         errors.push(`line ${index + 1}: unknown keyword "${keyword}"`)
     }
   })
-  return { secrets, patterns, hosts, keepEnv, errors, unreadable: false }
+  return { secrets, patterns, hosts, keepEnv, errors, unreadable: false, absent: false }
 }
 
 // Asked on every tool call and every model request, so the parse is kept until
 // the file's mtime or size changes; a stat is the only per-call cost.
 const cache = new Map<string, { mtimeMs: number; size: number; policy: PrivacyPolicy }>()
 
-/** The administrator's privacy policy, or an empty one when there is no file. */
+/** The administrator's privacy policy; `absent` when there is no file. */
 export function privacyPolicy(path: string = DEFAULT_PRIVACY_FILE): PrivacyPolicy {
   let stat: fs.Stats
   try {
     stat = fs.statSync(path)
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return EMPTY
-    return UNREADABLE
+    return isMissing(error) ? ABSENT : UNREADABLE
   }
   const cached = cache.get(path)
   if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) return cached.policy

@@ -54,10 +54,25 @@ describe("parsePrivacy", () => {
 })
 
 describe("privacyPolicy", () => {
-  test("no file is an empty policy", () => {
+  test("no file is absent, so the guard is a no-op", () => {
     const policy = privacyPolicy(path.join(dir, "absent"))
+    expect(policy.absent).toBe(true)
     expect(policy.unreadable).toBe(false)
     expect(policy.secrets).toEqual([])
+  })
+
+  test("a missing directory on the way is absent too", () => {
+    const file = path.join(dir, "not-a-dir")
+    write(file, "")
+    expect(privacyPolicy(path.join(file, "genixcode.privacy")).absent).toBe(true)
+  })
+
+  test("an empty file is present", () => {
+    const file = path.join(dir, "genixcode.privacy")
+    write(file, "")
+    const policy = privacyPolicy(file)
+    expect(policy.absent).toBe(false)
+    expect(policy.unreadable).toBe(false)
   })
 
   test("reloads when the file changes", () => {
@@ -86,6 +101,12 @@ describe("orgInstructions", () => {
     expect(orgInstructions(file)).toEqual({ status: "absent" })
     write(file, "- Always use Australian English.\n")
     expect(orgInstructions(file)).toEqual({ status: "present", text: "- Always use Australian English." })
+  })
+
+  test("a missing directory on the way is absent", () => {
+    const file = path.join(dir, "not-a-dir")
+    write(file, "")
+    expect(orgInstructions(path.join(file, "genixcode.instructions.md"))).toEqual({ status: "absent" })
   })
 
   test.skipIf(process.getuid?.() === 0)("unreadable", () => {
