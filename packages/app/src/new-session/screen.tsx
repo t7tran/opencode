@@ -57,7 +57,7 @@ export default function NewSessionPage(props: { draftId: string }) {
   useNewSessionCommands({
     restoreFocus: model.restoreFocus,
     project: {
-      empty: project.empty,
+      empty: () => project.empty() || workspace.persona(), // fork_change
       open: () => project.setOpen(true),
     },
     workspace: {

@@ -15,6 +15,7 @@ import {
   workspaceDefaultSelection,
   workspaceSelectionDestination,
 } from "@/workspaces/paths"
+import { personaFolder } from "@/fork/persona-folder" // fork_change
 
 export function resolveNewSessionWorktree(input: { enabled: boolean; selected?: string; fallback?: string }) {
   if (!input.enabled) return "main"
@@ -115,12 +116,19 @@ export function createNewSessionWorkspaceController(input: {
       (item) => item.strategy !== undefined && !sameDirectory(project.worktree, item.directory),
     ).length
   })
-  const visible = createMemo(() =>
-    resolveNewSessionGit({
-      projectVcs: currentProject()?.vcs,
-      branch: data.location.vcs.info({ directory: sdk().directory })?.branch.current,
-    }),
+  // fork_change start
+  // A persona folder never gets the branch/workspace bar: off, the selection always resolves to the
+  // folder itself, so a saved "workspace" default can't send the session into a worktree either.
+  const persona = createMemo(() => personaFolder(data.location.agent.list({ directory: sdk().directory })))
+  const visible = createMemo(
+    () =>
+      !persona() &&
+      resolveNewSessionGit({
+        projectVcs: currentProject()?.vcs,
+        branch: data.location.vcs.info({ directory: sdk().directory })?.branch.current,
+      }),
   )
+  // fork_change end
   const selected = createMemo(() => {
     const project = currentProject()
     const worktree = input.selectedWorktree()
@@ -160,6 +168,7 @@ export function createNewSessionWorkspaceController(input: {
       data.location.syncInfo({ directory: sdk().directory }),
       data.project.sync(),
       data.location.vcs.sync({ directory: sdk().directory }),
+      data.location.agent.sync({ directory: sdk().directory }), // fork_change
     ]).catch(() => undefined)
   })
   // Only the selected worktree feeds the branch label. Syncing every worktree in the inventory boots
@@ -203,6 +212,7 @@ export function createNewSessionWorkspaceController(input: {
   }
 
   return {
+    persona, // fork_change
     selection: {
       value,
       workspace: createMemo(() => {

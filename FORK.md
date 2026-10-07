@@ -1420,6 +1420,47 @@ well as sending it to the focused one. So a window you open later can replay the
 the deep-link mapping, and guards on each wiring line. `packages/server/test/fetch.test.ts` checks
 `paths.home` comes back from `/api/info`.
 
+## Persona folders keep you in the folder
+
+Click an agent on the landing page and you land on a new session in `~/agents/writer`. Upstream then
+puts two pickers under the composer: the project, and the branch with its "new workspace" option.
+`~/agents` is a git clone, so you always get both. Neither does anything good there.
+
+- **The project picker** moves the draft to another project. That isn't the writer any more.
+- **A new workspace** is a git worktree of the *whole* clone, and its session starts at the
+  worktree's root. The persona's `AGENTS.md`, `genixcode.json` and `.genixcode/agent/` live one
+  folder down, so you're back to talking to Build.
+
+So the new-session screen hides that row in a persona folder, and turns off its two shortcuts:
+`mod+shift+o` (pick a project) and `mod+alt+l` (cycle Local / workspace).
+
+How does the UI know? A persona folder's `genixcode.json` disables Build and Plan, and core
+*removes* a disabled agent from the folder's agent list rather than flagging it. So "the agent list
+has loaded and there's no `build` in it" is the test. No new config key, which matters because the
+config parser drops keys it doesn't know (`onExcessProperty: "ignore"`), and adding one would mean
+a schema change plus touching every agent's `genixcode.json`. It holds however you got there: the
+landing link, the sidebar, a new session in the same tab, or the desktop app. Until the list loads
+the folder counts as an ordinary project, so the row can show for a moment before it goes.
+
+Hiding the row alone wouldn't be enough. The workspace selection falls back to the user's saved
+default and their last choice for that project, and a saved "workspace" would still create a
+worktree on the first message with nothing on screen to say so. The fork turns the controller's
+`visible` off instead. With it off, upstream's own `resolveNewSessionWorktree` always answers
+`"main"`, the folder itself, and the branch list isn't even fetched.
+
+| What | Where |
+|---|---|
+| The test | `packages/app/src/fork/persona-folder.ts` |
+| `persona`, `visible` off, loading the folder's agent list | marked lines in `packages/app/src/new-session/workspace/controller.ts` |
+| Hiding the project and branch row | one marked line in `packages/app/src/new-session/view.tsx` |
+| Turning off the project shortcut (the workspace one follows `visible`) | one marked line in `packages/app/src/new-session/screen.tsx` |
+
+Once the first message is sent you're on an ordinary session screen, which still shows the project
+and branch read-only in its summary panel. That's left as upstream has it: it can't move anything.
+
+`packages/app/src/fork/persona-folder.test.ts` covers the test (Build present, only Plan disabled,
+pinned agents beside the persona, a list that hasn't loaded) and guards each wiring line.
+
 ## Rebase workflow
 
 1. Rebase against `upstream/dev`.
