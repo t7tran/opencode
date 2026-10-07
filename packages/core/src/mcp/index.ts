@@ -16,6 +16,7 @@ import { Integration } from "../integration.js"
 import { KeyedMutex } from "../effect/keyed-mutex.js"
 import { Location } from "../location.js"
 import { waitForAbort } from "@opencode/util/process"
+import { isGatewayMcp } from "@opencode/util/fork/lock" // fork_change - managed key on the gateway's MCP
 import { State } from "../state.js"
 import type { McpClient } from "./client.js"
 
@@ -162,6 +163,10 @@ export const layer = (options?: Options) =>
       const owned = new Set<Integration.ID>()
       const register = Effect.fnUntraced(function* (name: ServerName, entry: ServerEntry) {
         if (entry.config.type !== "remote" || entry.config.oauth === false) return
+        // fork_change start - the gateway's MCP signs in with the managed key (client.ts),
+        // so it gets no OAuth integration to offer a sign-in for
+        if (isGatewayMcp(entry.config.url)) return
+        // fork_change end
         const remote = entry.config
         // Key identity on name + url, not url alone: two configs for the same url under different names are
         // distinct logical servers that may hold different accounts, so they must not share a credential row.

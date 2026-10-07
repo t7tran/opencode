@@ -1002,6 +1002,54 @@ filtered, nor are the shell commands the agent runs.
 | MCP integrations exempt from the lock | `packages/util/src/fork/guard.ts`, the integration prune in `packages/core/src/fork/plugin.ts` |
 | Tests | `packages/util/test/fork/mcp-domains.test.ts`, `packages/core/test/fork/mcp-domains.test.ts`, `packages/core/test/fork/lock-plugin.test.ts` |
 
+### The gateway's own MCP endpoint
+
+The gateway isn't only a model endpoint. Bifrost also serves the MCP servers it's been given
+(web search, web reader and the like) on `/mcp`, and it wants the same virtual key there that it
+gets on `/v1`. That's a problem on a managed host. The key in `/etc/kilo.key` is sealed, an MCP
+entry's `headers` can only hold text from config (`{env:…}` and `{file:…}` included), and
+`{file:/etc/kilo.key}` would just send the sealed blob. Putting the plain key anywhere config can
+reach it would undo the whole point of sealing.
+
+So the lock pins it, the same way it pins `baseURL`. A remote MCP server whose URL is on the
+gateway's origin gets the managed key as its bearer token:
+
+```jsonc
+"mcp": {
+  "genix": { "type": "remote", "url": "https://ai.gateway.genixventures.com/mcp", "oauth": false }
+}
+```
+
+Here's what happens to that entry, and only that one:
+
+- **`Authorization: Bearer <managed key>`** goes on every request. Anything in the entry's `headers`
+  that could present a different key (`Authorization`, `x-bf-vk`, `x-api-key`, `x-goog-api-key`,
+  any case) is dropped first. Other headers pass through untouched.
+- **Redirects are refused** (`redirect: "error"`), so the key can't ride a `307` off the gateway.
+  That holds with or without `/etc/genixcode.domains`.
+- **No OAuth.** The server gets no integration, so there's nothing to sign in to, and the
+  transport opens without an auth provider whose token could stand in for the key. Still write
+  `"oauth": false` in the entry, for a host with no managed key.
+
+The match is on **origin**: scheme, host and port. `http://`, another port, a subdomain or a
+lookalike such as `ai.gateway.genixventures.com.example.net` gets nothing. Neither does any server
+at all when there's no managed key or the lock is off. Point the entry anywhere else and it's an
+ordinary MCP server with whatever headers you gave it.
+
+Like the rest of the sealing story, this stops the easy path, not a determined local user (see
+[Sealed key files](#sealed-key-files)). The key still never shows up in config, in the server's
+status, or anywhere the model can read it back.
+
+| Concern | Where |
+|---|---|
+| The origin check and the transport settings (`isGatewayMcp`, `gatewayMcpRequestInit`) | `packages/util/src/fork/lock.ts` |
+| Applying them when the transport opens | `packages/core/src/mcp/client.ts` |
+| Skipping the OAuth integration | `register` in `packages/core/src/mcp/index.ts` |
+| Tests | `packages/util/test/fork/gateway-mcp.test.ts`, `packages/core/test/fork/gateway-mcp.test.ts` |
+
+`packages/core/src/mcp/oauth.ts` looks `fetch` up per request instead of capturing it at load, so
+the core test can stand in for it and read what the transport actually sent.
+
 ## Data privacy guard
 
 Here's how it went wrong. Someone asked the agent for the Genix gateway key, nicely and then less

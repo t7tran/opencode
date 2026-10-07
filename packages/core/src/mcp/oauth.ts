@@ -39,8 +39,9 @@ const refreshKey = (url: string | URL, init: RequestInit | undefined) => {
 // overload is picked by annotation and clone() is pinned to the type it was called on.
 // fork_change start - every MCP request (transport, OAuth discovery, registration,
 // token exchange and refresh) passes through `send` to here, so this is where the
-// administrator's domain allowlist is applied, redirects included.
-const base: FetchLike = allowlistedFetch(fetch) as FetchLike
+// administrator's domain allowlist is applied, redirects included. The global is
+// looked up per request rather than captured here, so a test can stand in for it.
+const base: FetchLike = allowlistedFetch((input, init) => globalThis.fetch(input, init)) as FetchLike
 // fork_change end
 const share = (pending: ReturnType<FetchLike>) => pending.then((response) => response.clone() as typeof response)
 

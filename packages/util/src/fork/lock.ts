@@ -102,6 +102,50 @@ export function lockedManagedSettings(): { apiKey: string; baseURL: string } | u
   return { apiKey: key, baseURL: PROVIDER_BASE_URL }
 }
 
+/**
+ * Request headers that could present a different gateway credential.
+ * `Authorization` is the one the gateway MCP pin sets; the rest are the other
+ * places the gateway (Bifrost) reads a virtual key from, dropped so the managed
+ * key is the only credential a gateway MCP request carries.
+ */
+const GATEWAY_KEY_HEADERS = new Set(["authorization", "x-bf-vk", "x-api-key", "x-goog-api-key"])
+
+/**
+ * Whether a remote MCP server's URL is on the gateway's own origin while the key
+ * is managed. Origin rather than host: scheme and port count too, so neither
+ * `http://` nor another port on the same name passes.
+ */
+export function isGatewayMcp(url: string | URL): boolean {
+  const href = String(url)
+  if (lockedManagedSettings() === undefined || !URL.canParse(href)) return false
+  return new URL(href).origin === new URL(PROVIDER_BASE_URL).origin
+}
+
+/**
+ * Transport settings for a remote MCP server on the gateway's origin: its
+ * configured headers with the managed key as the bearer token, any other key the
+ * config tried to present removed, and redirects refused so the key can't follow
+ * one off the gateway. Undefined for every other server, which keeps its own
+ * headers and OAuth untouched.
+ *
+ * The same pin as `baseURL` above, applied to MCP: the destination is fixed here
+ * rather than taken from config, so pointing an MCP entry somewhere else gets it
+ * no key, and the key itself never lands anywhere the user or the model can read
+ * it back.
+ */
+export function gatewayMcpRequestInit(
+  url: string | URL,
+  headers?: Record<string, string>,
+): { headers: Record<string, string>; redirect: "error" } | undefined {
+  const managed = lockedManagedSettings()
+  if (managed === undefined || !isGatewayMcp(url)) return undefined
+  const kept = Object.entries(headers ?? {}).filter(([name]) => !GATEWAY_KEY_HEADERS.has(name.toLowerCase()))
+  return {
+    headers: { ...Object.fromEntries(kept), Authorization: `Bearer ${managed.apiKey}` },
+    redirect: "error",
+  }
+}
+
 export class ForkProviderLockedError extends Schema.TaggedError<ForkProviderLockedError>()(
   "ForkProviderLockedError",
   {
