@@ -1305,6 +1305,26 @@ guards. One fails if a rebase takes upstream's `composer-adapter.ts` wholesale. 
 anything besides the new-session composer, in `packages/app` or `packages/desktop`, starts creating
 sessions, because a new path upstream adds would skip the rule.
 
+## The agent picker is on by default
+
+Open a plain project in the web UI and, upstream, there's no agent picker at all. Every message goes
+to Build. Plan is still there on the server, you just can't reach it: the dropdown's gone, and so are
+the cycle-agent commands (`mod+.`, `/agent`).
+
+Upstream shows the picker only when Settings → General → "Show agent" is on, or the project has a
+custom agent (`packages/app/src/providers/models/selection.tsx`). The setting defaults to off. The
+custom-agent check looks for `native === false`, but `normalizeAgentList` doesn't carry `native`
+across from a v2 agent list. So that check never matches, and in practice the setting is the only
+thing that shows the picker.
+
+The fork flips the default to on: one marked line in `packages/app/src/settings/model.tsx`, plus
+the matching line in upstream's `model.test.ts`. Persona folders aren't affected. Their
+`genixcode.json` disables Build and Plan on the server, so the picker lists the persona and nothing
+else.
+
+It's only a default. A browser that already saved settings with the switch off keeps it off, and
+anyone can still turn it off. `packages/app/src/fork/show-agent.test.ts` covers both cases.
+
 ## Opening a folder from a link
 
 A workspace landing page lists agents, and clicking one should drop you into that agent's folder.

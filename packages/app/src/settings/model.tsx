@@ -242,7 +242,7 @@ export const defaultSettings: Settings = {
     showSearch: false,
     showTerminal: false,
     timelineDetail: { ...timelinePresets[2].value },
-    showCustomAgents: false,
+    showCustomAgents: true, // fork_change
     mobileTitlebarPosition: "top",
     mobileDiffWrap: true,
     terminalPlacement: "side",
