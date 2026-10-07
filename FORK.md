@@ -157,6 +157,19 @@ same treatment by hand, because the agent *runs* what they say. They are Markdow
 marker and the checker does not read them; a rebase that takes upstream's copy puts `opencode service
 status` back in front of the model.
 
+The built-in tool namespace is the one the model sees most often. Upstream registers it as `opencode`,
+so the agent's code calls `tools.opencode.session_move` and friends. Ask the agent which MCP servers it
+can reach and it would list "opencode (5 tools)", because `execute` presents built-in namespaces right
+next to real MCP servers. It's now `BRAND_SLUG` (`tools.genixcode.*`), and its description says
+`PRODUCT_NAME`. Watch out: the permission action names come from the namespace too. A user rule written
+for `opencode_read_mcp_resource` won't match any more. It has to say `genixcode_read_mcp_resource`.
+
+| Concern | Where |
+|---|---|
+| Namespace, its description, the `session_move` hint, three tools | `packages/core/src/tool/plugin/opencode.ts` |
+| The two MCP resource tools and their permission actions | `packages/core/src/tool/plugin/mcp-resource.ts` |
+| Pins the names | `packages/core/test/mcp.test.ts`, `packages/core/test/tool-opencode.test.ts` |
+
 Upstream v2 consolidated every outbound user agent into `App.useragent(app)`, so what was roughly a
 dozen scattered literals in v1 is now a **single line** in `packages/core/src/app.ts`. webfetch is
 the exception: it sends a browser-shaped string so sites serve it real pages, and that one is spelled

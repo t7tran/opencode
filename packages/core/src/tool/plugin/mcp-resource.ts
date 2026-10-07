@@ -2,6 +2,7 @@ export * as McpResourceTools from "./mcp-resource.js"
 
 import { ToolFailure } from "@opencode/ai"
 import type { Context } from "@opencode/plugin/effect/plugin"
+import { BRAND_SLUG } from "@opencode/util/fork/brand" // fork_change - renamed tool namespace
 import { Effect, Schema } from "effect"
 import { Mcp } from "../../mcp/index.js"
 import { Permission } from "../../permission.js"
@@ -16,7 +17,7 @@ export const Plugin = {
       .transform((editor) => {
         editor.add({
           name: "list_mcp_resources",
-          options: { namespace: "opencode", codemode: true },
+          options: { namespace: BRAND_SLUG, codemode: true }, // fork_change
           description:
             "List documents, records, and other data exposed by MCP servers. Use this when the user refers to something that is not a local file, such as a URI with a custom scheme, then load a match with read_mcp_resource. Each entry names the server to read it from. Templates are resources addressed by a parameter such as a record ID; fill in the uriTemplate placeholders before reading.",
           input: Schema.Struct({
@@ -34,7 +35,7 @@ export const Plugin = {
               const servers =
                 input.server === undefined ? (yield* mcp.servers()).map((server) => server.name) : [input.server]
               yield* permission.assert({
-                action: "opencode_list_mcp_resources",
+                action: `${BRAND_SLUG}_list_mcp_resources`, // fork_change
                 resources: servers,
                 save: servers,
                 metadata: {},
@@ -48,7 +49,7 @@ export const Plugin = {
         })
         editor.add({
           name: "read_mcp_resource",
-          options: { namespace: "opencode", codemode: true },
+          options: { namespace: BRAND_SLUG, codemode: true }, // fork_change
           description:
             "Read one MCP resource by server and URI. Not for local files. Always return the full contents rather than slicing or filtering them; oversized output is truncated automatically and the full content is saved to a file you can read. Images and PDFs are shown to you directly.",
           input: Schema.Struct({
@@ -63,7 +64,7 @@ export const Plugin = {
           execute: (input, context) =>
             Effect.gen(function* () {
               yield* permission.assert({
-                action: "opencode_read_mcp_resource",
+                action: `${BRAND_SLUG}_read_mcp_resource`, // fork_change
                 resources: [`${input.server}:${input.uri}`],
                 save: [`${input.server}:*`],
                 metadata: { server: input.server, uri: input.uri },
