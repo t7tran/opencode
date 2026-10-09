@@ -1251,19 +1251,49 @@ exactly 24 hours after login.
 `packages/app/src/fork/proxy-session.ts` wraps the transport's `fetch` (one marked line in
 `packages/app/src/runtime/server/client.tsx`, plus its import). When a same-origin request fails at
 the network level, it asks `GET /api/info` with `redirect: "manual"`. An `opaqueredirect` means
-something in front wants the browser back at its login page, so it reloads — once the tab is visible,
-and at most once a minute, so a proxy that keeps redirecting after login can't spin the page. Any
-other answer, including a second network error, is left to upstream's reconnect logic.
+something in front wants the browser back at its login page. Any other answer, including a second
+network error, is left to upstream's reconnect logic.
+
+Getting the browser *to* that login page is the fiddly part, and the first version got it wrong. It
+called `location.reload()`, which looks like it should work and doesn't. The PWA's service worker
+answers every navigation from its precached `index.html`, so the reload never left the browser:
+Cloudflare never saw it, never redirected, and the fresh copy of the app failed exactly like the old
+one. (It's also why a normal F5 never fixed a dead tab, and Ctrl+Shift+R — which skips the worker —
+did.) Cloudflare's way back in has the same problem. It finishes a login by redirecting to
+`/cdn-cgi/access/authorized` on the app's own host, which is where the app's cookie gets set, and the
+worker happily answers that hop from cache too.
+
+So the re-login navigates to the page's own URL with `?genixcode-reauth=1` added, and
+`PROXY_SESSION_NAVIGATION_DENYLIST` — the marker and `^/cdn-cgi/` — is spread into
+`navigateFallbackDenylist` in `packages/app/vite.pwa.ts`, inside the block already marked for `/open`.
+The whole round trip hits the network. `entry.tsx` strips the marker on load (one marked call, beside
+upstream's `auth_token` cleanup).
 
 | Choice | Why |
 |---|---|
 | Probe only after a failure | the happy path is upstream's request, byte for byte — no redirect mode change on API calls |
-| `/api/info`, not `/` | the PWA's service worker precaches `index.html` and would answer `/` itself |
+| `/api/info`, not `/` | the worker answers `/` itself; `/api/` is already on upstream's denylist |
+| A marker, not `location.reload()` | a reload is a navigation, and the worker serves navigations from cache |
+| `/cdn-cgi/` on the denylist | Cloudflare's callback sets the cookie on the app's host; the worker would swallow it. Cloudflare reserves the prefix on every proxied host, so the app can't lose a route to it |
+| One attempt per page load, shared | the app builds a transport per server context; separate attempts would read each other as failures |
+| Second attempt unregisters the worker | a tab still on a worker built before the denylist entries would serve the marked URL from cache too. If a marked navigation lands back on a page that still redirects within a minute, the worker goes and the page tries once more. It re-registers on the next load |
+| Then stop | two attempts inside a minute and the page is left alone, so a proxy that keeps redirecting after a good login can't spin it |
+| Wait for a visible tab | a hidden tab gains nothing, and the login provider may want a click |
 | Same-origin only | the desktop renderer talks to a sidecar on another origin, so it never matches and the wrapper is inert there |
 | Aborts and timeouts ignored | the request queue's own header timeout is a `DOMException`, not a proxy problem |
 
-`packages/app/src/fork/proxy-session.test.ts` covers the reload, the outage and normal-answer cases,
-probe sharing across a burst, the hidden tab and the cooldown.
+`packages/app/src/fork/proxy-session.test.ts` covers the navigation and its URL, the outage and
+normal-answer cases, probe sharing across a burst and across transports, the hidden tab, both stages
+and the stop, the denylist patterns against what Workbox actually tests (path plus query), and that
+`vite.pwa.ts` still spreads them in — a rebase that takes upstream's file wholesale would otherwise
+quietly put the re-login back behind the cache.
+
+None of that proves the browser behaves, which is what bit the first version, so it was also run end to
+end: the real `genixcode-cli serve --no-auth` and built UI behind a small Access look-alike (a cookie
+gate, a login host on another origin with no CORS, a `/cdn-cgi/access/authorized` callback), driven by
+headless Chromium with the worker in control. A plain reload sent nothing to the proxy. With the fix,
+expiring the session gave one marked navigation, the login, the callback, a clean URL and working API
+calls, with the worker still registered.
 
 ## Sessions start where the project was opened
 

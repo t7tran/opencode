@@ -14,6 +14,7 @@ import zh from "@/runtime/i18n/zh"
 import { authFromToken } from "@/runtime/server/api"
 import pkg from "../package.json"
 import { ServerConnection } from "@/runtime/server/registry"
+import { clearProxySessionMarker } from "@/fork/proxy-session" // fork_change
 
 const getLocale = () => {
   if (typeof navigator !== "object") return "en" as const
@@ -74,6 +75,7 @@ if (root instanceof HTMLElement && root.dataset.opencodeMounted === undefined) {
   void loadInitialLocale().then((locale) => {
     const auth = authFromToken(new URLSearchParams(location.search).get("auth_token"))
     clearAuthToken()
+    clearProxySessionMarker() // fork_change
     const standalone = isStandalone()
     root.dataset.standalone = String(standalone)
     if (standalone) restorePwaRoute()
