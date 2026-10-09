@@ -100,4 +100,20 @@ export const McpGroup = HttpApiGroup.make("server.mcp")
         }),
       ),
   )
+  // fork_change start - the workspace landing page lists each server's tools
+  .add(
+    HttpApiEndpoint.get("mcp.tool.catalog", "/api/mcp/tool", {
+      query: LocationQuery,
+      success: Location.response(Schema.Array(Mcp.ToolInfo)),
+    })
+      .annotateMerge(locationQueryOpenApi)
+      .annotateMerge(
+        OpenApi.annotations({
+          identifier: "mcp.tool.catalog",
+          summary: "List MCP tools",
+          description: "Retrieve the tools connected MCP servers offer, without their input schemas.",
+        }),
+      ),
+  )
+  // fork_change end
   .annotateMerge(OpenApi.annotations({ title: "mcp", description: "MCP server and resource routes." }))

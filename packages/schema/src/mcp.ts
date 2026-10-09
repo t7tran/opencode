@@ -120,6 +120,18 @@ export const ResourceCatalog = Schema.Struct({
   templates: Schema.Array(ResourceTemplate),
 }).annotate({ identifier: "Mcp.ResourceCatalog" })
 
+// fork_change start - what each connected server offers, for clients that only show it
+export interface ToolInfo extends Schema.Schema.Type<typeof ToolInfo> {}
+export const ToolInfo = Schema.Struct({
+  server: Schema.String,
+  name: Schema.String,
+  title: optional(Schema.String),
+  description: optional(Schema.String),
+  readOnly: optional(Schema.Boolean),
+  destructive: optional(Schema.Boolean),
+}).annotate({ identifier: "Mcp.ToolInfo" })
+// fork_change end
+
 export const ResourceContentPart = Schema.Union([
   Schema.Struct({
     type: Schema.Literal("text"),

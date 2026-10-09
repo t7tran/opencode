@@ -65,5 +65,27 @@ export const McpHandler = HttpApiBuilder.group(Api, "server.mcp", (handlers) =>
           return yield* response(service.resourceCatalog())
         }),
       )
+      // fork_change start - names and descriptions only; input schemas stay server-side
+      .handle(
+        "mcp.tool.catalog",
+        Effect.fn(function* () {
+          const service = yield* Mcp.Service
+          return yield* response(
+            service.tools().pipe(
+              Effect.map((tools) =>
+                tools.map((tool) => ({
+                  server: tool.server,
+                  name: tool.name,
+                  title: tool.title ?? tool.annotations?.title,
+                  description: tool.description,
+                  readOnly: tool.annotations?.readOnlyHint,
+                  destructive: tool.annotations?.destructiveHint,
+                })),
+              ),
+            ),
+          )
+        }),
+      )
+      // fork_change end
   }),
 )

@@ -298,6 +298,15 @@ export type McpResourceTemplate = {
   mimeType?: string
 }
 
+export type McpToolInfo = {
+  server: string
+  name: string
+  title?: string
+  description?: string
+  readOnly?: boolean
+  destructive?: boolean
+}
+
 export type CredentialOAuth = {
   type: "oauth"
   methodID: string
@@ -5784,6 +5793,12 @@ export type McpResourceCatalogInput = {
 }
 
 export type McpResourceCatalogOutput = { location: LocationPublicRef; data: McpResourceCatalog }
+
+export type McpToolCatalogInput = {
+  readonly location?: { readonly location?: { readonly directory?: string | undefined } | undefined }["location"]
+}
+
+export type McpToolCatalogOutput = { location: LocationPublicRef; data: Array<McpToolInfo> }
 
 export type CredentialListOutput = { data: Array<CredentialEntry> }["data"]
 
