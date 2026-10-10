@@ -31,6 +31,11 @@ function missingForm(id: Form.ID) {
   return new FormNotFoundError({ id, message: `Form not found: ${id}` })
 }
 
+// fork_change start
+const skillMessage = (error: { readonly skill: string; readonly denied?: boolean }) =>
+  error.denied ? `Skill is denied by permission rules: ${error.skill}` : `Skill not found: ${error.skill}`
+// fork_change end
+
 export const SessionHandler = HttpApiBuilder.group(Api, "server.session", (handlers) =>
   Effect.gen(function* () {
     const session = yield* Session.Service
@@ -330,9 +335,11 @@ export const SessionHandler = HttpApiBuilder.group(Api, "server.session", (handl
                 Effect.catchTag("Session.AttachmentError", (error) =>
                   Effect.fail(new InvalidRequestError({ message: error.message, field: "files" })),
                 ),
+                // fork_change start
                 Effect.catchTag("Session.SkillNotFoundError", (error) =>
-                  Effect.fail(new InvalidRequestError({ message: `Skill not found: ${error.skill}`, field: "skills" })),
+                  Effect.fail(new InvalidRequestError({ message: skillMessage(error), field: "skills" })),
                 ),
+                // fork_change end
               ),
           }
         }),
@@ -383,9 +390,11 @@ export const SessionHandler = HttpApiBuilder.group(Api, "server.session", (handl
             })
             .pipe(
               Effect.catchTag("Session.NotFoundError", missingSession),
+              // fork_change start
               Effect.catchTag("Session.SkillNotFoundError", (error) =>
-                Effect.fail(new SkillNotFoundError({ skill: error.skill, message: `Skill not found: ${error.skill}` })),
+                Effect.fail(new SkillNotFoundError({ skill: error.skill, message: skillMessage(error) })),
               ),
+              // fork_change end
             )
           return HttpApiSchema.NoContent.make()
         }),

@@ -122,4 +122,18 @@ describe("Skill", () => {
       expect(Skill.available([info("deploy", "Deploy")], agent!.permissions)).toEqual([])
     }),
   )
+
+  // fork_change start
+  it.effect("keeps a skill enabled unless every agent denies it", () =>
+    Effect.gen(function* () {
+      const skills = [info("deploy", "Deploy"), info("review", "Review")]
+      const deny = (id: string) => ({ permissions: [{ action: "skill", resource: id, effect: "deny" as const }] })
+      const open = { permissions: [] }
+
+      expect(Skill.enabled(skills, [deny("deploy"), deny("deploy")])).toEqual([skills[1]])
+      expect(Skill.enabled(skills, [deny("deploy"), open])).toEqual(skills)
+      expect(Skill.enabled(skills, [])).toEqual(skills)
+    }),
+  )
+  // fork_change end
 })

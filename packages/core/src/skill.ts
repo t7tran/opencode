@@ -33,6 +33,17 @@ export { Event } from "@opencode/schema/skill"
 export const available = (skills: ReadonlyArray<Info>, permissions: Permission.Ruleset) =>
   skills.filter((skill) => Permission.evaluate("skill", skill.id, permissions).effect !== "deny")
 
+// fork_change start
+// For views with no Session to pick an agent from: a skill is off only once every agent denies it.
+export const enabled = (
+  skills: ReadonlyArray<Info>,
+  agents: ReadonlyArray<{ readonly permissions: Permission.Ruleset }>,
+) =>
+  agents.length === 0
+    ? [...skills]
+    : skills.filter((skill) => agents.some((agent) => available([skill], agent.permissions).length > 0))
+// fork_change end
+
 export const toModelOutput = (skill: Info, files: ReadonlyArray<string>) => {
   const directory = path.dirname(skill.path)
   return [

@@ -1,6 +1,7 @@
 import path from "path"
 import { describe, expect } from "bun:test"
 import { Effect, Layer, LayerMap } from "effect"
+import { Agent } from "@opencode/core/agent" // fork_change
 import { Database } from "@opencode/core/database/database"
 import { AppNodeBuilder } from "@opencode/core/effect/app-node-builder"
 import { LayerNode } from "@opencode/util/effect/layer-node"
@@ -34,6 +35,20 @@ const info = Skill.Info.make({
   path: AbsolutePath.make(path.resolve("/skills/effect.md")),
   content: "  Use Effect\n",
 })
+// fork_change start
+const off = Skill.Info.make({
+  id: Skill.ID.make("off"),
+  name: Skill.Name.make("Off"),
+  description: "Denied for the agent",
+  path: AbsolutePath.make(path.resolve("/skills/off.md")),
+  content: "Should not load\n",
+})
+const skills = [info, off]
+const agent = Agent.Info.make({
+  ...Agent.Info.default(Agent.defaultID),
+  permissions: [{ action: "skill", resource: off.id, effect: "deny" }],
+})
+// fork_change end
 const locations = makeGlobalNode({
   service: LocationServiceMap.Service,
   layer: Layer.effect(
@@ -45,9 +60,10 @@ const locations = makeGlobalNode({
         Layer.mergeAll(
           LayerNode.compile(LayerNode.group([PluginHooks.node, Image.node])),
           Layer.mock(Skill.Service, {
-            get: (id) => Effect.succeed(id === info.id ? info : undefined),
-            list: () => Effect.succeed([info]),
+            get: (id) => Effect.succeed(skills.find((skill) => skill.id === id)), // fork_change
+            list: () => Effect.succeed(skills), // fork_change
           }),
+          Layer.mock(Agent.Service, { resolve: () => Effect.succeed(agent) }), // fork_change
           Layer.mock(Plugin.Service, { awaitActivation: Effect.void }),
         ) as unknown as Layer.Layer<LocationServices>,
     ),
@@ -165,4 +181,61 @@ describe("Session.skill", () => {
       expect(yield* sessions.inbox(session.id)).toEqual([])
     }),
   )
+
+  // fork_change start
+  it.effect("refuses a prompt that attaches a skill the agent denies", () =>
+    Effect.gen(function* () {
+      const sessions = yield* Session.Service
+      const session = yield* sessions.create({ location })
+
+      const error = yield* sessions
+        .prompt({
+          id: SessionMessage.ID.make("msg_denied_skill"),
+          sessionID: session.id,
+          text: "Apply @off",
+          skills: [{ id: off.id, mention: { start: 6, end: 10, text: "@off" } }],
+          resume: false,
+        })
+        .pipe(Effect.flip)
+
+      expect(error).toMatchObject({ _tag: "Session.SkillNotFoundError", skill: off.id, denied: true })
+      expect(yield* sessions.inbox(session.id)).toEqual([])
+    }),
+  )
+
+  it.effect("refuses an attached skill the Session's own rules deny", () =>
+    Effect.gen(function* () {
+      const sessions = yield* Session.Service
+      const session = yield* sessions.create({ location })
+      yield* sessions.setPermissions({
+        sessionID: session.id,
+        permissions: [{ action: "skill", resource: info.id, effect: "deny" }],
+      })
+
+      const error = yield* sessions
+        .prompt({
+          id: SessionMessage.ID.make("msg_session_denied_skill"),
+          sessionID: session.id,
+          text: "Apply @effect",
+          skills: [{ id: info.id, mention: { start: 6, end: 13, text: "@effect" } }],
+          resume: false,
+        })
+        .pipe(Effect.flip)
+
+      expect(error).toMatchObject({ _tag: "Session.SkillNotFoundError", skill: info.id, denied: true })
+    }),
+  )
+
+  it.effect("refuses to activate a skill the agent denies", () =>
+    Effect.gen(function* () {
+      const sessions = yield* Session.Service
+      const session = yield* sessions.create({ location })
+
+      expect(
+        yield* sessions.skill({ sessionID: session.id, skill: off.id, resume: false }).pipe(Effect.flip),
+      ).toMatchObject({ _tag: "Session.SkillNotFoundError", skill: off.id, denied: true })
+      expect(yield* sessions.messages({ sessionID: session.id })).toEqual([])
+    }),
+  )
+  // fork_change end
 })

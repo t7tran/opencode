@@ -1491,6 +1491,47 @@ and branch read-only in its summary panel. That's left as upstream has it: it ca
 `packages/app/src/fork/persona-folder.test.ts` covers the test (Build present, only Plan disabled,
 pinned agents beside the persona, a list that hasn't loaded) and guards each wiring line.
 
+## A skill deny rule switches the skill off
+
+GenixCode reads `~/.claude/skills` as well as its own skill folders. Handy, until you want a skill
+on in Claude Code and off here. You can't delete it (Claude Code still wants it), so the only lever
+is a permission rule in `~/.config/genixcode/genixcode.json`:
+
+```json
+{ "permissions": [{ "action": "skill", "resource": "demo-off", "effect": "deny" }] }
+```
+
+Upstream only half honours that. The skill tool refuses it and the model's list of available skills
+leaves it out, but the web app's chat box still offers it (`GET /api/skill` returns every skill),
+and if you pick it there it's loaded straight into the conversation. Same for
+`POST /api/experimental/session/:id/skill`. So the fork closes those gaps.
+
+- **`GET /api/skill`** has no session, so there's no single agent to ask. It hides a skill only when
+  *every* agent denies it. A config-wide rule lands on every agent, so that's exactly the case
+  above, while a rule on just one agent leaves the skill listed for the others. The settings pages
+  read the same list, so a switched-off skill disappears there too.
+- **A skill attached to a prompt, or activated directly**, is checked against the session's agent
+  plus the session's own rules, the same ruleset the skill tool checks. A denied skill refuses the
+  whole request rather than quietly dropping it: the prompt comes back as a 400 and the activation
+  as a 404, both saying `Skill is denied by permission rules: <id>`. An `ask` rule doesn't prompt
+  here. Attaching the skill yourself is the answer to that question.
+
+Under the hood the denial travels as upstream's `Session.SkillNotFoundError` with an extra
+`denied: true`, so no new error type has to thread through the protocol and the generated clients.
+
+| What | Where |
+|---|---|
+| "Every agent denies it" (`Skill.enabled`) | marked block in `packages/core/src/skill.ts` |
+| The list filter | marked lines in `packages/server/src/handlers/skill.ts` |
+| The session check (`SessionSkill.assertEnabled`) and the direct activation | marked lines in `packages/core/src/session/skill.ts` |
+| The prompt attachment check | one marked line in `packages/core/src/session/prompt.ts` |
+| `denied` on the error, and its message | one marked line in `packages/core/src/session/error.ts`; marked lines in `packages/server/src/handlers/session.ts` |
+
+Tests sit beside upstream's: `packages/core/test/skill.test.ts` covers `Skill.enabled`, and
+`packages/core/test/session-skill.test.ts` covers an agent rule and a session rule refusing an
+attached skill, plus a refused activation. `packages/core/test/session-owned.test.ts` only gains an
+`Agent` mock, since activation now resolves the session's agent.
+
 ## Rebase workflow
 
 1. Rebase against `upstream/dev`.

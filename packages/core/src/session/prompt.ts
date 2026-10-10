@@ -16,6 +16,7 @@ import { Plugin } from "../plugin/service.js"
 import { PluginHooks } from "../plugin/hooks.js"
 import { Skill } from "../skill.js"
 import { AttachmentError, SkillNotFoundError } from "./error.js"
+import { SessionSkill } from "./skill.js" // fork_change
 
 export type Input = {
   text: string
@@ -64,6 +65,7 @@ export const prepare = Effect.fn("SessionPrompt.prepare")(function* (request: {
           if (name !== undefined) return { id: attachment.id, name, mention: attachment.mention }
           const skill = yield* skillService.get(attachment.id)
           if (!skill) return yield* new SkillNotFoundError({ skill: attachment.id })
+          yield* SessionSkill.assertEnabled(request.session, skill) // fork_change
           prepared.set(skill.id, skill.name)
           return {
             id: skill.id,
