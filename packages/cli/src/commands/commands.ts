@@ -579,6 +579,12 @@ const Root = Spec.make(typeof OPENCODE_CLI_NAME === "string" ? OPENCODE_CLI_NAME
           Flag.withDescription("Require HTTP Basic authentication (default; --no-auth serves unauthenticated)"),
           Flag.withDefault(true),
         ),
+        // `--no-auth` is loopback-only unless this is passed too, for a proxy
+        // that authenticates on another host. See fork/server-auth.ts.
+        allowRemoteNoAuth: Flag.boolean("allow-remote-no-auth").pipe(
+          Flag.withDescription("Let --no-auth bind a non-loopback hostname (something in front must authenticate)"),
+          Flag.withDefault(false),
+        ),
         // fork_change end
       },
     }),

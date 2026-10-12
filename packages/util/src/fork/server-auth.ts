@@ -58,13 +58,6 @@ export function isLoopbackHostname(hostname: string): boolean {
   return /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(normalized)
 }
 
-/** Env switch that lifts the loopback restriction. See `noAuthRefusal`. */
-const ALLOW_REMOTE_ENV = "GENIXCODE_FORK_SERVE_NO_AUTH_ALLOW_REMOTE"
-
-function truthy(value: string | undefined): boolean {
-  return value === "1" || value?.toLowerCase() === "true"
-}
-
 /**
  * Why `--no-auth` must be refused for this invocation, or undefined when it is
  * allowed.
@@ -76,10 +69,10 @@ function truthy(value: string | undefined): boolean {
  * `127.0.0.1` that is no worse than the account already running the process. On
  * `0.0.0.0` it is that capability offered to anything that can route to the port.
  * The flag is therefore loopback-only by default, and a deployment that really
- * does terminate auth on another host sets `GENIXCODE_FORK_SERVE_NO_AUTH_ALLOW_REMOTE=1`
- * and owns the consequence. An env switch is the right shape here — unlike the
- * updater's compile-time `define`, which guards against a Genix build replacing
- * itself with an upstream one and so must not be reachable at runtime at all.
+ * does terminate auth on another host passes `--allow-remote-no-auth` and owns
+ * the consequence. A flag rather than an env var, so the decision sits on the
+ * command line next to `--no-auth` and `--hostname` where a reviewer reads it,
+ * and is never picked up silently from an inherited environment.
  *
  * **Service mode.** `--service` is the background service the desktop app spawns
  * and discovers. Its password is not decoration: it is written to the service
@@ -92,14 +85,13 @@ function truthy(value: string | undefined): boolean {
 export function noAuthRefusal(input: {
   readonly mode: "default" | "service" | "stdio"
   readonly hostname: string
-  readonly env?: Record<string, string | undefined>
+  readonly allowRemote?: boolean
 }): string | undefined {
   if (input.mode === "service")
     return "--no-auth cannot be combined with --service: the background service's password is what its clients authenticate with."
-  const env = input.env ?? process.env
-  if (isLoopbackHostname(input.hostname) || truthy(env[ALLOW_REMOTE_ENV])) return undefined
+  if (isLoopbackHostname(input.hostname) || input.allowRemote === true) return undefined
   return (
     `--no-auth refuses to bind ${input.hostname}: an unauthenticated server exposes filesystem and shell access to anything that can reach the port. ` +
-    `Bind a loopback address, or set ${ALLOW_REMOTE_ENV}=1 if something in front of it is doing the authenticating.`
+    `Bind a loopback address, or pass --allow-remote-no-auth if something in front of it is doing the authenticating.`
   )
 }

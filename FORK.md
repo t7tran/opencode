@@ -1191,8 +1191,8 @@ never conflict with.
 |---|---|---|
 | `packages/util/src/fork/server-auth.ts` | the policy: `NO_AUTH_PASSWORD`, `isLoopbackHostname()`, `noAuthRefusal()` | fork-owned, exempt |
 | `packages/util/test/fork/server-auth.test.ts` | its tests, including a guard on upstream's `""` semantics | fork-owned, exempt |
-| `packages/cli/src/commands/commands.ts` | the flag on the `serve` spec | block |
-| `packages/cli/src/commands/handlers/serve.ts` | passes `input.auth` through | block |
+| `packages/cli/src/commands/commands.ts` | the `auth` and `allow-remote-no-auth` flags on the `serve` spec | block |
+| `packages/cli/src/commands/handlers/serve.ts` | refuses a lone `--allow-remote-no-auth`; passes both flags through | 2 blocks |
 | `packages/cli/src/server-process.ts` | refusals, the empty password, the startup banner | 4 hunks |
 | `packages/server/src/process.ts` | `undefined` rather than falsy in the guard; the pre-boot gate honours `required()` | 4 hunks |
 
@@ -1212,7 +1212,9 @@ cold start is long enough to look like the flag simply not working.
 | Invocation | Result |
 |---|---|
 | `--no-auth` on a loopback bind | serves unauthenticated, prints `authentication disabled (--no-auth)` |
-| `--no-auth --hostname 0.0.0.0` | refused, unless `GENIXCODE_FORK_SERVE_NO_AUTH_ALLOW_REMOTE=1` |
+| `--no-auth --hostname 0.0.0.0` | refused |
+| `--no-auth --allow-remote-no-auth --hostname 0.0.0.0` | serves unauthenticated on every interface |
+| `--allow-remote-no-auth` without `--no-auth` | refused, so it can't be mistaken for having opened anything |
 | `--no-auth --service` | refused, always |
 | no flag | unchanged: random password, 401 without credentials (with a `www-authenticate` challenge on navigations) |
 
@@ -1225,17 +1227,21 @@ An unauthenticated genixcode server is a remote shell — the API reads and writ
 commands and hands out PTYs. On `127.0.0.1` that is no worse than the account already running the
 process. On `0.0.0.0` it is that capability offered to anything that can route to the port, so the
 flag is loopback-only by default and a deployment that genuinely terminates auth on another host
-opts in explicitly. `127.0.0.0/8` counts in full, not just `127.0.0.1`.
+opts in explicitly with `--allow-remote-no-auth`. `127.0.0.0/8` counts in full, not just `127.0.0.1`.
 
 `--service` is refused outright because the background service's password is not decoration: it is
 written to the service registration file, and every client that discovers the service reads it from
 there and presents it. Serving that unauthenticated would put an open agent server on a user's own
 machine, on a port they did not choose, started on their behalf.
 
-An env switch is the right shape for the escape hatch here, and deliberately weaker than the
-updater's compile-time `define` in `packages/cli/src/fork/policy.ts`. That one guards against a Genix
-build replacing itself with an upstream one, so it must not be reachable at runtime at all. This one
-guards a deployment decision the operator is entitled to make.
+The escape hatch is a flag, not an env var. It used to be `GENIXCODE_FORK_SERVE_NO_AUTH_ALLOW_REMOTE`,
+and that's gone now — it no longer does anything. The trouble with an env var is that it's invisible:
+it gets inherited from a container image or a shell profile, and nobody reading the `serve` line can
+tell the bind is wide open. A flag sits right next to `--no-auth` and `--hostname`, which is where a
+reviewer's eyes already are. It's still deliberately weaker than the updater's compile-time `define`
+in `packages/cli/src/fork/policy.ts`. That one stops a Genix build replacing itself with an upstream
+one, so it mustn't be reachable at runtime at all. This one guards a deployment decision the operator
+is entitled to make.
 
 ### When the proxy's session runs out
 

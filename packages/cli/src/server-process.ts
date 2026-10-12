@@ -28,6 +28,7 @@ export type Options = {
   readonly cors?: readonly string[]
   // fork_change start - false serves unauthenticated; see fork/server-auth.ts
   readonly auth?: boolean
+  readonly allowRemoteNoAuth?: boolean
   // fork_change end
 }
 
@@ -86,7 +87,7 @@ const processEffect = Effect.fnUntraced(function* (options: Options) {
       // mode) are decided in fork/server-auth.ts, once `hostname` has defaulted.
       const noAuth = options.auth === false
       if (noAuth) {
-        const refusal = noAuthRefusal({ mode: options.mode, hostname })
+        const refusal = noAuthRefusal({ mode: options.mode, hostname, allowRemote: options.allowRemoteNoAuth })
         if (refusal) return yield* Effect.fail(new Error(refusal))
       }
       // fork_change end

@@ -3,8 +3,8 @@
 // Tests for the `--no-auth` fork policy. Verifies:
 //   1. Loopback recognition covers all of 127.0.0.0/8 and the IPv6 spellings,
 //      and rejects wildcard and routable binds.
-//   2. The refusals: service mode always, a non-loopback bind unless the env
-//      switch is set.
+//   2. The refusals: service mode always, a non-loopback bind unless
+//      --allow-remote-no-auth is passed.
 //   3. NO_AUTH_PASSWORD is upstream's own "no authentication" sentinel — the
 //      value ServerAuth.required() reads as false.
 
@@ -38,46 +38,50 @@ describe("isLoopbackHostname", () => {
 })
 
 describe("noAuthRefusal", () => {
-  const env = {}
-
   test("allows a loopback bind in default mode", () => {
-    expect(noAuthRefusal({ mode: "default", hostname: "127.0.0.1", env })).toBeUndefined()
+    expect(noAuthRefusal({ mode: "default", hostname: "127.0.0.1" })).toBeUndefined()
   })
 
   test("allows a loopback bind in stdio mode", () => {
-    expect(noAuthRefusal({ mode: "stdio", hostname: "localhost", env })).toBeUndefined()
+    expect(noAuthRefusal({ mode: "stdio", hostname: "localhost" })).toBeUndefined()
   })
 
   test("refuses service mode even on loopback", () => {
     // The service registration file is what every client reads its password
     // from, so an empty one there is not a local decision.
-    expect(noAuthRefusal({ mode: "service", hostname: "127.0.0.1", env })).toContain("--service")
+    expect(noAuthRefusal({ mode: "service", hostname: "127.0.0.1" })).toContain("--service")
   })
 
   test("refuses a wildcard bind and names the escape hatch", () => {
-    const refusal = noAuthRefusal({ mode: "default", hostname: "0.0.0.0", env })
+    const refusal = noAuthRefusal({ mode: "default", hostname: "0.0.0.0" })
     expect(refusal).toContain("0.0.0.0")
-    expect(refusal).toContain("GENIXCODE_FORK_SERVE_NO_AUTH_ALLOW_REMOTE")
+    expect(refusal).toContain("--allow-remote-no-auth")
   })
 
   test("the escape hatch lifts the bind restriction", () => {
-    for (const value of ["1", "true", "TRUE"])
-      expect(
-        noAuthRefusal({ mode: "default", hostname: "0.0.0.0", env: { GENIXCODE_FORK_SERVE_NO_AUTH_ALLOW_REMOTE: value } }),
-      ).toBeUndefined()
+    for (const hostname of ["0.0.0.0", "::", "10.0.0.1", "agent.example.com"])
+      expect(noAuthRefusal({ mode: "default", hostname, allowRemote: true })).toBeUndefined()
   })
 
   test("the escape hatch does not lift the service-mode refusal", () => {
-    expect(
-      noAuthRefusal({ mode: "service", hostname: "127.0.0.1", env: { GENIXCODE_FORK_SERVE_NO_AUTH_ALLOW_REMOTE: "1" } }),
-    ).toContain("--service")
+    expect(noAuthRefusal({ mode: "service", hostname: "0.0.0.0", allowRemote: true })).toContain("--service")
   })
 
-  test("an unset or nonsense switch value does not lift anything", () => {
-    for (const value of [undefined, "", "0", "false", "yes"])
-      expect(
-        noAuthRefusal({ mode: "default", hostname: "0.0.0.0", env: { GENIXCODE_FORK_SERVE_NO_AUTH_ALLOW_REMOTE: value } }),
-      ).toBeDefined()
+  test("an unset or false escape hatch does not lift anything", () => {
+    for (const allowRemote of [undefined, false])
+      expect(noAuthRefusal({ mode: "default", hostname: "0.0.0.0", allowRemote })).toBeDefined()
+  })
+
+  test("the old env switch no longer lifts anything", () => {
+    // Replaced by the flag so the decision is visible on the command line.
+    const previous = process.env.GENIXCODE_FORK_SERVE_NO_AUTH_ALLOW_REMOTE
+    process.env.GENIXCODE_FORK_SERVE_NO_AUTH_ALLOW_REMOTE = "1"
+    try {
+      expect(noAuthRefusal({ mode: "default", hostname: "0.0.0.0" })).toBeDefined()
+    } finally {
+      if (previous === undefined) delete process.env.GENIXCODE_FORK_SERVE_NO_AUTH_ALLOW_REMOTE
+      else process.env.GENIXCODE_FORK_SERVE_NO_AUTH_ALLOW_REMOTE = previous
+    }
   })
 })
 
