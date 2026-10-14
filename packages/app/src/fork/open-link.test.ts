@@ -134,7 +134,12 @@ describe("open link wiring", () => {
   // Workbox tests the denylist against path *and* query, so `\/|$` alone misses `/open?dir=…`.
   test("the service worker sends /open to the server instead of the cached shell", async () => {
     const source = await Bun.file(resolve(app, "vite.pwa.ts")).text()
-    expect(source).toContain("/^\\/open(?:[/?]|$)/],\n      // fork_change end")
+    // The denylist, however it's wrapped, inside the marked block.
+    const denylist =
+      /\/\/ fork_change start[\s\S]*?navigateFallbackDenylist: \[([\s\S]*?)\],\n\s*\/\/ fork_change end/.exec(
+        source,
+      )?.[1]
+    expect(denylist).toContain("/^\\/open(?:[/?]|$)/")
   })
 
   test("the desktop app listens for genixcode://open links", async () => {
