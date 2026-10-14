@@ -25,6 +25,8 @@ import {
   type ShellSettingsController,
 } from "./controllers"
 import "@/settings/settings.css"
+import { appCacheResetAvailable } from "@/fork/app-cache" // fork_change
+import { ForkAppCacheSection } from "@/fork/app-cache-section" // fork_change
 
 const schemeOptions: ("system" | "light" | "dark")[] = ["system", "light", "dark"]
 const tabLayoutOptions: ("horizontal" | "vertical")[] = ["horizontal", "vertical"]
@@ -520,6 +522,11 @@ export const SettingsGeneral: Component = () => {
         <Show when={desktop()}>
           <UpdatesSection />
         </Show>
+        {/* fork_change start - the browser's equivalent of Check for updates; see app-cache.ts */}
+        <Show when={appCacheResetAvailable(platform.platform)}>
+          <ForkAppCacheSection />
+        </Show>
+        {/* fork_change end */}
       </div>
     </>
   )

@@ -1301,6 +1301,80 @@ headless Chromium with the worker in control. A plain reload sent nothing to the
 expiring the session gave one marked navigation, the login, the callback, a clean URL and working API
 calls, with the worker still registered.
 
+### Reloading the latest version
+
+The fix above has an awkward rollout, and it's worth knowing why, because every future web fix
+has the same one. The service worker is set up so a newly downloaded build *waits*. It only takes
+over once every tab and installed-app window on that origin is closed — upstream wants each open
+tab to stay on the complete build it started with. A reload doesn't count: the old page is still
+open while the new one's requested, so the old worker answers it from the old cache. Someone who
+keeps the agent open and refreshes can sit on an old build for weeks while the server upgrades
+nightly underneath them. That's exactly how the proxy-session fix "didn't work" the first time it
+shipped: the tab was still running the version before it.
+
+Getting off an old build used to mean DevTools → Application → Clear site data, or digging through
+the browser's site settings. Fine for us, not for most people. So Settings → General gets an
+**Updates** section in the browser, the counterpart of the desktop-only one with *Check for
+updates*, holding a single **Reload latest version** button.
+
+`packages/app/src/fork/app-cache.ts` does the work: unregister every service worker, delete every
+Cache Storage entry (the worker's precache is the only thing in there), then navigate to the current
+URL with the proxy-session marker. The marker means the navigation reaches the network even if a
+worker survives, and goes through the proxy's login if the session has expired too. Drafts
+(IndexedDB), settings and layout (localStorage) and the server's sessions aren't touched. The
+worker re-registers when the page loads and is back in control from the next load, so offline
+caching comes back by itself.
+
+| Where | What | Marked |
+|---|---|---|
+| `packages/app/src/fork/app-cache.ts` | the reset, and `appCacheResetAvailable()` — web platform with a service worker | fork-owned |
+| `packages/app/src/fork/app-cache-section.tsx` | the section and its button | fork-owned |
+| `packages/app/src/fork/app-cache.test.ts` | order of the steps, the URL it comes back to, and that it still navigates when a step fails | fork-owned |
+| `packages/app/src/settings/general/general.tsx` | two imports and one `<Show>` after upstream's desktop Updates section | 2 lines + block |
+
+The copy is plain English, not dictionary keys, like the `/open` screen — a key means an edit to
+every locale file upstream owns. The section heading reuses upstream's own
+`settings.general.section.updates`, so it's translated anyway.
+
+It was run end to end the same way as the proxy-session fix: build A in the worker's cache, the
+server moved to build B, three reloads still on A with B waiting, then the button — B loaded, the
+marker gone from the URL, and the new worker in control a load later.
+
+It only helps once someone's on a build that has it. A tab that's still on an older build has no
+button to press, so it needs closing (every tab and window) or a hard reload, once.
+
+### The "new version is ready" banner
+
+A button you have to know to look for is still a bit much, so a waiting build also announces
+itself: a persistent toast, **A new version of GenixCode is ready**, with **Reload** and **Later**.
+Upstream registers the worker as if it meant to do this — `registerType: "prompt"`, and the
+generated `sw.js` already answers a `SKIP_WAITING` message — but never shows anything.
+
+`packages/app/src/fork/app-update.ts` is started from `entry.tsx`, inside upstream's
+production-only service worker block (one marked line, plus its import):
+
+| Piece | What it does |
+|---|---|
+| Waiting at load | a build that downloaded on an earlier visit gets the toast straight away |
+| `updatefound` → `installed` | a build that finishes downloading while the tab is open gets it too |
+| Its own update checks | hourly, and on coming back to the tab after ten minutes or more. The browser only checks on navigation, and a single-page app left open never navigates — without this, a nightly server upgrade wouldn't even be downloaded |
+| **Reload** | `SKIP_WAITING` to the waiting worker, then reload once it's in control. If it hasn't taken over in five seconds, it falls back to the Settings button's reset, which doesn't depend on the worker |
+| Another tab updated | this tab is now controlled by a worker whose cache doesn't hold the build it's running, so it gets the toast as well, with a plain reload |
+| Uncontrolled pages | no toast. A first visit or a hard reload runs from the network, so there's nothing stale to replace |
+
+An update check behind an expired proxy session is redirected and rejects; it's dropped quietly,
+since the proxy-session recovery handles that case.
+
+Skipping the wait does what upstream was avoiding: other tabs still on the old build lose the
+cache their lazy chunks would come from. That's why every tab gets the toast once any tab
+updates, and the cost is a reload there rather than a stale build nobody can get off.
+
+`packages/app/src/fork/app-update.test.ts` covers each row above with fake workers. End to end,
+same harness as before: the toast appears when an update check finds build B with the tab left
+alone, and when B was already waiting at load; **Reload** lands on B with the new worker in
+control; with two tabs both show it, the second stays on A with its toast after the first updates,
+and its **Reload** brings it to B.
+
 ## Sessions start where the project was opened
 
 Run `genixcode-cli` in `~/agents/fox-spirit` and the session lives there: that folder's `AGENTS.md`,

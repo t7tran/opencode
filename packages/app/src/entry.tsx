@@ -15,6 +15,7 @@ import { authFromToken } from "@/runtime/server/api"
 import pkg from "../package.json"
 import { ServerConnection } from "@/runtime/server/registry"
 import { clearProxySessionMarker } from "@/fork/proxy-session" // fork_change
+import { watchForAppUpdates } from "@/fork/app-update" // fork_change
 
 const getLocale = () => {
   if (typeof navigator !== "object") return "en" as const
@@ -48,6 +49,7 @@ const web = createWebPlatform(pkg.version)
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => void navigator.serviceWorker.register("/sw.js"), { once: true })
+  void watchForAppUpdates() // fork_change - the "new version is ready" banner
 }
 
 if (import.meta.env.VITE_SENTRY_DSN) {
