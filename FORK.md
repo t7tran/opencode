@@ -1063,6 +1063,44 @@ status, or anywhere the model can read it back.
 `packages/core/src/mcp/oauth.ts` looks `fetch` up per request instead of capturing it at load, so
 the core test can stand in for it and read what the transport actually sent.
 
+### MCP OAuth callback behind a proxy
+
+Upstream signs in to a remote MCP server by opening a little listener on `127.0.0.1` and waiting for
+the browser to come back to it. That's fine on a laptop. It falls over the moment the agent runs
+somewhere the browser can't see, like a pod: you set `redirect_uri` to a host that forwards to the
+agent (a reverse proxy, a tunnel), the sign-in goes through, and the forwarded callback hits a
+socket that only listens on loopback. You get "connection refused", which in a Genix workspace shows
+up as a Cloudflare 502 on the editor host's `/absproxy/19876/mcp/oauth/callback`.
+
+So the fork picks the listener's address from the redirect URI:
+
+| `redirect_uri` | Listens on |
+|---|---|
+| not set (upstream's `http://127.0.0.1:<port>/...`) | `127.0.0.1`, as upstream |
+| a loopback host (`127.0.0.0/8`, `localhost`, `[::1]`) | `127.0.0.1`, as upstream |
+| any other host | `0.0.0.0` |
+
+There's no setting for it, on purpose. A redirect URI on another host already says something else
+delivers the callback, and a loopback-only listener can never receive it. A switch next to it would
+only be a way to break the sign-in.
+
+Listening on every address sounds worse than it is. The listener only exists while a sign-in is in
+progress, it only answers the redirect URI's path, and it won't take a code without the attempt's
+256-bit `state`. One thing it doesn't guard: upstream acts on an `error` parameter before it checks
+`state`, so anything that can reach the port during those few minutes can cancel a sign-in, though
+it can't hijack one. Keeping the port to the thing that forwards to it is the deployment's job. In
+the workspace the pod's network policy lets only the tunnel pod in.
+
+| Concern | Where |
+|---|---|
+| The policy (`mcpOAuthCallbackHost`) | `packages/util/src/fork/mcp-oauth-callback.ts` |
+| Binding the listener with it | `authorize` in `packages/core/src/mcp/oauth.ts` (1 line, plus the import) |
+| Tests | `packages/util/test/fork/mcp-oauth-callback.test.ts`, `packages/core/test/fork/mcp-oauth-callback.test.ts` |
+
+The core test sends the callback to the machine's own network address, the way a proxy would. If a
+rebase puts upstream's hard-coded `"127.0.0.1"` back, that fetch is refused and the test fails. It's
+skipped on a machine with no non-loopback IPv4 address, since there's nothing to tell apart there.
+
 ## Data privacy guard
 
 Here's how it went wrong. Someone asked the agent for the Genix gateway key, nicely and then less

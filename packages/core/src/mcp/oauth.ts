@@ -23,6 +23,7 @@ import { OauthCallbackPage } from "../oauth/page.js"
 import type { Integration } from "../integration.js"
 import { ErrorSummary } from "../util/error-summary.js"
 import { allowlistedFetch, mcpDomainRefusal } from "@opencode/util/fork/mcp-domains" // fork_change - MCP outbound domain allowlist
+import { mcpOAuthCallbackHost } from "@opencode/util/fork/mcp-oauth-callback" // fork_change - callback behind a proxy
 
 /** Client ID Metadata Document: servers that support CIMD accept this URL as the client_id without registration. */
 export const CLIENT_METADATA_URL = "https://opencode.ai/oauth/opencode/client.json"
@@ -391,7 +392,7 @@ export const authorize = (input: {
     const redirectPort = Number(redirect?.port) || undefined
     const port = yield* Effect.callback<number, Error>((resume) => {
       server.once("error", (error) => resume(Effect.fail(error)))
-      server.listen(oauth?.callback_port ?? redirectPort ?? 0, "127.0.0.1", () => {
+      server.listen(oauth?.callback_port ?? redirectPort ?? 0, mcpOAuthCallbackHost(redirect), () => { // fork_change - callback behind a proxy
         const address = server.address()
         resume(
           address && typeof address === "object"
