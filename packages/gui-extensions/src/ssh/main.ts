@@ -6,6 +6,7 @@ import { SshFailure } from "./command"
 import { Ssh } from "./contract"
 import { createSshController } from "./controller"
 import type definition from "./index"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 const setup: MainSetup<typeof definition> = async (ctx) => {
   const cli = ctx.cli
@@ -25,7 +26,7 @@ const setup: MainSetup<typeof definition> = async (ctx) => {
     createSshController({
       version: cli.version,
       development: cli.development,
-      binary: cli.binary ?? cli.command[0] ?? "opencode",
+      binary: cli.binary ?? cli.command[0] ?? CLI_NAME, // fork_change - renamed binary
       command: cli.command,
       configs: saved.value,
       save: (configs) => Effect.try({ try: () => saved.set(configs), catch: SshFailure.from }),

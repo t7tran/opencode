@@ -133,7 +133,7 @@ function project(
     const definition = { description: "Review code", template: "Review $ARGUMENTS: !`printf ready`", ...command }
     yield* Effect.promise(() =>
       Bun.write(
-        path.join(tmp.path, "opencode.json"),
+        path.join(tmp.path, "genixcode.json"), // fork_change
         JSON.stringify({
           agents: { reviewer: { mode: "subagent", model: "test/child" } },
           ...(format === "markdown" ? {} : { commands: { review: definition } }),
@@ -143,7 +143,7 @@ function project(
     if (format === "markdown")
       yield* Effect.promise(() =>
         Bun.write(
-          path.join(tmp.path, ".opencode/commands/review.md"),
+          path.join(tmp.path, ".genixcode/commands/review.md"), // fork_change
           [
             "---",
             "description: Review code",

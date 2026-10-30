@@ -3,6 +3,7 @@ import { powerSaveBlocker } from "electron"
 import type { MainSetup } from "../sdk/main"
 import { Pairing } from "./contract"
 import type definition from "./index"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 /** The display sleep blocker this instance holds, if any. */
 type Blocker = { id?: number }
@@ -37,7 +38,7 @@ const setup: MainSetup<typeof definition> = (ctx) => {
       () =>
         new Promise<string>((resolve, reject) => {
           execFile(
-            cli.command[0] ?? "opencode",
+            cli.command[0] ?? CLI_NAME, // fork_change - renamed binary
             [...cli.command.slice(1), "service", ...args],
             { signal, windowsHide: true },
             (error, stdout, stderr) => {

@@ -1,114 +1,68 @@
-<p align="center">
-  <a href="https://opencode.ai">
-    <picture>
-      <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
-      <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="OpenCode logo">
-    </picture>
-  </a>
-</p>
-<p align="center">The open source AI coding agent.</p>
-<p align="center">
-  <a href="https://opencode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
-  <a href="https://www.npmjs.com/package/@opencode/cli"><img alt="npm" src="https://img.shields.io/npm/v/@opencode/cli?style=flat-square" /></a>
-  <a href="https://github.com/anomalyco/opencode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/anomalyco/opencode/publish.yml?style=flat-square&branch=dev" /></a>
-</p>
+# Genix Coding Agent
 
-<p align="center">
-  <a href="README.md">English</a> |
-  <a href="README.zh.md">简体中文</a> |
-  <a href="README.zht.md">繁體中文</a> |
-  <a href="README.ko.md">한국어</a> |
-  <a href="README.de.md">Deutsch</a> |
-  <a href="README.es.md">Español</a> |
-  <a href="README.fr.md">Français</a> |
-  <a href="README.it.md">Italiano</a> |
-  <a href="README.da.md">Dansk</a> |
-  <a href="README.ja.md">日本語</a> |
-  <a href="README.pl.md">Polski</a> |
-  <a href="README.ru.md">Русский</a> |
-  <a href="README.bs.md">Bosanski</a> |
-  <a href="README.ar.md">العربية</a> |
-  <a href="README.no.md">Norsk</a> |
-  <a href="README.br.md">Português (Brasil)</a> |
-  <a href="README.th.md">ไทย</a> |
-  <a href="README.tr.md">Türkçe</a> |
-  <a href="README.uk.md">Українська</a> |
-  <a href="README.bn.md">বাংলা</a> |
-  <a href="README.gr.md">Ελληνικά</a> |
-  <a href="README.vi.md">Tiếng Việt</a>
-</p>
+**Internal development tool — Genix employees only.**
 
-[![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
+This repository contains an internal Genix development tool: the Genix Coding Agent CLI (`genixcode-cli`). It is maintained by Genix for use by Genix employees on Genix work. It is not a public or general-purpose product.
 
----
+## Approved software only
 
-### Installation
+Genix employees must not install or use any software that has not been approved by Genix. Only approved tools may be used for Genix work. If you are unsure whether a tool is approved, do not use it — check with your manager or the IT team first.
+
+## Relationship to opencode
+
+This is a customised version of [opencode](https://github.com/anomalyco/opencode), built and maintained internally by Genix. It is locked to Genix-approved services.
+
+Genix employees must not use opencode or its cloud service in any way. This includes, but is not limited to:
+
+- Installing or running the public opencode CLI, desktop app, or any other opencode-distributed application
+- Creating or signing in to an opencode account
+- Sending code, prompts, or any other Genix data to opencode's cloud service, gateway, or hosted models
+- Purchasing or using opencode subscriptions, credits, or paid plans
+
+Only this internal Genix build may be used.
+
+## Repository layout
+
+| Path | Contents |
+| --- | --- |
+| `packages/cli/` | The `genixcode-cli` command |
+| `packages/core/` | Shared runtime, including the fork-owned provider lock and managed key file |
+| `packages/tui/` | Terminal UI components |
+| `packages/desktop/` | The GenixCode desktop app (Electron) |
+| `packages/app/` | The UI the desktop app renders |
+
+Upstream code retained from opencode is kept as close to unmodified as practical so the fork can be rebased; see [FORK.md](FORK.md) for the divergence convention, the provider lock, and the branding changes.
+
+## Building locally
+
+Build the CLI binary for the current platform:
 
 ```bash
-# YOLO
-curl -fsSL https://opencode.ai/v2/install | bash
-
-# Package managers
-npm i -g @opencode/cli@latest      # or bun/pnpm/yarn
-brew install anomalyco/tap/opencode-v2 # macOS and Linux (recommended, always up to date)
-brew install opencode              # macOS and Linux (official brew formula, updated less)
-sudo pacman -S opencode            # Arch Linux (Stable)
-paru -S opencode-beta              # Arch Linux (Latest from AUR)
-mise use -g opencode               # Any OS
-nix run github:anomalyco/opencode  # Nix
+cd packages/cli && bun run build --single --skip-install
 ```
 
-> [!TIP]
-> Remove versions older than 0.1.x before installing.
+The binary is written to `packages/cli/dist/cli-<platform>-<arch>/bin/genixcode-cli`. It's
+`genixcode-cli` rather than `genixcode` so it can't collide with the desktop app, which installs
+under `genixcode`. Install it from npm with `npm install -g genixcode` — the package keeps the
+short name, the command it puts on your `PATH` is `genixcode-cli`.
 
-### Desktop App (BETA)
-
-OpenCode is also available as a desktop application. Download it from [opencode.ai/download](https://opencode.ai/download).
-
-| Platform              | Download                           |
-| --------------------- | ---------------------------------- |
-| macOS (Apple Silicon) | `opencode-desktop-mac-arm64.dmg`   |
-| macOS (Intel)         | `opencode-desktop-mac-x64.dmg`     |
-| Windows               | `opencode-desktop-win-x64.exe`     |
-| Linux                 | `.deb`, `.rpm`, or `.AppImage`     |
+Build the desktop app (requires a desktop-capable machine — it runs Electron):
 
 ```bash
-# macOS (Homebrew)
-brew install --cask opencode-desktop
+cd packages/desktop && bun run build && bun run package
 ```
 
-#### Installation Directory
+Artefacts are written to `packages/desktop/dist/`. Set `OPENCODE_CHANNEL` to `dev` (default), `beta`
+or `prod` to choose the application id, product name and icons. The desktop app has no auto-update
+feed; builds are distributed internally. Each release also carries a Linux `.deb` for x64 and arm64,
+built by `fork-publish.yml` and attached to the GitHub release.
 
-The install script installs OpenCode to `$HOME/.opencode/bin`.
+Full build, release, and publishing details are in [FORK.md](FORK.md).
 
-### Agents
+## Support
 
-OpenCode includes two built-in agents you can switch between with the `Tab` key.
+For access, configuration, issues, or questions, contact the Genix internal development team through the usual internal support channels.
 
-- **build** - Default, full-access agent for development work
-- **plan** - Read-only agent for analysis and code exploration
-  - Denies file edits by default
-  - Asks permission before running bash commands
-  - Ideal for exploring unfamiliar codebases or planning changes
+## Licence
 
-Also included is a **general** subagent for complex searches and multistep tasks.
-This is used internally and can be invoked using `@general` in messages.
-
-Learn more about [agents](https://opencode.ai/v2/docs/agents).
-
-### Documentation
-
-For more info on how to configure OpenCode, [**head over to our docs**](https://opencode.ai/v2/docs).
-
-### Contributing
-
-If you're interested in contributing to OpenCode, please read our [contributing docs](./CONTRIBUTING.md) before submitting a pull request.
-
-### Building on OpenCode
-
-If you are working on a project that's related to OpenCode and is using "opencode" as part of its name, for example "opencode-dashboard" or "opencode-mobile", please add a note to your README to clarify that it is not built by the OpenCode team and is not affiliated with us in any way.
-
----
-
-**Join our community** [Discord](https://discord.gg/opencode) | [X.com](https://x.com/opencode)
+This project is a derivative of [opencode](https://github.com/anomalyco/opencode) and retains its upstream licensing. See [LICENSE](LICENSE) and the third-party licence notices bundled with each package. Referencing the upstream project here does not authorise use of opencode or its services — see the section above.

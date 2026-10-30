@@ -88,7 +88,7 @@ it.effect("groups available models by provider with paging", () =>
           type: "tool-call",
           id: `call-${JSON.stringify(input)}`,
           name: "execute",
-          input: { code: `return await tools.opencode.models(${JSON.stringify(input)})` },
+          input: { code: `return await tools.genixcode.models(${JSON.stringify(input)})` }, // fork_change
         },
       }).pipe(Effect.map((result) => JSON.parse(result.content?.[0]?.type === "text" ? result.content[0].text : "")))
 
@@ -201,7 +201,7 @@ worktreeIt.live("creates, lists, and removes worktrees for the plugin's project"
           type: "tool-call",
           id: `call-${name}-${JSON.stringify(input)}`,
           name: "execute",
-          input: { code: `return await tools.opencode.${name}(${JSON.stringify(input)})` },
+          input: { code: `return await tools.genixcode.${name}(${JSON.stringify(input)})` }, // fork_change
         },
       })
     const run = (name: string, input: Record<string, unknown>) =>

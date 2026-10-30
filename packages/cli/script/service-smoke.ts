@@ -7,13 +7,14 @@ import { Effect, Schema } from "effect"
 import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
+import { APP_DIRNAME, CLI_NAME, PROJECT_CONFIG_DIRNAME } from "@opencode/util/fork/brand" // fork_change - renamed binary, app dir and project dotdir
 
 const nodeBuild = process.argv.includes("--node")
 const target = `cli${nodeBuild ? "-node" : ""}-${process.platform === "win32" ? "windows" : process.platform}-${process.arch}`
 const directory = path.join(import.meta.dir, "..", "dist", ...(nodeBuild ? ["node"] : []), target, "bin")
 const binary = path.join(
   directory,
-  `${nodeBuild ? "opencode2-node" : "opencode"}${process.platform === "win32" ? ".exe" : ""}`,
+  `${nodeBuild ? `${CLI_NAME}2-node` : CLI_NAME}${process.platform === "win32" ? ".exe" : ""}`, // fork_change - renamed binary
 )
 if (!(await Bun.file(binary).exists())) throw new Error(`Missing compiled CLI in ${directory}`)
 
@@ -33,7 +34,7 @@ const processes: Array<ReturnType<typeof Bun.spawn>> = []
 const errors: Array<Promise<string>> = []
 let failure: unknown
 try {
-  await fs.mkdir(path.join(root, ".opencode", "plugins"), { recursive: true })
+  await fs.mkdir(path.join(root, PROJECT_CONFIG_DIRNAME, "plugins"), { recursive: true }) // fork_change
   spawnService()
   spawnService()
   const registration = await waitForRegistration()
@@ -54,7 +55,7 @@ try {
   if (tokenOpenApi.status !== 200) throw new Error("Compiled application rejected query authentication")
   await verifyWebUi(info.url)
   if ((await pluginIDs(info.url, headers)).includes("smoke")) throw new Error("Smoke plugin existed before creation")
-  const plugin = path.join(root, ".opencode", "plugins", "smoke.ts")
+  const plugin = path.join(root, PROJECT_CONFIG_DIRNAME, "plugins", "smoke.ts") // fork_change
   await fs.writeFile(plugin, pluginSource())
   await waitForPlugin(info.url, headers, plugin)
 
@@ -90,7 +91,7 @@ try {
   processes.forEach((process) => process.kill())
   await Promise.all(processes.map((process) => process.exited))
   if (failure)
-    errors.push(fs.readFile(path.join(root, "data", "opencode", "log", "opencode.log"), "utf8").catch(() => ""))
+    errors.push(fs.readFile(path.join(root, "data", APP_DIRNAME, "log", "opencode.log") /* fork_change */, "utf8").catch(() => ""))
 }
 
 const output = await Promise.all(errors)
@@ -112,7 +113,7 @@ function spawnService() {
 }
 
 async function waitForRegistration() {
-  const directory = path.join(root, "state", "opencode")
+  const directory = path.join(root, "state", APP_DIRNAME) // fork_change - renamed app dir
   for (let attempt = 0; attempt < 400; attempt++) {
     const files = await fs.readdir(directory).catch(() => [])
     const file = files.find(

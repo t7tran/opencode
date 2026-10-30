@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
+import { APP_DIRNAME, CLI_NAME } from "@opencode/util/fork/brand" // fork_change - per-user dirs and binary are renamed
 
 describe("debug paths command", () => {
   test("is included in troubleshooting help", async () => {
@@ -11,7 +12,7 @@ describe("debug paths command", () => {
     expect(debug.stdout).toContain("paths")
     expect(debug.stdout).toContain("Show global paths (data, config, cache, state)")
     expect(paths.exitCode).toBe(0)
-    expect(paths.stdout).toContain("opencode debug paths [flags]")
+    expect(paths.stdout).toContain(`${CLI_NAME} debug paths [flags]`) // fork_change
   })
 
   test("prints resolved global paths without starting a server", async () => {
@@ -34,16 +35,16 @@ describe("debug paths command", () => {
       expect({ exitCode: result.exitCode, stderr: result.stderr }).toEqual({ exitCode: 0, stderr: "" })
       expect(paths).toMatchObject({
         home: os.homedir(),
-        data: path.join(root, "data", "opencode"),
-        config: path.join(root, "config", "opencode"),
-        cache: path.join(root, "cache", "opencode"),
-        state: path.join(root, "state", "opencode"),
-        bin: path.join(root, "cache", "opencode", "bin"),
-        log: path.join(root, "data", "opencode", "log"),
-        repos: path.join(root, "data", "opencode", "repos"),
+        data: path.join(root, "data", APP_DIRNAME) /* fork_change */,
+        config: path.join(root, "config", APP_DIRNAME) /* fork_change */,
+        cache: path.join(root, "cache", APP_DIRNAME) /* fork_change */,
+        state: path.join(root, "state", APP_DIRNAME) /* fork_change */,
+        bin: path.join(root, "cache", APP_DIRNAME, "bin") /* fork_change */,
+        log: path.join(root, "data", APP_DIRNAME, "log") /* fork_change */,
+        repos: path.join(root, "data", APP_DIRNAME, "repos") /* fork_change */,
       })
       expect(paths.tmp).toBeTruthy()
-      expect(await Bun.file(path.join(root, "state", "opencode", "service-local.json")).exists()).toBe(false)
+      expect(await Bun.file(path.join(root, "state", APP_DIRNAME, "service-local.json") /* fork_change */).exists()).toBe(false)
     } finally {
       await fs.rm(root, { recursive: true, force: true })
     }

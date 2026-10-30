@@ -92,7 +92,7 @@ describe("settings schema", () => {
       general: {
         showFileTree: false,
         timelineDetail: timelinePresets[2].value,
-        showCustomAgents: false,
+        showCustomAgents: true, // fork_change
         showTurnDiffs: false,
         mobileTitlebarPosition: "top",
         terminalPlacement: "side",

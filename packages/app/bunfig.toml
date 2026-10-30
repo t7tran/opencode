@@ -1,3 +1,4 @@
 [test]
 root = "./src"
-preload = ["./happydom.ts"]
+# fork_change - @opencode/util/fork/test-preload keeps the provider lock off
+preload = ["./happydom.ts", "@opencode/util/fork/test-preload"] # fork_change

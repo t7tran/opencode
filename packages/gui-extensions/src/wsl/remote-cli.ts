@@ -1,6 +1,8 @@
 // The part of the SSH extension's remote CLI scripts that WSL uses. Extensions share only contracts, so
 // keep the two copies in step.
 
+import { CLI_NAME, CLI_PACKAGE_NAME, HOME_CONFIG_DIRNAME } from "@opencode/util/fork/brand" // fork_change - see ../ssh/remote-cli.ts
+
 export function quote(value: string) {
   return `'${value.replaceAll("'", "'\\''")}'`
 }
@@ -12,10 +14,12 @@ function requireVersion(version: string) {
 }
 
 export function discoverScript() {
+  // fork_change start - locate the fork's CLI, not upstream's
   return `cli=""
-if [ -z "$cli" ] && [ -x "$HOME/.opencode/bin/opencode" ]; then cli="$HOME/.opencode/bin/opencode"; fi
+if [ -z "$cli" ] && [ -x "$HOME/${HOME_CONFIG_DIRNAME}/bin/${CLI_NAME}" ]; then cli="$HOME/${HOME_CONFIG_DIRNAME}/bin/${CLI_NAME}"; fi
 if [ -n "$cli" ]; then printf '%s\\n' "$cli"; fi
 `
+  // fork_change end
 }
 
 // Adapters supply a quoted shell expression, including remote HOME or wslpath expansion.
@@ -42,8 +46,14 @@ export function parseVersion(output: string) {
 export function installScript(input: { version: string; binary?: string }) {
   const version = requireVersion(input.version)
 
+  // fork_change start - upstream pipes its own installer from GitHub into bash,
+  // which puts the public OpenCode CLI in the distro: a build with neither the
+  // provider lock nor the managed key file. This fork installs its own npm
+  // package instead, so `binary` (a local development build) is not used here.
+  // See FORK.md § What no longer reaches upstream.
   return `set -eu
-curl -fsSL https://raw.githubusercontent.com/anomalyco/opencode/v2/install | bash -s -- ${input.binary ? `--binary ${input.binary}` : `--version ${quote(version)}`}
-test "$("$HOME/.opencode/bin/opencode" --version | awk '{print $NF}' | sed 's/^v//')" = ${quote(version)}
+npm install -g ${quote(`${CLI_PACKAGE_NAME}@${version}`)}
+test "$("$(command -v ${CLI_NAME})" --version | awk '{print $NF}' | sed 's/^v//')" = ${quote(version)}
 `
+  // fork_change end
 }

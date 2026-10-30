@@ -34,6 +34,7 @@ import {
 import { consoleProviderName } from "@/providers/catalog/console"
 import "@/settings/settings.css"
 import "./select-dialog.css"
+import { forkProviderLocked } from "@/fork/policy" // fork_change
 
 const MobilePanelDrawer = lazy(async () => {
   const { MobilePanelDrawer } = await import("@/shell/mobile-panel-drawer")
@@ -818,9 +819,13 @@ export const DialogSelectModel: Component<{ provider?: string; model?: ModelStat
     <Dialog size="large" variant="settings">
       <DialogHeader hideClose closeLabel={language.t("common.close")}>
         <DialogTitleGroup title={language.t("dialog.model.select.title")} />
-        <Button icon="plus" onClick={provider}>
-          {language.t("command.provider.connect")}
-        </Button>
+        {/* fork_change start - no custom providers: the lock rejects every id but the locked one */}
+        <Show when={!forkProviderLocked()}>
+          <Button icon="plus" onClick={provider}>
+            {language.t("command.provider.connect")}
+          </Button>
+        </Show>
+        {/* fork_change end */}
       </DialogHeader>
       <DialogBody class="flex min-h-0 flex-1 flex-col">
         <ModelList provider={props.provider} model={props.model} onSelect={() => dialog.close()} />

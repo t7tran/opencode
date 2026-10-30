@@ -30,6 +30,8 @@ import { Cause, Clock, Duration, Effect, Exit, Schedule, Schema } from "effect"
 import { ConfigMCP } from "@opencode/schema/config/mcp"
 import type { Session } from "@opencode/schema/session"
 import { McpStdio } from "./stdio.js"
+import { mcpDomainRefusal } from "@opencode/util/fork/mcp-domains" // fork_change - MCP outbound domain allowlist
+import { gatewayMcpRequestInit } from "@opencode/util/fork/lock" // fork_change - managed key on the gateway's MCP
 
 const DEFAULT_STARTUP_TIMEOUT = 30_000
 const DEFAULT_CATALOG_TIMEOUT = 30_000
@@ -275,6 +277,11 @@ export const connect = Effect.fnUntraced(function* (
     }
     if (!URL.canParse(config.url))
       return yield* new ConnectError({ server, message: `Invalid MCP URL for "${server}"` })
+    // fork_change start - refused here, before any transport exists, so the
+    // server's status says why instead of reporting a failed fetch
+    const refusal = mcpDomainRefusal(config.url)
+    if (refusal) return yield* new ConnectError({ server, message: refusal })
+    // fork_change end
     const { McpOAuth } = yield* Effect.promise(() => import("./oauth.js"))
     const fetch = yield* McpOAuth.loggedFetch({ server, directory })
     // Servers that bundle their own Code Mode (Cloudflare and others) expose raw tools when asked
@@ -282,10 +289,14 @@ export const connect = Effect.fnUntraced(function* (
     const url = new URL(config.url)
     const addedCodemode = config.codemode !== false && !url.searchParams.has("codemode") && !rejectsUnknownQuery(url)
     if (addedCodemode) url.searchParams.set("codemode", "false")
+    // fork_change start - the gateway's own MCP endpoint is sent the managed key
+    // and never goes through OAuth; every other server keeps its config as written
+    const gateway = gatewayMcpRequestInit(config.url, config.headers)
+    // fork_change end
     const open = Effect.fnUntraced(function* (url: URL) {
       session.transport = new StreamableHTTPClientTransport(url, {
-        requestInit: config.headers ? { headers: config.headers } : undefined,
-        authProvider,
+        requestInit: gateway ?? (config.headers ? { headers: config.headers } : undefined), // fork_change
+        authProvider: gateway ? undefined : authProvider, // fork_change
         fetch,
       })
       return yield* initialize(session.transport)

@@ -8,6 +8,7 @@ import { Global } from "@opencode/util/global"
 import { Effect, Stream } from "effect"
 import path from "path"
 import { Permission } from "../permission.js"
+import { HOME_CONFIG_DIRNAME } from "@opencode/util/fork/brand" // fork_change - renamed home dotdir
 
 const plan = Agent.ID.make("plan")
 
@@ -28,7 +29,7 @@ export const Plugin = define({
   id: "opencode.plan",
   effect: Effect.fn(function* (ctx) {
     const global = yield* Global.Service
-    const directory = path.join(global.home, ".opencode", "plan")
+    const directory = path.join(global.home, HOME_CONFIG_DIRNAME, "plan") // fork_change - renamed home dotdir
     const enterReminder = enter(directory)
     yield* ctx.agent.transform((editor) => {
       editor.update(plan, (item) => {

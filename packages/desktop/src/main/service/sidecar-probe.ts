@@ -2,6 +2,11 @@ import { readFileSync } from "node:fs"
 import path from "node:path"
 import { app } from "electron"
 import type { Endpoint } from "@opencode/client/service"
+// fork_change start - the registration this fork writes is neither in `opencode/`
+// nor necessarily called `service.json`, so the probe has to be told where to look.
+import { channelFromVersion, registrationFile } from "@opencode/util/fork/service-registration"
+import { CLI_NAME } from "@opencode/util/fork/brand"
+// fork_change end
 
 // The main thread idles between showing the first window and evaluating the main bundle, waiting
 // for the renderer's asset requests. That slot is long enough to find out whether a compatible
@@ -15,8 +20,11 @@ export function startSidecarProbe() {
   const version = bundledVersion()
 
   if (!version) return
+  // fork_change start - the build ships the CLI's channel beside its version; see desktop-cli.ts
+  const channel = bundledChannel() || channelFromVersion(version)
+  // fork_change end
   probe = import("@opencode/client/service")
-    .then(({ Service }) => Service.discover({ version }))
+    .then(({ Service }) => Service.discover({ file: registrationFile(channel), version })) // fork_change - explicit registration path
     .catch(() => undefined)
 }
 
@@ -26,8 +34,20 @@ export function sidecarProbe() {
 
 function bundledVersion() {
   try {
-    return readFileSync(path.join(process.resourcesPath, "opencode-cli.version"), "utf8").trim()
+    return readFileSync(path.join(process.resourcesPath, `${CLI_NAME}.version`), "utf8").trim() // fork_change - renamed bundled CLI
   } catch {
     return ""
   }
 }
+
+// fork_change start - the channel the bundled CLI was built on, which names the file it
+// registers itself in. Read here rather than derived from the version, which cannot
+// carry it for a plain-semver release. Empty means fall back to the derivation.
+function bundledChannel() {
+  try {
+    return readFileSync(path.join(process.resourcesPath, `${CLI_NAME}.channel`), "utf8").trim()
+  } catch {
+    return ""
+  }
+}
+// fork_change end

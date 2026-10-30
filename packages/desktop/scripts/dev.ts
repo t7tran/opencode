@@ -3,9 +3,15 @@ import { constants, setPriority } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { prepareDevElectron } from "./dev-electron"
-import { downloadCliToResources, windowsify } from "./utils"
-
-type ServerSource = { type: "build" } | { type: "download"; version: string }
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed bundled CLI
+// fork_change start - `downloadCliToResources()` is deliberately gone from
+// ./utils (this fork never pulls a published CLI into the bundle; see the note
+// at the top of that file). The import was top-level, so `bun dev:desktop` died
+// at module load with "Export named 'downloadCliToResources' not found" before
+// it ran a single line — whether or not --download-server was passed. The
+// download source goes with it; building from packages/cli is the only option.
+type ServerSource = { type: "build" }
+// fork_change end
 
 type DevOptions = { server: ServerSource; electron: string[] }
 
@@ -34,30 +40,30 @@ async function prepareDesktop() {
 function selectOptions(): DevOptions {
   const args = process.argv.slice(2)
   const build = args.indexOf("--build-server")
+  // fork_change start - --download-server is gone with the helper behind it. It
+  // is still accepted and rejected by name rather than silently falling through
+  // to a local build, which would quietly ignore the version asked for.
   const download = args.indexOf("--download-server")
 
-  if (build >= 0 && download >= 0) {
-    throw new Error("--build-server and --download-server cannot be used together")
+  if (download >= 0) {
+    throw new Error("--download-server is not supported in this fork; the CLI is always built from packages/cli")
   }
-
-  if (download >= 0 && !args[download + 1]) throw new Error("--download-server requires a version")
-  const consumed = new Set([build, download, download >= 0 ? download + 1 : -1])
+  const consumed = new Set([build])
+  // fork_change end
 
   return {
-    server: download >= 0 ? { type: "download", version: args[download + 1] } : { type: "build" },
+    server: { type: "build" }, // fork_change - the only source left
     electron: args.filter((_, index) => !consumed.has(index)),
   }
 }
 
-async function prepareServer(source: ServerSource) {
-  if (source.type === "download")
-    return downloadCliToResources(source.version, windowsify("resources/opencode-cli-dev"))
+async function prepareServer(_source: ServerSource) { // fork_change - source is always "build" now
   buildWebUi()
   process.env.OPENCODE_DESKTOP_CLI_DEV = join(import.meta.dirname, "../../cli")
 
   if (process.platform !== "win32") return
   process.env.OPENCODE_DESKTOP_WSL_CLI_BUILD = join(import.meta.dirname, "../../cli/script/build.ts")
-  process.env.OPENCODE_DESKTOP_WSL_CLI_OUTPUT = join(import.meta.dirname, "../resources/opencode-cli-wsl")
+  process.env.OPENCODE_DESKTOP_WSL_CLI_OUTPUT = join(import.meta.dirname, `../resources/${CLI_NAME}-wsl`) // fork_change - renamed bundled CLI
 }
 
 // The source CLI serves packages/app/dist only to paired devices, and nothing on the way to the

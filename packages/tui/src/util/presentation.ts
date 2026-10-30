@@ -1,4 +1,5 @@
 import { logo } from "../logo"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 const reset = "\x1b[0m"
 const bold = "\x1b[1m"
@@ -32,11 +33,13 @@ export function epilogue(input: { readonly session?: SessionEpilogue; readonly u
   return [
     ...wordmark("  "),
     "",
+    // fork_change start - renamed binary
     ...(input.updatedVersion
-      ? [`  ${dim}Run ${reset}${bold}opencode${reset}${dim} to use ${reset}${bold}${input.updatedVersion}${reset}`, ""]
+      ? [`  ${dim}Run ${reset}${bold}${CLI_NAME}${reset}${dim} to use ${reset}${bold}${input.updatedVersion}${reset}`, ""]
       : []),
     ...(input.session
-      ? [row("Session", input.session.title), row("Continue", `opencode -s ${input.session.sessionID}`), ""]
+      ? [row("Session", input.session.title), row("Continue", `${CLI_NAME} -s ${input.session.sessionID}`), ""]
       : []),
+    // fork_change end
   ].join("\n")
 }

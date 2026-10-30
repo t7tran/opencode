@@ -4,6 +4,7 @@ import { readFile, stat, writeFile } from "node:fs/promises"
 import { Effect, Option } from "effect"
 import { applyEdits, modify } from "jsonc-parser"
 import { Global } from "@opencode/util/global"
+import { CONFIG_FILENAMES, PROJECT_CONFIG_DIRNAME } from "@opencode/util/fork/brand" // fork_change - renamed project dotdir and config files
 import { Commands } from "../../commands"
 import { Runtime } from "../../../framework/runtime"
 
@@ -39,10 +40,8 @@ export default Runtime.handler(
 
 export async function resolveConfigPath(directory: string) {
   const candidates = [
-    path.join(directory, "opencode.json"),
-    path.join(directory, "opencode.jsonc"),
-    path.join(directory, ".opencode", "opencode.json"),
-    path.join(directory, ".opencode", "opencode.jsonc"),
+    ...CONFIG_FILENAMES.map((name) => path.join(directory, name)), // fork_change
+    ...CONFIG_FILENAMES.map((name) => path.join(directory, PROJECT_CONFIG_DIRNAME, name)), // fork_change
   ]
   for (const candidate of candidates) {
     if (

@@ -17,6 +17,7 @@ import { showToast } from "@/shell/notifications/toast"
 import { SessionRouteKey, SessionStateKey } from "@/runtime/server/scope"
 import { createSessionMessageHandoff } from "@/session/handoff"
 import type { DraftMcpControls } from "./mcp"
+import { localSessionDirectory } from "@/fork/session-directory" // fork_change
 
 export function createNewSessionComposerAdapter(props: {
   draftID: string
@@ -50,6 +51,7 @@ export function createNewSessionComposerAdapter(props: {
 
       const projectDirectory =
         data.location.info({ directory: currentDirectory })?.project.canonical ?? currentDirectory
+      const localDirectory = localSessionDirectory(currentDirectory, data.location.info({ directory: currentDirectory })?.project) // fork_change
 
       const worktree = props.worktree()
       const branch = props.branch()
@@ -65,6 +67,7 @@ export function createNewSessionComposerAdapter(props: {
 
       const sessionDirectory = await resolveSessionDirectory({
         projectDirectory,
+        localDirectory, // fork_change
         worktree,
         branch,
         data,
@@ -197,13 +200,14 @@ export function createNewSessionComposerAdapter(props: {
 
 async function resolveSessionDirectory(input: {
   projectDirectory: string
+  localDirectory: string // fork_change
   worktree: string
   branch?: string
   data: ReturnType<typeof useData>
   serverSDK: ReturnType<typeof useServerSDK>
   language: ReturnType<typeof useLanguage>
 }) {
-  if (input.worktree === "main") return input.projectDirectory
+  if (input.worktree === "main") return input.localDirectory // fork_change - upstream: input.projectDirectory
 
   if (input.worktree !== "create") return input.worktree
 

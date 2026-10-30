@@ -1,9 +1,10 @@
 import { lazy, onCleanup, Suspense } from "solid-js"
 import { onIdle, Command, SettingsPage, type Setup } from "../sdk"
 import type definition from "./index"
+import { forkPairingEnabled } from "./fork-policy" // fork_change
 
 const setup: Setup<typeof definition> = (ctx) => {
-  if (!ctx.desktop) return
+  if (!ctx.desktop || !forkPairingEnabled()) return // fork_change - pairing needs the public tunnel; see ./fork-policy.ts
   const layout = ctx.layout
   const servers = ctx.servers
   const pairing = ctx.uses.pairing

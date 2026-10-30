@@ -14,6 +14,7 @@ import { isMixedContent } from "./browser"
 import { cameraHint, createCameraAvailability } from "./camera"
 import { ConnectMethodSwitch, type ConnectMethod } from "./method"
 import "./screen.css"
+import { CLI_NAME, PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change
 
 const PairingScanner = lazy(() => import("./scanner").then((module) => ({ default: module.PairingScanner })))
 
@@ -114,7 +115,7 @@ export function ConnectServerScreen(props: { url?: string } = {}) {
   return (
     <main data-component="connect-server" aria-labelledby="server-connect-title">
       <div class="server-connect-content">
-        <div class="server-connect-brand" role="img" aria-label="OpenCode">
+        <div class="server-connect-brand" role="img" aria-label={PRODUCT_NAME /* fork_change */}>
           <Wordmark />
         </div>
         <header>
@@ -246,7 +247,7 @@ export function ConnectServerScreen(props: { url?: string } = {}) {
           <Show when={state.method === "link"}>
             <footer>
               <p>{language.t("server.connect.pair.link")}</p>
-              <code dir="ltr">opencode pair</code>
+              <code dir="ltr">{`${CLI_NAME} pair` /* fork_change - renamed binary */}</code>
             </footer>
           </Show>
         </Show>

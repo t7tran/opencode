@@ -63,10 +63,13 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   installPhase = ''
     runHook preInstall
 
-    install -Dm755 dist/cli-*/bin/opencode $out/bin/opencode
+    # fork_change start - renamed binary. The marker spans the wrapProgram block
+    # because its first line changed and a comment cannot sit between a line
+    # continuation and the line it continues.
+    install -Dm755 dist/cli-*/bin/genixcode-cli $out/bin/genixcode-cli
 
     # OpenTUI dlopens Wayland for clipboard images.
-    wrapProgram $out/bin/opencode \
+    wrapProgram $out/bin/genixcode-cli \
       --prefix PATH : ${
         lib.makeBinPath (
           [
@@ -78,8 +81,9 @@ stdenvNoCC.mkDerivation (finalAttrs: {
       } ${lib.optionalString stdenvNoCC.hostPlatform.isLinux ''
         --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ wayland ]}
       ''}
+    # fork_change end
 
-    ln -s opencode $out/bin/opencode2
+    ln -s genixcode-cli $out/bin/genixcode-cli2 # fork_change - renamed binary
 
     runHook postInstall
   '';
@@ -88,27 +92,29 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     # v2 dropped the `completion` subcommand; --completions is the global flag.
     # --completions also accepts sh, which emits the same script as bash.
     # staged to files, substitute below rejects anything that is not a regular file
-    $out/bin/opencode --completions bash > opencode.bash
-    $out/bin/opencode --completions zsh > _opencode
-    $out/bin/opencode --completions fish > opencode.fish
+    # fork_change start - renamed binary
+    $out/bin/genixcode-cli --completions bash > genixcode-cli.bash
+    $out/bin/genixcode-cli --completions zsh > _genixcode-cli
+    $out/bin/genixcode-cli --completions fish > genixcode-cli.fish
 
-    installShellCompletion --cmd opencode \
-      --bash opencode.bash \
-      --fish opencode.fish \
-      --zsh _opencode
+    installShellCompletion --cmd genixcode-cli \
+      --bash genixcode-cli.bash \
+      --fish genixcode-cli.fish \
+      --zsh _genixcode-cli
 
-    # OPENCODE_CLI_NAME is a build-time define, so the opencode2 copies are
+    # OPENCODE_CLI_NAME is a build-time define, so the genixcode-cli2 copies are
     # renamed rather than regenerated. --replace-fail is a global literal
-    # substitution, so any lowercase opencode that later appears in a
-    # description or help text ships as opencode2 in the opencode2 copy.
-    substitute opencode.bash opencode2.bash --replace-fail opencode opencode2
-    substitute _opencode _opencode2 --replace-fail opencode opencode2
-    substitute opencode.fish opencode2.fish --replace-fail opencode opencode2
+    # substitution, so any lowercase genixcode-cli that later appears in a
+    # description or help text ships as genixcode-cli2 in the genixcode-cli2 copy.
+    substitute genixcode-cli.bash genixcode-cli2.bash --replace-fail genixcode-cli genixcode-cli2
+    substitute _genixcode-cli _genixcode-cli2 --replace-fail genixcode-cli genixcode-cli2
+    substitute genixcode-cli.fish genixcode-cli2.fish --replace-fail genixcode-cli genixcode-cli2
 
-    installShellCompletion --cmd opencode2 \
-      --bash opencode2.bash \
-      --fish opencode2.fish \
-      --zsh _opencode2
+    installShellCompletion --cmd genixcode-cli2 \
+      --bash genixcode-cli2.bash \
+      --fish genixcode-cli2.fish \
+      --zsh _genixcode-cli2
+    # fork_change end
   '';
 
   nativeInstallCheckInputs = [
@@ -127,7 +133,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     description = "The open source coding agent";
     homepage = "https://opencode.ai";
     license = lib.licenses.mit;
-    mainProgram = "opencode";
+    mainProgram = "genixcode-cli"; # fork_change - renamed binary
     inherit (node_modules.meta) platforms;
   };
 })

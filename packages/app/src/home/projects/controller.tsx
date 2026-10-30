@@ -16,6 +16,7 @@ import { Persistence } from "@/runtime/persistence/schema"
 import type { HomeController } from "../model"
 import { useGlobal } from "@/runtime/server/runtime"
 import { useRevealProject } from "./reveal"
+import { openForkSupport } from "@/fork/policy" // fork_change
 
 export const HomeServersSchema = Schema.Struct({
   collapsed: Persistence.record(Persistence.fallback(Schema.Boolean, () => false)),
@@ -181,7 +182,8 @@ export function createHomeProjectsController(home: HomeController) {
     },
     utility: {
       settings: openSettings,
-      help: () => platform.openExternal("https://opencode.ai/desktop-feedback"),
+      // fork_change - no upstream feedback page; see @/fork/policy
+      help: () => openForkSupport((url) => platform.openExternal(url)), // fork_change
     },
   }
 }

@@ -69,7 +69,7 @@ export function NewSessionView(props: {
               <Show when={props.project.empty()}>
                 <PromptProjectAddButton controller={props.project} />
               </Show>
-              <Show when={props.project.selected()}>
+              <Show when={props.project.selected() && !props.workspace.persona() /* fork_change */}>
                 <div class="flex min-h-7 min-w-0 flex-row flex-wrap items-center justify-center gap-0 text-v2-text-text-faint">
                   <PromptProjectSelector controller={props.project} placement="bottom" />
                   <Show

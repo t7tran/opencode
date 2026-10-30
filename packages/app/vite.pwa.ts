@@ -2,6 +2,7 @@ import { createHash } from "node:crypto"
 import { readFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import { VitePWA } from "vite-plugin-pwa"
+import { PROXY_SESSION_NAVIGATION_DENYLIST } from "./src/fork/proxy-session" // fork_change
 
 // The Office previews' engines and fonts (about 52 MB) load only when an Office file opens, so they stay out of the
 // precache. The app's own fonts have no hyphenated name, such as `assets/Inter.ttf`.
@@ -29,7 +30,17 @@ export function serviceWorker(directory: string) {
       inlineWorkboxRuntime: true,
       navigateFallback: "/index.html",
       // Pairing links must reach the server so it can set the session cookie.
-      navigateFallbackDenylist: [/^\/(?:api|auth)(?:\/|$)/, /^\/(?:_assets|assets)(?:\/|$)/],
+      // fork_change start - /open links always load the deployed app, not an older cached build
+      // (FORK.md § Opening a folder from a link). Workbox tests these against path + query.
+      // A fronting proxy's re-login and its callback have to reach the network, or the user is
+      // never signed back in (FORK.md § When the proxy's session runs out).
+      navigateFallbackDenylist: [
+        /^\/(?:api|auth)(?:\/|$)/,
+        /^\/(?:_assets|assets)(?:\/|$)/,
+        /^\/open(?:[/?]|$)/,
+        ...PROXY_SESSION_NAVIGATION_DENYLIST,
+      ],
+      // fork_change end
       // Include lazy chunks and non-JS dependencies, not just the startup bundle.
       globPatterns: ["**/*"],
       globIgnores: ["**/*.map", "_headers", "_redirects"],

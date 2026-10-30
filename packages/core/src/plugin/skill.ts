@@ -9,6 +9,7 @@ import { AbsolutePath } from "../schema.js"
 import { Skill } from "../skill.js"
 import { Config } from "../config.js"
 import os from "os"
+import { BRAND_SLUG, PRODUCT_NAME, rebrand } from "@opencode/util/fork/brand" // fork_change - renamed built-in skill
 import opencodeContent from "./skill/opencode.md" with { type: "text" }
 import reportContent from "./skill/report.md" with { type: "text" }
 
@@ -27,10 +28,12 @@ export const Plugin = define({
     yield* ctx.skill.transform((editor) => {
       editor.add(
         Skill.Info.make({
-          id: Skill.ID.make("opencode"),
-          name: Skill.Name.make("OpenCode"),
-          description: OpencodeDescription,
-          path: AbsolutePath.make("/builtin/opencode.md"),
+          // fork_change start - renamed built-in skill, so the picker shows GenixCode / @genixcode
+          id: Skill.ID.make(BRAND_SLUG),
+          name: Skill.Name.make(PRODUCT_NAME),
+          description: rebrand(OpencodeDescription),
+          path: AbsolutePath.make(`/builtin/${BRAND_SLUG}.md`),
+          // fork_change end
           content: OpencodeContent,
         }),
       )

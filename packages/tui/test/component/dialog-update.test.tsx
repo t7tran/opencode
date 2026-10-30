@@ -12,6 +12,7 @@ import { ToastProvider } from "../../src/ui/toast"
 import { emptyThemeSource, tmpdir } from "../fixture/fixture"
 import { TestTuiContexts } from "../fixture/tui-environment"
 import { createTuiResolvedConfig } from "../fixture/tui-runtime"
+import { PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change
 
 test("installation progress replaces checking while the update job is still pending", async () => {
   await using temporary = await tmpdir()
@@ -48,8 +49,8 @@ test("installation progress replaces checking while the update job is still pend
     setState({ type: "installing", version: "2.0.0" })
     await app.waitForFrame(
       (frame) =>
-        frame.includes("Updating OpenCode") &&
-        frame.includes("Installing OpenCode 2.0.0") &&
+        frame.includes(`Updating ${PRODUCT_NAME}`) && // fork_change
+        frame.includes(`Installing ${PRODUCT_NAME} 2.0.0`) && // fork_change
         !frame.includes("Checking"),
     )
     expect(app.captureCharFrame()).not.toContain("Skip")

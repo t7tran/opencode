@@ -14,6 +14,7 @@ import { tmpdir } from "./fixture/fixture"
 import { createAppFixture } from "./fixture/app"
 import { waitForHighlightedFrame } from "./fixture/frame"
 import type { PluginInfo } from "@opencode/client"
+import { CLI_NAME, PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary and product
 
 test.each([100, 44])("Ctrl-O is immediate, dismissible, and prunes cached deletions at width %s", async (width) => {
   await using state = await tmpdir()
@@ -256,7 +257,7 @@ test("SIGHUP clears title and disposes scoped resources once", async () => {
   })
   const setTitle = setup.renderer.setTerminalTitle.bind(setup.renderer)
   setup.renderer.setTerminalTitle = (title) => {
-    if (title === "OpenCode") started()
+    if (title === PRODUCT_NAME) started() // fork_change - renamed product
     setTitle(title)
   }
   const listeners = new Set(process.listeners("SIGHUP"))
@@ -369,7 +370,7 @@ test("session lifecycle updates the terminal title and prints the epilogue after
     await task
 
     expect(stdout).toContain("Renamed session")
-    expect(stdout).toContain("opencode -s dummy")
+    expect(stdout).toContain(`${CLI_NAME} -s dummy`) // fork_change - renamed binary
     expect(promptRequests).toBe(0)
   } finally {
     process.stdout.write = originalWrite
@@ -457,7 +458,7 @@ test("session title generated while an untitled session is loading remains visib
 
     const generated = titles.lastIndexOf("OC | Generated title")
     expect(generated).toBeGreaterThan(-1)
-    expect(titles.slice(generated + 1)).not.toContain("OpenCode")
+    expect(titles.slice(generated + 1)).not.toContain(PRODUCT_NAME) // fork_change - renamed product
     setup.renderer.destroy()
     await task
   } finally {
@@ -2779,7 +2780,7 @@ test("restarting after an update tells the user to start OpenCode again", async 
   const started = Promise.withResolvers<void>()
   const setTitle = setup.renderer.setTerminalTitle.bind(setup.renderer)
   setup.renderer.setTerminalTitle = (title) => {
-    if (title === "OpenCode") started.resolve()
+    if (title === PRODUCT_NAME) started.resolve() // fork_change - renamed product
     setTitle(title)
   }
   const events = createEventStream()
@@ -2821,7 +2822,7 @@ test("restarting after an update tells the user to start OpenCode again", async 
     setup.mockInput.pressEnter()
     await task
 
-    expect(Bun.stripANSI(stdout)).toContain("  Run opencode to use 2.0.0\n")
+    expect(Bun.stripANSI(stdout)).toContain(`  Run ${CLI_NAME} to use 2.0.0\n`) // fork_change - renamed binary
   } finally {
     process.stdout.write = originalWrite
     if (!setup.renderer.isDestroyed) setup.renderer.destroy()
@@ -2836,7 +2837,7 @@ test("quitting after a background update tells the user to start OpenCode again"
   const started = Promise.withResolvers<void>()
   const setTitle = setup.renderer.setTerminalTitle.bind(setup.renderer)
   setup.renderer.setTerminalTitle = (title) => {
-    if (title === "OpenCode") started.resolve()
+    if (title === PRODUCT_NAME) started.resolve() // fork_change - renamed product
     setTitle(title)
   }
   const events = createEventStream()
@@ -2880,7 +2881,7 @@ test("quitting after a background update tells the user to start OpenCode again"
     setup.mockInput.pressEnter()
     await task
 
-    expect(Bun.stripANSI(stdout)).toContain("  Run opencode to use 2.0.0\n")
+    expect(Bun.stripANSI(stdout)).toContain(`  Run ${CLI_NAME} to use 2.0.0\n`) // fork_change - renamed binary
   } finally {
     process.stdout.write = originalWrite
     if (!setup.renderer.isDestroyed) setup.renderer.destroy()

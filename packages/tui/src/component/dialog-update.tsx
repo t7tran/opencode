@@ -6,6 +6,7 @@ import type { UpdateState } from "../context/update-notification"
 import { DialogHeader, DialogLayout, useDialog } from "../ui/dialog"
 import { errorMessage } from "../util/error"
 import { Spinner } from "./spinner"
+import { CLI_NAME, PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change
 
 export function DialogUpdate(props: {
   check?: (signal: AbortSignal) => Promise<string | undefined>
@@ -92,7 +93,7 @@ export function DialogUpdate(props: {
         <DialogHeader
           title={
             state().type === "installing"
-              ? "Updating OpenCode"
+              ? `Updating ${PRODUCT_NAME}` // fork_change
               : state().type === "available" || state().type === "failed"
                 ? "Update available"
                 : "Update"
@@ -137,21 +138,25 @@ export function DialogUpdate(props: {
             </Match>
             <Match when={current.type === "available"}>
               <text fg={theme.text.muted}>
-                An update is available. After installing, you'll be prompted to restart OpenCode.
+                {/* fork_change start */}
+                An update is available. After installing, you'll be prompted to restart {PRODUCT_NAME}.
+                {/* fork_change end */}
               </text>
             </Match>
             <Match when={current.type === "installing"}>
               <Spinner shimmer={theme.text.base}>
-                {current.type === "installing" ? `Installing OpenCode ${current.version}…` : ""}
+                {current.type === "installing" ? `Installing ${PRODUCT_NAME} ${current.version}…` : "" /* fork_change */}
               </Spinner>
             </Match>
             <Match when={current.type === "installed"}>
               <text fg={theme.text.muted} wrapMode="word">
-                Update successful! Restart closes OpenCode, then run opencode to use the new version.
+                {/* fork_change start */}
+                Update successful! Restart closes {PRODUCT_NAME}, then run {CLI_NAME} to use the new version.
+                {/* fork_change end */}
               </text>
             </Match>
             <Match when={current.type === "current"}>
-              <text fg={theme.text.muted}>OpenCode is already up to date.</text>
+              <text fg={theme.text.muted}>{PRODUCT_NAME} is already up to date.{/* fork_change */}</text>
             </Match>
             <Match when={current.type === "unavailable"}>
               <text fg={theme.text.muted} wrapMode="word">

@@ -154,6 +154,8 @@ import type {
   McpDisconnectOutput,
   McpResourceCatalogInput,
   McpResourceCatalogOutput,
+  McpToolCatalogInput,
+  McpToolCatalogOutput,
   McpClientTokenInput,
   McpClientTokenOutput,
   CredentialListOutput,
@@ -1459,6 +1461,20 @@ export function make(options: ClientOptions) {
             {
               method: "GET",
               path: `/api/mcp/resource`,
+              query: { location: input?.["location"] },
+              successStatus: 200,
+              declaredStatuses: [400, 401, 404],
+              empty: false,
+            },
+            requestOptions,
+          ),
+      },
+      tool: {
+        catalog: (input?: McpToolCatalogInput, requestOptions?: RequestOptions) =>
+          request<McpToolCatalogOutput>(
+            {
+              method: "GET",
+              path: `/api/mcp/tool`,
               query: { location: input?.["location"] },
               successStatus: 200,
               declaredStatuses: [400, 401, 404],

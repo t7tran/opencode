@@ -1,5 +1,14 @@
 import { createUniqueId, type ComponentProps } from "solid-js"
 
+// fork_change start - "genixcode" replaces "opencode". The letterforms are the
+// same block glyphs as the primary wordmark (Logo, in ../../components/logo.tsx)
+// scaled up from its 246x42 viewBox into this component's larger canvas, since
+// hand-tracing new outlines at this size would drift from that font. The canvas,
+// the fade mask and the outline/muted props stay upstream's.
+// See packages/util/src/fork/brand.ts.
+const SCALE = 720 / 246
+// fork_change end
+
 export function Wordmark(
   props: Pick<ComponentProps<"svg">, "class"> & { fade?: boolean; muted?: boolean; outline?: boolean },
 ) {
@@ -24,38 +33,26 @@ export function Wordmark(
             stroke={props.outline ? "currentColor" : undefined}
             stroke-width={props.outline ? 1 : undefined}
           >
-            <path
-              pathLength={props.outline ? 1 : undefined}
-              d="M55.3846 36.4286H18.4615V91.7143H55.3846V36.4286ZM73.8462 110.143H0V18H73.8462V110.143Z"
-            />
-            <path
-              pathLength={props.outline ? 1 : undefined}
-              d="M110.462 91.7143H147.385V36.4286H110.462V91.7143ZM165.846 110.143H110.462V128.571H92V18H165.846V110.143Z"
-            />
-            <path
-              pathLength={props.outline ? 1 : undefined}
-              d="M258.846 73.2857H203.462V91.7143H258.846V110.143H185V18H258.846V73.2857ZM203.462 54.8571H240.385V36.4286H203.462V54.8571Z"
-            />
-            <path
-              pathLength={props.outline ? 1 : undefined}
-              d="M332.385 36.4286H295.462V110.143H277V18H332.385V36.4286ZM350.846 110.143H332.385V36.4286H350.846V110.143Z"
-            />
-            <path
-              pathLength={props.outline ? 1 : undefined}
-              d="M442.846 36.4286H387.462V91.7143H442.846V110.143H369V18H442.846V36.4286Z"
-            />
-            <path
-              pathLength={props.outline ? 1 : undefined}
-              d="M517.385 36.4286H480.462V91.7143H517.385V36.4286ZM535.846 110.143H462V18H535.846V110.143Z"
-            />
-            <path
-              pathLength={props.outline ? 1 : undefined}
-              d="M609.385 36.8571H572.462V92.1429H609.385V36.8571ZM627.846 110.571H554V18.4286H609.385V0H627.846V110.571Z"
-            />
-            <path
-              pathLength={props.outline ? 1 : undefined}
-              d="M664.462 36.4286V54.8571H701.385V36.4286H664.462ZM719.846 73.2857H664.462V91.7143H719.846V110.143H646V18H719.846V73.2857Z"
-            />
+            {/* fork_change start */}
+            <g transform={`scale(${SCALE})`}>
+                <path pathLength={props.outline ? 1 : undefined} d="M6 18H18V24H6V18Z" />
+                <path pathLength={props.outline ? 1 : undefined} d="M0 6H24V12H0V6ZM0 12H6V24H0V12ZM18 12H24V24H18V12ZM0 24H24V30H0V24ZM18 30H24V36H18V30ZM0 36H24V42H0V36Z" />
+                <path pathLength={props.outline ? 1 : undefined} d="M54 24V30H36V24H54Z" />
+                <path pathLength={props.outline ? 1 : undefined} d="M54 24H36V30H54V36H30V6H54V24ZM36 18H48V12H36V18Z" />
+                <path pathLength={props.outline ? 1 : undefined} d="M78 36H66V18H78V36Z" />
+                <path pathLength={props.outline ? 1 : undefined} d="M78 12H66V36H60V6H78V12ZM84 36H78V12H84V36Z" />
+                <path pathLength={props.outline ? 1 : undefined} d="M90 6H96V12H90V6ZM90 18H96V36H90V18Z" />
+                <path pathLength={props.outline ? 1 : undefined} d="M102 6H108V18H102V6ZM120 6H126V18H120V6ZM108 18H120V24H108V18ZM102 24H108V36H102V24ZM120 24H126V36H120V24Z" />
+                <path pathLength={props.outline ? 1 : undefined} d="M156 30H138V18H156V30Z" />
+                <path pathLength={props.outline ? 1 : undefined} d="M156 12H138V30H156V36H132V6H156V12Z" />
+                <path pathLength={props.outline ? 1 : undefined} d="M180 30H168V18H180V30Z" />
+                <path pathLength={props.outline ? 1 : undefined} d="M180 12H168V30H180V12ZM186 36H162V6H186V36Z" />
+                <path pathLength={props.outline ? 1 : undefined} d="M210 30H198V18H210V30Z" />
+                <path pathLength={props.outline ? 1 : undefined} d="M210 12H198V30H210V12ZM216 36H192V6H210V0H216V36Z" />
+                <path pathLength={props.outline ? 1 : undefined} d="M246 24V30H228V24H246Z" />
+                <path pathLength={props.outline ? 1 : undefined} d="M246 24H228V30H246V36H222V6H246V24ZM228 18H240V12H228V18Z" />
+            </g>
+            {/* fork_change end */}
           </g>
         </g>
       </g>

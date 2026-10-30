@@ -24,6 +24,8 @@ import { Credential } from "../credential.js"
 import { OauthCallbackPage } from "../oauth/page.js"
 import type { Integration } from "../integration.js"
 import { ErrorSummary } from "../util/error-summary.js"
+import { allowlistedFetch, mcpDomainRefusal } from "@opencode/util/fork/mcp-domains" // fork_change - MCP outbound domain allowlist
+import { mcpOAuthCallbackHost } from "@opencode/util/fork/mcp-oauth-callback" // fork_change - callback behind a proxy
 
 /** Client ID Metadata Document: servers that support CIMD accept this URL as the client_id without registration. */
 export const CLIENT_METADATA_URL = "https://opencode.ai/oauth/opencode/client.json"
@@ -39,7 +41,12 @@ const refreshKey = (url: string | URL, init: RequestInit | undefined) => {
 // Bun's and Node's fetch types both apply here and the SDK's FetchLike wants Bun's Response, so the
 // overload is picked by annotation and clone() is pinned to the type it was called on. A tool call
 // can stay silent for minutes, so Bun's idle deadline is off; the MCP execution timeout still applies.
-const base: FetchLike = noTimeoutFetch
+// fork_change start - every MCP request (transport, OAuth discovery, registration,
+// token exchange and refresh) passes through `send` to here, so this is where the
+// administrator's domain allowlist is applied, redirects included. noTimeoutFetch looks
+// the global up per request, so a test can still stand in for it.
+const base: FetchLike = allowlistedFetch(noTimeoutFetch) as FetchLike
+// fork_change end
 const share = (pending: ReturnType<FetchLike>) => pending.then((response) => response.clone() as typeof response)
 
 const send: FetchLike = (url, init) => {
@@ -200,6 +207,10 @@ export const provider = (options: Options): OAuthClientProvider => {
     saveTokens: (tokens) => options.store.saveTokens(tokens),
     redirectToAuthorization: (url) => {
       if (!redirect) throw refuse("user authorization")
+      // fork_change start - the browser hop is the one request that does not go through `send`
+      const refusal = mcpDomainRefusal(url)
+      if (refusal) throw new Error(refusal)
+      // fork_change end
       if (url.protocol !== "http:" && url.protocol !== "https:")
         throw new Error(`MCP server "${options.config.url}" returned a ${url.protocol} authorization URL; only http and https are supported`)
       return redirect.open(url)
@@ -396,7 +407,7 @@ export const authorize = (input: {
     const redirectPort = Number(redirect?.port) || undefined
     const port = yield* Effect.callback<number, Error>((resume) => {
       server.once("error", (error) => resume(Effect.fail(error)))
-      server.listen(oauth?.callback_port ?? redirectPort ?? 0, "127.0.0.1", () => {
+      server.listen(oauth?.callback_port ?? redirectPort ?? 0, mcpOAuthCallbackHost(redirect), () => { // fork_change - callback behind a proxy
         const address = server.address()
         resume(
           address && typeof address === "object"

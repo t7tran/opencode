@@ -2,6 +2,7 @@ import { defineConfig } from "electron-vite"
 import type { Plugin } from "vite"
 import { pickerPlugin } from "./scripts/picker"
 import { nodePtyPackage } from "./scripts/utils"
+import { requirePepper } from "@opencode/util/fork/pepper" // fork_change
 
 function resolveChannel() {
   const raw = process.env.OPENCODE_CHANNEL
@@ -62,6 +63,12 @@ export default defineConfig(({ command }) => {
       define: {
         // Local renderer/server mode still uses the dev application identity and updater policy.
         "import.meta.env.OPENCODE_CHANNEL": JSON.stringify(channel === "local" ? "dev" : channel),
+        // fork_change start - main reads /etc/kilo.key too (fork-policy.ts answers the
+        // renderer's managed-key question), so a sealed key has to unseal here exactly
+        // as it does in the bundled CLI. Build only: `bun dev:desktop` reads the pepper
+        // file at runtime instead, and runs without one.
+        ...(command === "build" ? { GENIX_KEY_PEPPER: JSON.stringify(requirePepper()) } : {}),
+        // fork_change end
       },
       build: {
         minify: command === "build",

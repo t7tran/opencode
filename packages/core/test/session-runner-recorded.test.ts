@@ -46,6 +46,7 @@ import { LocationServiceMap } from "@opencode/core/location-service-map"
 import { promptLocationNode } from "./fixture/prompt-location"
 import { permissionLayer } from "./lib/permission"
 import { agentHost, modelHost, host, noProviders } from "./plugin/host"
+import { rebrand } from "@opencode/util/fork/brand" // fork_change
 
 const cassetteName = "session-runner/openai-chat-streams-text"
 const cassetteDirectory = path.resolve(import.meta.dir, "fixtures/recordings")
@@ -53,7 +54,16 @@ if (process.env.RECORD === "true") {
   if (process.env.CI !== undefined) throw new Error("Unset CI before recording HTTP cassettes")
   HttpRecorder.removeCassetteSync(cassetteName, { directory: cassetteDirectory })
 }
-const cassette = HttpRecorder.layerFetch(cassetteName, { directory: cassetteDirectory })
+// fork_change start - the fork names GenixCode in the system prompt (src/session/system-prompt.ts), so the
+// upstream cassette's request is compared after the same rebrand instead of being re-recorded.
+const cassette = HttpRecorder.layerFetch(cassetteName, {
+  directory: cassetteDirectory,
+  match: (incoming, recorded) =>
+    incoming.method === recorded.method &&
+    incoming.url === recorded.url &&
+    Bun.deepEquals(JSON.parse(incoming.body), JSON.parse(rebrand(recorded.body))),
+})
+// fork_change end
 const executor = RequestExecutor.layer.pipe(Layer.provide(cassette))
 const client = LLMClient.layer.pipe(Layer.provide(executor))
 const permission = permissionLayer()

@@ -1,4 +1,5 @@
 import { app } from "electron"
+import { appId, productName } from "@opencode/util/fork/brand" // fork_change - Genix identity
 
 type Channel = "local" | "dev" | "beta" | "prod"
 
@@ -8,19 +9,23 @@ export const CHANNEL: Channel = raw === "local" || raw === "dev" || raw === "bet
 
 export const VERSION = app.isPackaged ? app.getVersion() : (process.env.OPENCODE_VERSION ?? app.getVersion())
 
+// fork_change start - the product name and application id come from brand.ts
+// rather than upstream's literal tables, so a GenixCode install never shares an
+// identity — or a user-data directory — with an OpenCode one.
 const appNames: Record<string, string> = {
-  dev: "OpenCode Dev",
-  beta: "OpenCode Beta",
-  prod: "OpenCode",
+  dev: productName("dev"),
+  beta: productName("beta"),
+  prod: productName("prod"),
 }
 
 const appIDs: Record<string, string> = {
-  dev: "ai.opencode.desktop.dev",
-  beta: "ai.opencode.desktop.beta",
-  prod: "ai.opencode.desktop",
+  dev: appId("dev"),
+  beta: appId("beta"),
+  prod: appId("prod"),
 }
 
 // Local renderer/server mode keeps the dev application identity.
-export const APP_NAME = app.isPackaged ? appNames[CHANNEL] : "OpenCode Dev"
+export const APP_NAME = app.isPackaged ? appNames[CHANNEL] : productName("dev")
 
-export const APP_ID = app.isPackaged ? appIDs[CHANNEL] : "ai.opencode.desktop.dev"
+export const APP_ID = app.isPackaged ? appIDs[CHANNEL] : appId("dev")
+// fork_change end

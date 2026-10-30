@@ -7,6 +7,7 @@ import os from "node:os"
 import path from "node:path"
 import { OPENCODE_VERSION } from "../src/version"
 import { isolatedEnv } from "./fixture/environment"
+import { APP_DIRNAME, CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed state directory and binary
 
 // Real `serve --service` processes driven by the real CLI commands and client. Only behavior that
 // needs real processes lives here; the client's lifecycle decisions are covered by fixture tests in
@@ -117,7 +118,7 @@ serviceTest(
       (error: Error) => error.message,
     )
     expect(conflict).toContain(`Managed service port ${home.port} on 127.0.0.1 is already in use by another process`)
-    expect(conflict).toContain("opencode service set port <port>")
+    expect(conflict).toContain(`${CLI_NAME} service set port <port>`) // fork_change
     expect(await servers(home)).toEqual([])
     expect(await Bun.file(home.registration).exists()).toBe(false)
 
@@ -187,7 +188,7 @@ async function serviceHome(options: { readonly failBoot?: boolean } = {}) {
     root,
     port,
     entry: homeEntry,
-    registration: path.join(root, "state", "opencode", "service-local.json"),
+    registration: path.join(root, "state", APP_DIRNAME, "service-local.json"), // fork_change
     env: Object.fromEntries(
       Object.entries(isolatedEnv(root, overrides)).filter((entry): entry is [string, string] => entry[1] !== undefined),
     ),

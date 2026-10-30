@@ -3,6 +3,7 @@ import type { McpServer } from "@agentclientprotocol/sdk"
 import { Schema } from "effect"
 import { currentValue } from "./select-options"
 import { makeSession, rpcError, secondModel, startWire, type Wire } from "./wire-fixture"
+import { CLI_NAME, PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary and product
 
 describe("acp session lifecycle over the wire", () => {
   test("initialize advertises capabilities, negotiates the version, and offers terminal auth only when asked", async () => {
@@ -24,19 +25,19 @@ describe("acp session lifecycle over the wire", () => {
         sessionCapabilities: { additionalDirectories: {}, close: {}, delete: {}, fork: {}, list: {}, resume: {} },
         _meta: { "opencode/child-session-updates": true },
       },
-      agentInfo: { name: "OpenCode" },
+      agentInfo: { name: PRODUCT_NAME }, // fork_change - renamed product
     })
     expect(plain.authMethods).toEqual([
-      { id: "opencode-login", name: "Login with opencode", description: "Run `opencode auth login` in the terminal" },
+      { id: "opencode-login", name: `Login with ${CLI_NAME}`, description: `Run \`${CLI_NAME} auth login\` in the terminal` }, // fork_change - renamed binary
     ])
     expect(terminal.authMethods?.[0]?._meta).toEqual({
-      "terminal-auth": { command: "opencode", args: ["auth", "login"], label: "OpenCode Login" },
+      "terminal-auth": { command: CLI_NAME, args: ["auth", "login"], label: `${PRODUCT_NAME} Login` }, // fork_change - renamed binary
     })
     expect(standard.authMethods).toEqual([
       {
         id: "opencode-login",
-        name: "Login with opencode",
-        description: "Run `opencode auth login` in the terminal",
+        name: `Login with ${CLI_NAME}`, // fork_change - renamed binary
+        description: `Run \`${CLI_NAME} auth login\` in the terminal`, // fork_change - renamed binary
         type: "terminal",
         args: ["--login"],
       },

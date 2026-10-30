@@ -4,10 +4,10 @@
   "version": "2.1.4",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://opencode.ai",
+  "homepage": "https://genixventures.com",
   "author": {
-    "name": "OpenCode",
-    "email": "hello@opencode.ai"
+    "name": "Genix Ventures",
+    "email": "devops@genixventures.com"
   },
   "scripts": {
     "typecheck": "bun check --no-script -b",
@@ -39,8 +39,10 @@
     "@opencode/app": "workspace:*",
     "@opencode/gui-extensions": "workspace:*",
     "@opencode/client": "workspace:*",
+    "@opencode/core": "workspace:*",
     "@opencode/schema": "workspace:*",
     "@opencode/ui": "workspace:*",
+    "@opencode/util": "workspace:*",
     "@sentry/solid": "catalog:",
     "@sentry/vite-plugin": "catalog:",
     "@solidjs/router": "catalog:",

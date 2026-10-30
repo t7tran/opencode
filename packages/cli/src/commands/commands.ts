@@ -2,6 +2,7 @@ import { Argument, Flag, GlobalFlag } from "effect/cli"
 import { Schema } from "effect"
 import { Spec } from "../framework/spec"
 import { Updater } from "../services/updater"
+import { CLI_NAME, CLI_PACKAGE_NAME, PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 export const PrintLogs = GlobalFlag.Setting("print-logs")({
   flag: Flag.Boolean("print-logs").pipe(
@@ -35,13 +36,13 @@ const PermissionParams = {
   ),
 }
 
-const Root = Spec.make(typeof OPENCODE_CLI_NAME === "string" ? OPENCODE_CLI_NAME : "opencode", {
-  description: "OpenCode command line interface",
+const Root = Spec.make(typeof OPENCODE_CLI_NAME === "string" ? OPENCODE_CLI_NAME : CLI_NAME /* fork_change - renamed binary */, {
+  description: `${PRODUCT_NAME} command line interface`, // fork_change - renamed binary
   params: {
     ...ServerParams,
     ...PermissionParams,
     directory: Argument.String("directory").pipe(
-      Argument.withDescription("Directory to start OpenCode in"),
+      Argument.withDescription(`Directory to start ${PRODUCT_NAME} in`), // fork_change - renamed binary
       Argument.optional,
     ),
     continue: Flag.Boolean("continue").pipe(
@@ -58,7 +59,9 @@ const Root = Spec.make(typeof OPENCODE_CLI_NAME === "string" ? OPENCODE_CLI_NAME
   },
   commands: [
     Spec.make("upgrade", {
-      description: "Upgrade OpenCode to the latest or a specific version",
+      // fork_change start - this build does not self-update; see src/fork/policy.ts
+      description: `Upgrade ${PRODUCT_NAME} (disabled: use npm install -g ${CLI_PACKAGE_NAME}@<version>)`,
+      // fork_change end
       aliases: ["update"],
       params: {
         target: Argument.String("target").pipe(
@@ -73,7 +76,7 @@ const Root = Spec.make(typeof OPENCODE_CLI_NAME === "string" ? OPENCODE_CLI_NAME
       },
     }),
     Spec.make("uninstall", {
-      description: "Uninstall OpenCode, keeping session data, configuration, and state",
+      description: `Uninstall ${PRODUCT_NAME}, keeping session data, configuration, and state`, // fork_change - renamed product
       params: {
         dryRun: Flag.Boolean("dry-run").pipe(
           Flag.withDescription("Show what would be removed without removing"),
@@ -387,7 +390,7 @@ const Root = Spec.make(typeof OPENCODE_CLI_NAME === "string" ? OPENCODE_CLI_NAME
       },
     }),
     Spec.make("run", {
-      description: "Run OpenCode with a message",
+      description: `Run ${PRODUCT_NAME} with a message`, // fork_change - renamed product
       params: {
         ...ServerParams,
         message: Argument.String("message").pipe(
@@ -560,6 +563,25 @@ const Root = Spec.make(typeof OPENCODE_CLI_NAME === "string" ? OPENCODE_CLI_NAME
         ),
       },
     }),
+    // fork_change start - `genixcode-cli key seal` / `key status`; see util/src/fork/key-seal.ts
+    Spec.make("key", {
+      description: "managed API key file tools",
+      commands: [
+        Spec.make("seal", {
+          description: "seal an API key into the single-line blob accepted by the key file",
+          params: {
+            key: Argument.String("key").pipe(
+              Argument.withDescription("The plain API key; read from stdin when omitted"),
+              Argument.optional,
+            ),
+          },
+        }),
+        Spec.make("status", {
+          description: "report whether a managed key is provisioned, and in which form",
+        }),
+      ],
+    }),
+    // fork_change end
     Spec.make("serve", {
       description: "Start the v2 API and web server",
       params: {
@@ -572,6 +594,24 @@ const Root = Spec.make(typeof OPENCODE_CLI_NAME === "string" ? OPENCODE_CLI_NAME
         ),
         service: Flag.Boolean("service").pipe(Flag.withDefault(false)),
         stdio: Flag.Boolean("stdio").pipe(Flag.withDefault(false)),
+        // fork_change start - `--no-auth` serves the UI without HTTP Basic, for
+        // deployments where a reverse proxy has already authenticated the user.
+        // Registered as `auth` (default true) rather than as a literal `no-auth`
+        // flag: the parser resolves `--no-<name>` to the boolean `<name>` negated
+        // (effect/cli internal/parser.ts `resolveFlag`), so this spelling
+        // gives `--no-auth` for free and keeps `--auth` meaning what it says. A
+        // flag actually named `no-auth` would make `--no-auth` set it *true*.
+        auth: Flag.Boolean("auth").pipe(
+          Flag.withDescription("Require HTTP Basic authentication (default; --no-auth serves unauthenticated)"),
+          Flag.withDefault(true),
+        ),
+        // `--no-auth` is loopback-only unless this is passed too, for a proxy
+        // that authenticates on another host. See fork/server-auth.ts.
+        allowRemoteNoAuth: Flag.Boolean("allow-remote-no-auth").pipe(
+          Flag.withDescription("Let --no-auth bind a non-loopback hostname (something in front must authenticate)"),
+          Flag.withDefault(false),
+        ),
+        // fork_change end
       },
     }),
   ],

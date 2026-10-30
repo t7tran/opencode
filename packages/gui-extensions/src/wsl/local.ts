@@ -3,6 +3,7 @@ import { copyFile, mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { promisify } from "node:util"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change
 
 const execFileAsync = promisify(execFile)
 
@@ -34,7 +35,7 @@ export async function buildLocalWslCli(input: { version: string; script: string;
       ],
       { cwd: root, env: { ...process.env, OPENCODE_VERSION: input.version }, windowsHide: true },
     )
-    await copyFile(join(directory, `cli-${target}`, "bin", "opencode"), input.output)
+    await copyFile(join(directory, `cli-${target}`, "bin", CLI_NAME), input.output) // fork_change - renamed binary
 
     return input.output
   }

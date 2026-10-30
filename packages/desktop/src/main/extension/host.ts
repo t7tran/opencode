@@ -58,6 +58,7 @@ import { evaluateMain } from "./module"
 import { getStore } from "../storage/store"
 import { createStorage, namespace } from "./storage"
 import { createEmbeds } from "./embeds"
+import { rebrand } from "@opencode/util/fork/brand" // fork_change - extension catalogs are copy too; see native/translations.ts
 
 export type ExtensionHost = ReturnType<typeof createHost>
 
@@ -503,7 +504,7 @@ export function createHost(input: {
       list,
       provide,
       t: (key: string, params?: Params) =>
-        formatNativeTemplate(translation.messages[key] ?? nativeMessage(key) ?? key, params),
+        formatNativeTemplate(rebrand(translation.messages[key] ?? nativeMessage(key) ?? key), params), // fork_change
       plural: (key: string, count: number, params?: Params) => {
         const category = nativePluralCategory(count)
 
@@ -514,7 +515,7 @@ export function createHost(input: {
           nativeMessage(`${key}.other`) ??
           key
 
-        return formatNativeTemplate(template, { ...params, count })
+        return formatNativeTemplate(rebrand(template), { ...params, count }) // fork_change
       },
     }
 

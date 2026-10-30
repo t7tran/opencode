@@ -5,11 +5,13 @@ import path from "path"
 import { Effect } from "effect"
 import { FSUtil } from "@opencode/util/fs-util"
 import { Global } from "@opencode/util/global"
+import { CONFIG_FILENAMES, PROJECT_CONFIG_DIRNAME as dotdir } from "@opencode/util/fork/brand" // fork_change - renamed project dotdir and config files
+import { APP_DIRNAME, APP_ID_BASE } from "@opencode/util/fork/brand" // fork_change - machine-wide config and MDM domain keyed on the fork, not OpenCode
 import { Location } from "../location.js"
 import { AbsolutePath } from "../schema.js"
 import type { Options } from "../config.js"
 
-export const names = ["opencode.json", "opencode.jsonc"]
+export const names: readonly string[] = CONFIG_FILENAMES // fork_change
 
 /** Eligible sources in priority order, including paths that may appear later. */
 export interface Sources {
@@ -26,16 +28,20 @@ export interface Sources {
 
 /** Platform system configuration directory (`/Library/Application Support/opencode`, `/etc/opencode`, `%ProgramData%\opencode`). */
 export function systemDirectory(platform: NodeJS.Platform = process.platform, env: NodeJS.ProcessEnv = process.env) {
-  if (platform === "darwin") return AbsolutePath.make("/Library/Application Support/opencode")
-  if (platform === "win32") return AbsolutePath.make(path.join(env.ProgramData || "C:\\ProgramData", "opencode"))
-  return AbsolutePath.make("/etc/opencode")
+  // fork_change start - never pick up a machine-wide OpenCode config
+  if (platform === "darwin") return AbsolutePath.make(path.join("/Library/Application Support", APP_DIRNAME))
+  if (platform === "win32") return AbsolutePath.make(path.join(env.ProgramData || "C:\\ProgramData", APP_DIRNAME))
+  return AbsolutePath.make(path.join("/etc", APP_DIRNAME))
+  // fork_change end
 }
 
 /** macOS MDM managed preferences plists, most specific first; the first one present wins. */
 export function preferencePaths(user: string) {
   return [
-    AbsolutePath.make(path.join("/Library/Managed Preferences", user, "ai.opencode.managed.plist")),
-    AbsolutePath.make("/Library/Managed Preferences/ai.opencode.managed.plist"),
+    // fork_change start - an OpenCode MDM profile must not configure this fork
+    AbsolutePath.make(path.join("/Library/Managed Preferences", user, `${APP_ID_BASE}.managed.plist`)),
+    AbsolutePath.make(path.join("/Library/Managed Preferences", `${APP_ID_BASE}.managed.plist`)),
+    // fork_change end
   ]
 }
 
@@ -82,7 +88,7 @@ export const discover = Effect.fn("ConfigDiscovery.discover")(function* (options
     Effect.gen(function* () {
       // Resolve the parent too: missing children must honor symlinked global roots.
       const parent = yield* fs.resolve(directory)
-      return yield* Effect.forEach([".claude", ".agents", ".opencode", ...names.toReversed()], (name) =>
+      return yield* Effect.forEach([".claude", ".agents", dotdir /* fork_change */, ...names.toReversed()], (name) =>
         fs
           .resolve(path.join(parent, name))
           .pipe(Effect.map((resolved) => ({ item: AbsolutePath.make(path.join(directory, name)), resolved }))),
@@ -121,9 +127,9 @@ export const discover = Effect.fn("ConfigDiscovery.discover")(function* (options
     preferences,
     global: globalEnabled ? globalDirectory : undefined,
     explicit: options?.file ? AbsolutePath.make(path.resolve(options.file)) : undefined,
-    direct: visible.filter((item) => ![".agents", ".claude", ".opencode"].includes(path.basename(item))).toReversed(),
+    direct: visible.filter((item) => ![".agents", ".claude", dotdir].includes(path.basename(item))).toReversed(), // fork_change
     project: yield* Effect.forEach(
-      visible.filter((item) => path.basename(item) === ".opencode").toReversed(),
+      visible.filter((item) => path.basename(item) === dotdir).toReversed(), // fork_change
       (directory) => fs.isDir(directory).pipe(Effect.map((present) => ({ path: directory, present }))),
     ),
     claude:

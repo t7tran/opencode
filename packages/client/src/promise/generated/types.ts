@@ -4,7 +4,7 @@ export type ServerInfo = {
   version: string
   pid: number
   urls: Array<string>
-  paths: { tmp: string }
+  paths: { tmp: string; home?: string | undefined }
   capabilities?: { persistentPty?: boolean | undefined } | undefined
 }
 
@@ -242,6 +242,15 @@ export type McpResourceTemplate = {
   uriTemplate: string
   description?: string
   mimeType?: string
+}
+
+export type McpToolInfo = {
+  server: string
+  name: string
+  title?: string
+  description?: string
+  readOnly?: boolean
+  destructive?: boolean
 }
 
 export type PtyTicketConnectToken = { ticket: string; expires_in: number }
@@ -5235,6 +5244,12 @@ export type McpResourceCatalogInput = {
 }
 
 export type McpResourceCatalogOutput = { location: LocationPublicRef; data: McpResourceCatalog }
+
+export type McpToolCatalogInput = {
+  readonly location?: { readonly location?: { readonly directory?: string | undefined } | undefined }["location"]
+}
+
+export type McpToolCatalogOutput = { location: LocationPublicRef; data: Array<McpToolInfo> }
 
 export type McpClientTokenInput = {
   readonly location?: {

@@ -96,6 +96,27 @@ jobs:
           git config --global user.email "bot@opencode.ai"
           git config --global user.name "opencode"
 
+      # fork_change start - the key-sealing pepper lives outside the repository
+      # (packages/util/src/fork/pepper.ts). Without it the golden-vector tests
+      # that pin the sealed-blob format skip themselves, so write it where they
+      # look. The secret is absent on forked-PR and Dependabot runs: the tests then
+      # skip. The build job provisions it separately for the compiled-binary checks.
+      - name: Provision the key-sealing pepper
+        id: pepper
+        env:
+          GENIX_KEY_PEPPER: ${{ secrets.GENIX_KEY_PEPPER }}
+        run: |
+          if [ -z "${GENIX_KEY_PEPPER}" ]; then
+            echo "no GENIX_KEY_PEPPER secret — the sealed-blob golden vectors will skip"
+            exit 0
+          fi
+          pepper_file="${RUNNER_TEMP}/genix-key-pepper"
+          printf %s "${GENIX_KEY_PEPPER}" > "${pepper_file}"
+          chmod 600 "${pepper_file}" || true
+          echo "GENIXCODE_FORK_KEY_PEPPER_FILE=${pepper_file}" >> "${GITHUB_ENV}"
+          echo "available=true" >> "${GITHUB_OUTPUT}"
+      # fork_change end
+
       - name: Run unit tests
         timeout-minutes: 20
         run: |
@@ -168,7 +189,28 @@ jobs:
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
 
+      # fork_change start - step outputs are job-scoped, so the build job provisions
+      # the pepper too. The secret is absent on forked-PR and Dependabot runs: the two
+      # compiled-binary checks below are then skipped, because build.ts fails closed
+      # without a pepper rather than baking in a wrong one.
+      - name: Provision the key-sealing pepper
+        id: pepper
+        env:
+          GENIX_KEY_PEPPER: ${{ secrets.GENIX_KEY_PEPPER }}
+        run: |
+          if [ -z "${GENIX_KEY_PEPPER}" ]; then
+            echo "no GENIX_KEY_PEPPER secret — the compiled-binary checks will skip"
+            exit 0
+          fi
+          pepper_file="${RUNNER_TEMP}/genix-key-pepper"
+          printf %s "${GENIX_KEY_PEPPER}" > "${pepper_file}"
+          chmod 600 "${pepper_file}" || true
+          echo "GENIXCODE_FORK_KEY_PEPPER_FILE=${pepper_file}" >> "${GITHUB_ENV}"
+          echo "available=true" >> "${GITHUB_OUTPUT}"
+      # fork_change end
+
       - name: Verify compiled service lifecycle
+        if: steps.pepper.outputs.available == 'true' # fork_change - build.ts needs the pepper
         timeout-minutes: 10
         working-directory: packages/cli
         env:
@@ -200,7 +242,7 @@ jobs:
           node-version: "26.4.0"
 
       - name: Verify Node build
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.pepper.outputs.available == 'true' }} # fork_change - build-node.ts needs the pepper
         timeout-minutes: 15
         working-directory: packages/cli
         env:

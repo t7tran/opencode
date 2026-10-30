@@ -50,6 +50,7 @@ describe("InstructionBuiltIns", () => {
           `  Workspace root folder: ${projectDirectory}`,
           "  Is directory a git repo: yes",
           `  Platform: ${process.platform}`,
+          `  GenixCode config directories (skills, commands, agents): ${temporary} globally, .genixcode/ per project`, // fork_change - config directory in env
           `  Prefer ${temporary} over generic system temporary directories such as /tmp; it is pre-created and approved for external access.`,
           "</env>",
         ].join("\n"),

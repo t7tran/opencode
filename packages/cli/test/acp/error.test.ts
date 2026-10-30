@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { ACPError } from "../../src/acp/error"
+import { PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed product
 import { delivered, rpcError, startSession, textDelta, type Wire } from "./wire-fixture"
 
 describe("acp errors", () => {
@@ -33,7 +34,7 @@ describe("acp error boundary over the wire", () => {
       })
       const unavailable = {
         code: -32603,
-        message: "Internal error: OpenCode server is unavailable",
+        message: `Internal error: ${PRODUCT_NAME} server is unavailable`, // fork_change - renamed product
         data: { errorName: "ServerUnavailable" },
       }
 

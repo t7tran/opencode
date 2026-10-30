@@ -7,6 +7,7 @@ import { Runtime } from "../../../framework/runtime"
 import { createClient, request } from "./shared"
 import { errorMessage } from "../../../util/error"
 import { readStdin } from "../../../util/io"
+import { credentialRefusal } from "@opencode/util/fork/guard" // fork_change - provider lock
 
 export default Runtime.handler(
   Commands.commands.auth.commands.import,
@@ -23,7 +24,16 @@ export default Runtime.handler(
       const existing = yield* request((signal) => client.credential.list({ signal }))
       const ids = new Set(existing.map((credential) => credential.id))
       const integrations = new Set(existing.map((credential) => credential.integrationID))
-      const results = yield* Effect.forEach(credentials, (credential) => {
+      // fork_change start - the server refuses what the provider lock refuses, and one
+      // refusal would abort the whole import; skip those and say so instead
+      const refused = credentials.filter((credential) => credentialRefusal(credential.integrationID) !== undefined)
+      if (refused.length)
+        process.stderr.write(
+          `Skipped ${refused.length} ${refused.length === 1 ? "credential" : "credentials"} this build does not accept` + EOL,
+        )
+      const accepted = credentials.filter((credential) => !refused.includes(credential))
+      // fork_change end
+      const results = yield* Effect.forEach(accepted /* fork_change */, (credential) => {
         if (ids.has(credential.id)) return Effect.succeed(false)
         return request((signal) =>
           client.credential.create(

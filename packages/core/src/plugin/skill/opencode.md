@@ -39,8 +39,8 @@ For questions about the terminal interface, command-line invocation, `run`,
 that section.
 
 CLI and TUI preferences are separate from OpenCode's server and project
-configuration. They live in the global `~/.config/opencode/cli.json`, or
-`$XDG_CONFIG_HOME/opencode/cli.json` when `XDG_CONFIG_HOME` is set. There is no
+configuration. They live in the global `~/.config/genixcode/cli.json`, or
+`$XDG_CONFIG_HOME/genixcode/cli.json` when `XDG_CONFIG_HOME` is set. There is no
 project-local CLI configuration. Set `OPENCODE_CLI_CONFIG_CONTENT` to merge
 inline JSON over the global settings. Most preferences can also be changed from
 the TUI by pressing `Ctrl+P` and selecting **Open settings**.
@@ -51,7 +51,7 @@ Fetch the full [CLI settings reference](https://opencode.ai/v2/docs/cli/config)
 before editing `cli.json`. It documents every terminal-only setting, accepted
 values, and examples, including themes, input, sessions, tabs, diffs, alerts,
 Mini, keybindings, terminal plugins, and debugging. Do not put these settings
-in `opencode.json(c)`.
+in `genixcode.json(c)`.
 
 ### [Keybinds](https://opencode.ai/v2/docs/cli/keybinds)
 
@@ -77,17 +77,17 @@ autocomplete:
 }
 ```
 
-Global configuration lives at `~/.config/opencode/opencode.json(c)` and applies
+Global configuration lives at `~/.config/genixcode/genixcode.json(c)` and applies
 to every project for that user. Project configuration can live in any directory
-as `opencode.json(c)` or `.opencode/opencode.json(c)`, including nested packages
+as `genixcode.json(c)` or `.genixcode/genixcode.json(c)`, including nested packages
 in a monorepo.
 
 During ordinary project discovery, OpenCode searches the current Location
 directory and every ancestor through the filesystem root, including directories
 above the detected project or repository root. It merges direct
-`opencode.json(c)` files from the farthest ancestor to the current directory,
-then does the same for `.opencode/opencode.json(c)` files. This means every
-discovered `.opencode` config overrides every discovered direct config. Global
+`genixcode.json(c)` files from the farthest ancestor to the current directory,
+then does the same for `.genixcode/genixcode.json(c)` files. This means every
+discovered `.genixcode` config overrides every discovered direct config. Global
 filesystem configuration has lower precedence than these discovered documents.
 
 Common configuration fields include `model`, `default_agent`, `permissions`,
@@ -119,13 +119,13 @@ for themselves without limiting it to the current project; omit it when they
 explicitly want project-local configuration.
 
 ```sh
-opencode mcp add <name> --global --url <remote-url>
-opencode mcp list
+genixcode-cli mcp add <name> --global --url <remote-url>
+genixcode-cli mcp list
 ```
 
 Remote servers use OAuth by default. If `mcp list` reports that a server needs
 authentication, tell the user to run `/mcps`, select the server, and sign in.
-Do not run `opencode mcp auth` through the shell tool: it starts an interactive
+Do not run `genixcode-cli mcp auth` through the shell tool: it starts an interactive
 flow whose authorization link can be hidden in background process output.
 Use the user-facing MCP interface instead.
 
@@ -145,7 +145,7 @@ plugins, integrations, or other behavior from V1 to V2, read the full
 [migration guide](https://opencode.ai/v2/docs/migrate-v1) before acting. In
 the repository, its source is `services/www/src/docs/content/migrate-v1.mdx`.
 
-V1 config files and `.opencode/` definitions are intended to remain compatible.
+V1 config files and `.genixcode/` definitions are intended to remain compatible.
 The only intentional breaking changes are the server API and plugin API. Native
 V2 config uses more ergonomic shapes, but conversion is optional. When the user
 requests conversion, inspect the complete configuration, preserve behavior and
@@ -177,13 +177,13 @@ automatically. Restart it only if it is stuck or unhealthy, not to apply
 configuration changes:
 
 ```sh
-opencode service restart
+genixcode-cli service restart
 ```
 
 Check its status after restarting:
 
 ```sh
-opencode service status
+genixcode-cli service status
 ```
 
 ## [API](https://opencode.ai/v2/docs/api)
@@ -199,15 +199,15 @@ HTTP method and path or an OpenAPI operation ID.
 Call an endpoint with an HTTP method and path:
 
 ```sh
-opencode api get /api/info
+genixcode-cli api get /api/info
 ```
 
 Pass a request body with `--data` or `-d`, and additional headers with
 `--header` or `-H`:
 
 ```sh
-opencode api post /api/example --data '{"key":"value"}'
-opencode api get /api/example --header 'X-Example:value'
+genixcode-cli api post /api/example --data '{"key":"value"}'
+genixcode-cli api get /api/example --header 'X-Example:value'
 ```
 
 Request bodies default to `Content-Type: application/json`. When OpenCode is
@@ -249,11 +249,11 @@ Effect applications. For Cloudflare Durable Objects, use the
 OpenCode runs a client and a background server. Start by determining whether a
 problem belongs to the client, the shared server, or one project.
 
-- Check the service with `opencode service status` and verify the API with
-  `opencode api get /api/info`.
-- Compare with `opencode --standalone`, which runs the TUI with a private
+- Check the service with `genixcode-cli service status` and verify the API with
+  `genixcode-cli api get /api/info`.
+- Compare with `genixcode-cli --standalone`, which runs the TUI with a private
   server, to isolate shared-service issues.
-- Inspect `~/.local/share/opencode/log/opencode.log`. Filter `role=cli` for
+- Inspect `~/.local/share/genixcode/log/opencode.log`. Filter `role=cli` for
   client startup and `role=server` for sessions, providers, plugins,
   permissions, and tools.
 - Run one reproduction with `OPENCODE_LOG_LEVEL=DEBUG` when normal logs are not

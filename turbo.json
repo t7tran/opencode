@@ -57,6 +57,14 @@
       "dependsOn": ["transit"],
       "outputs": []
     },
+    // fork_change start - strict env mode would strip the pepper path test.yml provisions, and without it
+    // packages/util/test/fork/** (key sealing, the lock, the pepper golden vectors) skips its golden vectors.
+    "@opencode/util#test": {
+      "dependsOn": ["transit"],
+      "outputs": [],
+      "passThroughEnv": ["GENIXCODE_FORK_KEY_PEPPER_FILE"]
+    },
+    // fork_change end
     "@opencode/desktop#test": {
       "outputs": [],
       "cache": false

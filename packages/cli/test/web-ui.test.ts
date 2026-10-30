@@ -217,6 +217,10 @@ describe("web UI", () => {
           expect(fallback.headers.get("content-security-policy")).toContain("default-src 'self'")
           expect(fallback.headers.get("content-security-policy")).toContain("connect-src * data: blob:")
           expect(fallback.headers.get("content-security-policy")).toContain("worker-src 'self' blob:")
+          // fork_change start
+          expect(fallback.headers.get("content-security-policy")).toContain("frame-src 'self' blob:")
+          expect(fallback.headers.get("content-security-policy")).toContain("media-src 'self' data: blob:")
+          // fork_change end
 
           const dotted = yield* Effect.promise(() => fetch(`${origin}/workspace/example.js`))
           expect(dotted.status).toBe(200)

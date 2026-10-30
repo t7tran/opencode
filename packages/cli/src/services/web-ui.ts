@@ -80,8 +80,12 @@ function isRouteNotFound(error: unknown) {
 
 // qr-scanner decodes in a worker it creates from a blob: URL whenever the browser has no BarcodeDetector (Safari, desktop
 // Chrome on Windows and Linux). Without worker-src that worker falls under script-src 'self' and never starts.
+// fork_change start - artifact tabs show PDFs and HTML in an iframe, and video and audio in media elements, all
+// from blob: URLs. A blob: URL never matches 'self', so frame-src, object-src (Chromium's PDF viewer) and
+// media-src have to name it.
 function csp(hash = "") {
-  return `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'${hash ? ` 'sha256-${hash}'` : ""}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; media-src 'self' data:; connect-src * data: blob:; worker-src 'self' blob:`
+  return `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'${hash ? ` 'sha256-${hash}'` : ""}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src * data: blob:; worker-src 'self' blob:; frame-src 'self' blob:; object-src 'self' blob:`
+  // fork_change end
 }
 
 function cspForHtml(body: string) {

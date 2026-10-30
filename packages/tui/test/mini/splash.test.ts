@@ -3,6 +3,7 @@ import { RGBA, TextAttributes, type ScrollbackWriter } from "@opentui/core"
 import { createTestRenderer } from "@opentui/core/testing"
 import { entrySplash, entrySplashLayout, exitSplash } from "../../src/mini/splash"
 import { stringWidth } from "../../src/util/string-width"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change
 
 const preview = "1.18.4-preview.abcd1234567890"
 const marker = "▪"
@@ -175,9 +176,9 @@ test.each(
     exitSplash({ ...input, title: "Review mini layout", session_id: sessionID, theme }),
     input.width,
   )
-  const command = `opencode mini -s ${sessionID}`
+  const command = `${CLI_NAME} mini -s ${sessionID}` // fork_change - renamed binary
   const commandRows =
-    input.width >= 80 ? [result.rows[2].slice(result.rows[2].indexOf("opencode"))] : result.rows.slice(1)
+    input.width >= 80 ? [result.rows[2].slice(result.rows[2].indexOf(CLI_NAME))] : result.rows.slice(1) // fork_change - renamed binary
   const reconstructed = commandRows
     .map((row, index) => (index < commandRows.length - 1 ? row.padEnd(input.width) : row))
     .join("")
@@ -191,6 +192,8 @@ test.each(
     expect(result.rows).toHaveLength(1 + Math.ceil(command.length / input.width))
   }
   if (input.mono) expect(result.rows.join("")).not.toMatch(/[^\x20-\x7e]/)
-  expect(result.spans.find((span) => span.text.includes("opencode"))?.fg.intent).toBe("default")
-  expect(result.spans.find((span) => span.text.includes("opencode"))?.fg.toInts()).toEqual(theme.right.toInts())
+  // fork_change start - renamed binary
+  expect(result.spans.find((span) => span.text.includes(CLI_NAME))?.fg.intent).toBe("default")
+  expect(result.spans.find((span) => span.text.includes(CLI_NAME))?.fg.toInts()).toEqual(theme.right.toInts())
+  // fork_change end
 })

@@ -7,6 +7,7 @@ import { Keymap } from "../context/keymap"
 import { useSessionTerminals } from "../context/session-terminals"
 import { useTheme, useThemes } from "../context/theme"
 import { errorMessage } from "../util/error"
+import { PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed product
 
 declare module "@opentui/solid" {
   interface OpenTUIComponents {
@@ -244,7 +245,7 @@ export function TerminalPane(props: {
       }
       if (message.type !== "attached") return
       if (!("inputProtocol" in message) || message.inputProtocol !== 1) {
-        setFailure("Persistent terminal server is out of date; restart OpenCode")
+        setFailure(`Persistent terminal server is out of date; restart ${PRODUCT_NAME}`) // fork_change - renamed product
         next.close()
         return
       }

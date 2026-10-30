@@ -5,11 +5,12 @@ import { Updater } from "./contract"
 import type definition from "./index"
 import { logContext } from "./log"
 import { make } from "./machine"
+import { forkUpdaterEnabled } from "./fork-policy" // fork_change
 
 const setup: MainSetup<typeof definition> = async (ctx) => {
   const build = ctx.build
   const lifecycle = ctx.lifecycle
-  const enabled = build.packaged && build.channel !== "dev"
+  const enabled = build.packaged && build.channel !== "dev" && forkUpdaterEnabled() // fork_change - no update feed; see ./fork-policy.ts
   // Holds no resources, so it needs no cleanup.
   const context = logContext(ctx.log.write)
   const runPromise = Effect.runPromiseWith(context)

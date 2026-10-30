@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { createAcpFixture, initialize } from "./subprocess"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 describe("acp lifecycle subprocess", () => {
   test("stdin EOF exits cleanly", async () => {
@@ -31,7 +32,7 @@ describe("acp lifecycle subprocess", () => {
       const exited = await Promise.race([acp.exited, timeout.promise]).finally(() => clearTimeout(timer))
       expect(exited).toBe(1)
       await acp[Symbol.asyncDispose]()
-      expect(acp.stderr()).toContain("opencode acp: server exited unexpectedly (signal SIGKILL)")
+      expect(acp.stderr()).toContain(`${CLI_NAME} acp: server exited unexpectedly (signal SIGKILL)`) // fork_change - renamed binary
     },
     60_000,
   )

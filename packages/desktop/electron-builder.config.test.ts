@@ -8,15 +8,23 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import type { Configuration } from "electron-builder"
 import { getConfig } from "./electron-builder.config"
 import { CLI_BINARIES, nodePtyPackage } from "./scripts/utils"
+// fork_change start - the packaging identity is owned by the fork brand module;
+// electron-builder.config.ts repeats it as literals because electron-builder
+// loads that file outside the workspace resolver. These tests are what keep the
+// two in step, and what keep upstream's identity from creeping back in.
+import { appId as brandAppId, CLI_NAME, packageName, productName, PROTOCOL_SCHEME } from "@opencode/util/fork/brand"
+// fork_change end
 
 // Use electron-builder's matcher so the tests also cover its glob and directory traversal semantics.
 const { FileMatcher } = createRequire(import.meta.resolve("electron-builder"))("app-builder-lib/out/fileMatcher")
 
+// fork_change start
 const channels = [
-  { channel: "dev", appId: "ai.opencode.desktop.dev" },
-  { channel: "beta", appId: "ai.opencode.desktop.beta" },
-  { channel: "prod", appId: "ai.opencode.desktop" },
+  { channel: "dev", appId: brandAppId("dev") },
+  { channel: "beta", appId: brandAppId("beta") },
+  { channel: "prod", appId: brandAppId("prod") },
 ] as const
+// fork_change end
 
 function load(channel: string, target?: string): Configuration {
   const previous = process.env.OPENCODE_CHANNEL
@@ -61,25 +69,12 @@ test.each(channels)("channel identity for $channel", ({ channel, appId }) => {
   expect(config.linux?.syncDesktopName).toBe(true)
   expect(config.linux?.desktop?.entry?.StartupWMClass).toBe(appId)
 
-  for (const fpm of [config.deb?.fpm, config.rpm?.fpm]) {
-    expect(fpm).toContainEqual(expect.stringContaining(`/usr/share/metainfo/${appId}.metainfo.xml`))
-    expect(
-      fpm?.some((entry) => entry.endsWith("opencode-desktop.desktop=/usr/share/applications/opencode-desktop.desktop")),
-    ).toBe(channel === "prod")
-  }
-
-  // Shared Electron binaries must not ship /usr/lib/.build-id links that collide with other Electron RPMs.
-  // fpm rejects flags after the first src=dest mapping, so the flag must come first.
-  expect(config.rpm?.fpm?.[0]).toBe("--rpm-rpmbuild-define=_build_id_links none")
+  // fork_change start - .deb is the only Linux target, and the legacy
+  // opencode-desktop launcher entry is gone; see electron-builder.config.ts.
+  expect(config.deb?.fpm).toContainEqual(expect.stringContaining(`/usr/share/metainfo/${appId}.metainfo.xml`))
+  expect(config.deb?.fpm?.some((entry) => entry.includes("opencode-desktop.desktop"))).toBe(false)
   expect(config.deb?.fpm).not.toContain("--rpm-rpmbuild-define=_build_id_links none")
-})
-
-test("legacy Linux launcher stays hidden", async () => {
-  const desktop = await Bun.file(path.join(import.meta.dirname, "resources/linux/opencode-desktop.desktop")).text()
-  expect(desktop).toContain("Exec=/opt/OpenCode/ai.opencode %U")
-  expect(desktop).toContain("Icon=ai.opencode")
-  expect(desktop).toContain("StartupWMClass=ai.opencode.desktop")
-  expect(desktop).toContain("NoDisplay=true")
+  // fork_change end
 })
 
 test("shared packaging defaults", async () => {
@@ -90,10 +85,12 @@ test("shared packaging defaults", async () => {
   const include = path.join(import.meta.dirname, "resources/windows/installer.nsh")
   expect(config.nsis?.include).toBe(include)
   expect(await Bun.file(include).exists()).toBe(true)
-  expect(config.files).toContain("!resources/opencode-cli*")
+  // fork_change start - renamed bundled CLI; its channel file rides along with the version
+  expect(config.files).toContain(`!resources/${CLI_NAME}*`)
   expect(config.extraResources).toEqual([
-    { from: "resources/", to: "", filter: ["opencode-cli", "opencode-cli.exe", "opencode-cli.version"] },
+    { from: "resources/", to: "", filter: [CLI_NAME, `${CLI_NAME}.exe`, `${CLI_NAME}.version`, `${CLI_NAME}.channel`] },
   ])
+  // fork_change end
 })
 
 test("trims external dependencies without excluding runtime files", () => {
@@ -189,3 +186,74 @@ test("the trimmed Zip.js package can still export compressed logs", async () => 
     await rm(dir, { recursive: true, force: true })
   }
 })
+
+// fork_change start - the fork's packaging guarantees
+for (const channel of channels) {
+  // .deb is the only Linux artefact the fork builds, so the branded package name
+  // has to ride on it (upstream's rides on rpm).
+  test(`builds only a .deb for ${channel.channel}`, () => {
+    const config = load(channel.channel)
+
+    expect(config.linux?.target).toEqual(["deb"])
+    expect(config.rpm).toBeUndefined()
+  })
+
+  test(`carries the fork brand for ${channel.channel}`, () => {
+    const config = load(channel.channel)
+
+    expect(config.productName).toBe(productName(channel.channel))
+    expect(config.deb?.packageName).toBe(packageName(channel.channel))
+    expect(config.protocols).toMatchObject({ schemes: [PROTOCOL_SCHEME] })
+  })
+
+  test(`keeps upstream's identity out of ${channel.channel} artefacts`, () => {
+    const config = load(channel.channel)
+
+    const surfaces = [
+      config.appId,
+      config.productName,
+      config.artifactName,
+      config.deb?.packageName,
+      config.linux?.executableName,
+      JSON.stringify(config.protocols),
+      // Only the install destinations: the source side of an fpm mapping is an
+      // absolute path into the checkout, which is named after upstream.
+      ...(config.deb?.fpm ?? []).map((entry) => entry.split("=").at(-1)),
+    ]
+
+    for (const surface of surfaces) expect(String(surface).toLowerCase()).not.toContain("opencode")
+  })
+
+  // A `publish` block would point electron-updater at a release feed. Upstream's
+  // points at opencode.ai, which would update a Genix build into upstream.
+  test(`does not configure an update feed for ${channel.channel}`, () => {
+    expect(load(channel.channel).publish).toBeUndefined()
+  })
+
+  // The CLI must still be bundled, and it must be one built from this tree rather
+  // than downloaded from the registry (see the test below).
+  test(`bundles the sidecar CLI in ${channel.channel} builds`, () => {
+    const config = load(channel.channel)
+
+    // The bundled executable is named after the fork's CLI, not upstream's
+    // `opencode-cli` and not the desktop's own `genixcode` launcher.
+    const resources = JSON.stringify(config.extraResources)
+    expect(resources).toContain(`"${CLI_NAME}"`)
+    expect(resources).not.toContain("opencode")
+    expect(config.files).toContain(`!resources/${CLI_NAME}*`)
+  })
+}
+
+// The other half of the guarantee above. `downloadCliToResources()` fetched the
+// published `@opencode/cli-<platform>` package, which carries neither the provider
+// lock nor the managed key file; deleting it is what stops a rebase quietly
+// reintroducing an unlocked agent. scripts/prebuild.ts builds instead.
+test("has no way to download a published CLI", async () => {
+  const utils = await import("./scripts/utils")
+  expect(Object.keys(utils)).not.toContain("downloadCliToResources")
+
+  const prebuild = await Bun.file(new URL("./scripts/prebuild.ts", import.meta.url)).text()
+  expect(prebuild).not.toContain("downloadCliToResources")
+  expect(prebuild).toContain("copyBuiltCliToResources")
+})
+// fork_change end

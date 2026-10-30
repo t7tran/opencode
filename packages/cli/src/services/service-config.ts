@@ -7,6 +7,9 @@ import { randomBytes } from "crypto"
 import path from "path"
 import { selfCommand } from "../util/process"
 import { RemoteTunnel } from "./remote-tunnel"
+import { forkRemoteAccessEnabled, forkRemoteAccessRefusal } from "../fork/policy" // fork_change - no public tunnel
+import { isDefaultChannel, registrationFilename } from "@opencode/util/fork/service-registration" // fork_change - shared with the desktop client, see that module
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 // The CLI's service configuration file, plus the Service.EnsureOptions binding that
 // points the client package's service operations at this CLI: which
@@ -39,8 +42,7 @@ const decodeLegacy = Schema.decodeUnknownOption(
 const decodeRegistration = Schema.decodeUnknownEffect(Schema.fromJsonString(Service.Info))
 
 export function filename(channel = OPENCODE_CHANNEL) {
-  if (channel === "latest" || channel === "dev" || channel === "beta" || channel === "next") return "service.json"
-  return `service-${channel.replace(/[^a-zA-Z0-9._-]/g, "-")}.json`
+  return registrationFilename(channel) // fork_change - one spelling of this name, shared with the desktop
 }
 
 export function defaultPort(channel = OPENCODE_CHANNEL, platform = process.platform) {
@@ -54,7 +56,7 @@ export function defaultPort(channel = OPENCODE_CHANNEL, platform = process.platf
 }
 
 function channelPort(channel: string) {
-  if (channel === "latest" || channel === "dev" || channel === "beta" || channel === "next") return 0xc0de
+  if (isDefaultChannel(channel)) return 0xc0de // fork_change - shared channel list, see service-registration
   if (channel === "local") return 0xc0df
   return 10_000 + (Number.parseInt(Hash.fast(channel).slice(0, 8), 16) % 50_000)
 }
@@ -213,7 +215,7 @@ export const get = Effect.fn("cli.service-config.get")(function* (key?: string, 
     return JSON.stringify(safe.remote === undefined ? safe : { ...safe, remote: {} }, null, 2)
   }
   const selected = configKey(key)
-  if (selected !== "env" && name !== undefined) throw new Error(`Usage: opencode service get ${selected}`)
+  if (selected !== "env" && name !== undefined) throw new Error(`Usage: ${CLI_NAME} service get ${selected}`) // fork_change - renamed binary
   switch (selected) {
     case "disabled": {
       return String((yield* read()).disabled ?? false)
@@ -245,7 +247,7 @@ export const get = Effect.fn("cli.service-config.get")(function* (key?: string, 
 export const set = Effect.fn("cli.service-config.set")(function* (key: string, value: string, nestedValue?: string) {
   const selected = configKey(key)
   if (selected !== "env" && nestedValue !== undefined)
-    throw new Error(`Usage: opencode service set ${selected} <value>`)
+    throw new Error(`Usage: ${CLI_NAME} service set ${selected} <value>`) // fork_change - renamed binary
   switch (selected) {
     case "disabled": {
       if (value !== "true" && value !== "false") throw new Error("Disabled must be true or false")
@@ -255,6 +257,7 @@ export const set = Effect.fn("cli.service-config.set")(function* (key: string, v
     }
     case "remote": {
       if (value !== "true" && value !== "false") throw new Error("Remote must be true or false")
+      if (value === "true" && !forkRemoteAccessEnabled()) throw new Error(forkRemoteAccessRefusal()) // fork_change - no public tunnel
       // A tunnel that cannot be created leaves remote access off instead of a service that keeps retrying.
       if (value === "true") yield* RemoteTunnel.ensure()
       yield* Service.stop(yield* options())
@@ -283,7 +286,7 @@ export const set = Effect.fn("cli.service-config.set")(function* (key: string, v
       return
     }
     case "env": {
-      if (nestedValue === undefined) throw new Error("Usage: opencode service set env <key> <value>")
+      if (nestedValue === undefined) throw new Error(`Usage: ${CLI_NAME} service set env <key> <value>`) // fork_change - renamed binary
       yield* Service.stop(yield* options())
       const existing = yield* read()
       yield* write({ ...existing, env: { ...existing.env, [value]: nestedValue } })
@@ -307,7 +310,7 @@ export const set = Effect.fn("cli.service-config.set")(function* (key: string, v
 
 export const unset = Effect.fn("cli.service-config.unset")(function* (key: string, name?: string) {
   const selected = configKey(key)
-  if (selected !== "env" && name !== undefined) throw new Error(`Usage: opencode service unset ${selected}`)
+  if (selected !== "env" && name !== undefined) throw new Error(`Usage: ${CLI_NAME} service unset ${selected}`) // fork_change - renamed binary
   switch (selected) {
     case "disabled": {
       const { disabled: _disabled, ...next } = yield* read()
@@ -338,7 +341,7 @@ export const unset = Effect.fn("cli.service-config.unset")(function* (key: strin
       return
     }
     case "env": {
-      if (name === undefined) throw new Error("Usage: opencode service unset env <key>")
+      if (name === undefined) throw new Error(`Usage: ${CLI_NAME} service unset env <key>`) // fork_change - renamed binary
       yield* Service.stop(yield* options())
       const existing = yield* read()
       const { [name]: _removed, ...env } = existing.env ?? {}

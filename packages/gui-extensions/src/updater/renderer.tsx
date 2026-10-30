@@ -3,6 +3,7 @@ import { lazy, onCleanup, Suspense } from "solid-js"
 import { createKeyed, onIdle, Command, SettingsPage, TitlebarItem, type Setup, type SetupContext } from "../sdk"
 import { updaterAction } from "./action"
 import type definition from "./index"
+import { forkReleaseNotesEnabled } from "./fork-policy" // fork_change
 
 const setup: Setup<typeof definition> = (ctx) => {
   whatsNew(ctx)
@@ -103,6 +104,7 @@ function whatsNew(ctx: SetupContext<typeof definition>) {
     })
 
   if (!previous || !ctx.stores.releaseNotes.value.enabled) return markSeen()
+  if (!forkReleaseNotesEnabled()) return markSeen() // fork_change - no upstream changelog; see ./fork-policy.ts
 
   void import("./whats-new").then((module) => {
     if (ctx.signal.aborted) return

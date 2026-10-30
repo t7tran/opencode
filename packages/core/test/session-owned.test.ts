@@ -11,6 +11,7 @@ import { ID, Info, Output } from "@opencode/schema/shell"
 import { LayerNode } from "@opencode/util/effect/layer-node"
 import { FSUtil } from "@opencode/util/fs-util"
 import { Global } from "@opencode/util/global"
+import { Agent as AgentService } from "../src/agent.js" // fork_change
 import { Bus } from "../src/bus.js"
 import { Database } from "../src/database/database.js"
 import { EventTable } from "../src/event/sql.js"
@@ -125,6 +126,7 @@ const setup = Effect.fnUntraced(function* (options?: {
   const services = Layer.mergeAll(
     Layer.succeed(PluginHooks.Service, hooks),
     Layer.mock(Image.Service, {}),
+    Layer.mock(AgentService.Service, { resolve: () => Effect.undefined }), // fork_change
     options?.shell ?? Layer.mock(Shell.Service, {}),
   )
   const servicesFor = (ref: Location.Ref) => {

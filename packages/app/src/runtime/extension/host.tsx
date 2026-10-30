@@ -51,6 +51,7 @@ import {
 } from "@opencode/gui-extensions/sdk"
 import { useLanguage } from "@/runtime/i18n/language"
 import { createSessionStore, whenLoaded } from "./stores"
+import { rebrandDict } from "@opencode/util/fork/brand" // fork_change - extension catalogs are copy too, like language.tsx
 
 type Entry = { key: string; registry: string; extension: string; value: Accessor<unknown> }
 
@@ -932,7 +933,7 @@ async function loadMessages(catalog: Catalog | undefined, locale: string): Promi
   const english = catalog?.en ?? {}
   const source = catalog?.[locale]
 
-  if (!source || locale === "en") return english
+  if (!source || locale === "en") return rebrandDict(english) // fork_change
 
   const loaded =
     // SAFETY: a catalog entry is either inline messages or the loader of a locale module, as `Catalog` types it.
@@ -944,5 +945,5 @@ async function loadMessages(catalog: Catalog | undefined, locale: string): Promi
         )
       : source
 
-  return { ...english, ...loaded }
+  return rebrandDict({ ...english, ...loaded }) // fork_change
 }

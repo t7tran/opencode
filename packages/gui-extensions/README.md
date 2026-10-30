@@ -505,6 +505,7 @@ import { powerSaveBlocker } from "electron"
 import type { MainSetup } from "../sdk/main"
 import { Pairing } from "./contract"
 import type definition from "./index"
+import { CLI_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary
 
 /** The display sleep blocker this instance holds, if any. */
 type Blocker = { id?: number }
@@ -539,7 +540,7 @@ const setup: MainSetup<typeof definition> = (ctx) => {
       () =>
         new Promise<string>((resolve, reject) => {
           execFile(
-            cli.command[0] ?? "opencode",
+            cli.command[0] ?? CLI_NAME, // fork_change - renamed binary
             [...cli.command.slice(1), "service", ...args],
             { signal, windowsHide: true },
             (error, stdout, stderr) => {
@@ -583,9 +584,10 @@ export default setup
 import { lazy, onCleanup, Suspense } from "solid-js"
 import { onIdle, Command, SettingsPage, type Setup } from "../sdk"
 import type definition from "./index"
+import { forkPairingEnabled } from "./fork-policy" // fork_change
 
 const setup: Setup<typeof definition> = (ctx) => {
-  if (!ctx.desktop) return
+  if (!ctx.desktop || !forkPairingEnabled()) return // fork_change - pairing needs the public tunnel; see ./fork-policy.ts
   const layout = ctx.layout
   const servers = ctx.servers
   const pairing = ctx.uses.pairing

@@ -16,6 +16,7 @@ import { emptyMcpLayer } from "../fixture/mcp"
 import { location } from "../fixture/location"
 import { testEffect } from "../lib/effect"
 import { host } from "./host"
+import { rebrand } from "@opencode/util/fork/brand" // fork_change - renamed product and config file
 import PROMPT_INITIALIZE from "../../src/plugin/command/initialize.txt"
 import PROMPT_REVIEW from "../../src/plugin/command/review.txt"
 
@@ -112,7 +113,7 @@ describe("CommandPlugin.Plugin", () => {
       })
       expect(prompts).toEqual([
         {
-          text: PROMPT_INITIALIZE.replace("${path}", project).replaceAll("$ARGUMENTS", "extra context"),
+          text: rebrand(PROMPT_INITIALIZE).replace("${path}", project).replaceAll("$ARGUMENTS", "extra context"), // fork_change - renamed product and config file
           files: [{ uri: "file:///tmp/context.md" }],
           delivery: "queue",
         },
@@ -122,7 +123,7 @@ describe("CommandPlugin.Plugin", () => {
           delivery: "steer",
         },
         {
-          text: PROMPT_INITIALIZE.replace("${path}", project).replaceAll("$ARGUMENTS", ""),
+          text: rebrand(PROMPT_INITIALIZE).replace("${path}", project).replaceAll("$ARGUMENTS", ""), // fork_change - renamed product and config file
           files: undefined,
           delivery: "steer",
         },

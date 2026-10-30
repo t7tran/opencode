@@ -2,6 +2,13 @@ export * as RemoteCli from "./remote-cli"
 
 import { Effect, Schema } from "effect"
 import { HttpClient, HttpClientResponse } from "effect/http"
+// fork_change start - every script below installs or locates a CLI on a machine
+// the user is about to run an agent on. Upstream's versions fetch its published
+// installer and its npm packages, which carry neither the provider lock nor the
+// managed key file; a Genix desktop must not put that build on a remote host or
+// in a WSL distro. See FORK.md § What no longer reaches upstream.
+import { CLI_NAME, CLI_PACKAGE_NAME, HOME_CONFIG_DIRNAME } from "@opencode/util/fork/brand"
+// fork_change end
 
 export class Failure extends Schema.TaggedError<Failure>()("RemoteCliFailure", {
   code: Schema.Literals(["platform", "version", "install"]),
@@ -24,12 +31,13 @@ export function requireVersion(version: string) {
 }
 
 export function discoverScript(options: { fromPath?: boolean; cache?: { directory: string; prefix: string } } = {}) {
-  return `cli=${options.fromPath ? "$(command -v opencode || true)" : '""'}
-if [ -z "$cli" ] && [ -x "$HOME/.opencode/bin/opencode" ]; then cli="$HOME/.opencode/bin/opencode"; fi
+  // fork_change start - locate the fork's CLI, not upstream's
+  return `cli=${options.fromPath ? `$(command -v ${CLI_NAME} || true)` : '""'}
+if [ -z "$cli" ] && [ -x "$HOME/${HOME_CONFIG_DIRNAME}/bin/${CLI_NAME}" ]; then cli="$HOME/${HOME_CONFIG_DIRNAME}/bin/${CLI_NAME}"; fi
 ${
   options.cache
     ? `if [ -z "$cli" ]; then
-  for binary in "$HOME"/${quote(options.cache.directory)}/${quote(options.cache.prefix)}*/opencode; do
+  for binary in "$HOME"/${quote(options.cache.directory)}/${quote(options.cache.prefix)}*/${CLI_NAME}; do
     if [ -x "$binary" ]; then cli="$binary"; fi
   done
 fi
@@ -37,6 +45,7 @@ fi
     : ""
 }if [ -n "$cli" ]; then printf '%s\\n' "$cli"; fi
 `
+  // fork_change end
 }
 
 // Adapters supply a quoted shell expression, including remote HOME or wslpath expansion.
@@ -76,7 +85,11 @@ export function archiveUrl(target: string, version: string) {
   if (!/^(linux|darwin)-(x64-baseline|arm64)(-musl)?$/.test(target))
     throw new Failure({ code: "platform", detail: target })
 
-  return `https://registry.npmjs.org/@opencode/cli-${target}/-/cli-${target}-${requireVersion(version)}.tgz`
+  // fork_change start - the fork's platform packages are unscoped
+  // `genixcode-<target>`, each holding a `genixcode-cli` binary; see
+  // packages/cli/script/fork-publish.ts.
+  return `https://registry.npmjs.org/${CLI_PACKAGE_NAME}-${target}/-/${CLI_PACKAGE_NAME}-${target}-${requireVersion(version)}.tgz`
+  // fork_change end
 }
 
 type Source = { type: "download"; url: string } | { type: "archive" } | { type: "installer"; binary?: string }
@@ -86,23 +99,30 @@ export function installScript(input: { version: string; directory?: string; sour
 
   // The managed CLI installer also configures the user's shell PATH. Private
   // installations use archives so their destination and shell setup stay isolated.
+  // fork_change start - upstream pipes its own installer from GitHub into bash,
+  // which puts the public OpenCode CLI on the host. This fork installs its own
+  // npm package instead. Requires npm on the target, where upstream needed only
+  // curl and bash; a locally staged binary still installs by archive below.
   if (input.source.type === "installer")
     return `set -eu
-curl -fsSL https://raw.githubusercontent.com/anomalyco/opencode/v2/install | bash -s -- ${input.source.binary ? `--binary ${input.source.binary}` : `--version ${quote(version)}`}
-${verifyScript('"$HOME/.opencode/bin/opencode"', version)}
+npm install -g ${quote(`${CLI_PACKAGE_NAME}@${version}`)}
+${verifyScript(`"$(command -v ${CLI_NAME})"`, version)}
 `
+  // fork_change end
 
+  // fork_change start - renamed binary and default install directory
   return `set -eu
 umask 077
-destination="$HOME"/${quote(`${input.directory ?? ".opencode/bin"}/opencode`)}
+destination="$HOME"/${quote(`${input.directory ?? `${HOME_CONFIG_DIRNAME}/bin`}/${CLI_NAME}`)}
 mkdir -p "$(dirname "$destination")"
 stage=$(mktemp -d "$(dirname "$destination")/.install-XXXXXX")
 trap 'rm -rf "$stage"' EXIT
 ${stageBinary(input.source)}
-chmod 755 "$stage/package/bin/opencode"
-${verifyScript('"$stage/package/bin/opencode"', version)}
-mv "$stage/package/bin/opencode" "$destination"
+chmod 755 "$stage/package/bin/${CLI_NAME}"
+${verifyScript(`"$stage/package/bin/${CLI_NAME}"`, version)}
+mv "$stage/package/bin/${CLI_NAME}" "$destination"
 `
+  // fork_change end
 }
 
 function stageBinary(source: Exclude<Source, { type: "installer" }>) {
@@ -126,11 +146,17 @@ const Beta = Schema.Struct({ version: Schema.String.check(Schema.isPattern(/^0\.
 export const latestBeta = Effect.fn("RemoteCli.latestBeta")(function* () {
   const http = yield* HttpClient.HttpClient
 
-  const metadata = yield* http.get("https://registry.npmjs.org/@opencode%2fcli/beta").pipe(
+  // fork_change start - the fork's own npm package, not upstream's
+  const metadata = yield* http.get(`https://registry.npmjs.org/${CLI_PACKAGE_NAME}/beta`).pipe(
+    // fork_change end
     Effect.flatMap(HttpClientResponse.filterStatusOk),
     Effect.flatMap(HttpClientResponse.schemaBodyJson(Beta)),
     Effect.timeout("30 seconds"),
-    Effect.mapError(() => new Failure({ code: "install", detail: "https://registry.npmjs.org/@opencode%2fcli/beta" })),
+    // fork_change start
+    Effect.mapError(
+      () => new Failure({ code: "install", detail: `https://registry.npmjs.org/${CLI_PACKAGE_NAME}/beta` }),
+    ),
+    // fork_change end
   )
 
   return metadata.version

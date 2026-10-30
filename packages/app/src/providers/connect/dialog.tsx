@@ -58,6 +58,7 @@ import { useProviderAccountActions } from "@/settings/providers/account-actions"
 import { IconButton } from "@opencode/ui/icon-button"
 import { Menu } from "@opencode/ui/menu"
 import "./models.css"
+import { forkProviderLocked } from "@/fork/policy" // fork_change
 
 const CUSTOM_ID = "_custom"
 
@@ -244,7 +245,7 @@ function ProviderPicker(props: { directory?: string; onSelect: (provider: string
     language.locale()
     const query = store.filter.trim().toLowerCase()
 
-    const values = [custom(), ...integrations.list()]
+    const values = [...(forkProviderLocked() ? [] : [custom()]), ...integrations.list()] // fork_change - the lock rejects every other provider id
 
     if (!query) return values
 

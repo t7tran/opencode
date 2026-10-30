@@ -17,6 +17,8 @@ import { SettingsList } from "@/settings/list"
 import { SettingsRow } from "@/settings/row"
 import { createShellOptions, type ShellSettingsController } from "./controllers"
 import "@/settings/settings.css"
+import { appCacheResetAvailable } from "@/fork/app-cache" // fork_change
+import { ForkAppCacheSection } from "@/fork/app-cache-section" // fork_change
 
 const tabLayoutOptions: ("horizontal" | "vertical")[] = ["horizontal", "vertical"]
 
@@ -332,6 +334,11 @@ export const SettingsGeneral: Component = () => {
         </section>
 
         <ExtensionSettingsSections page="general" />
+        {/* fork_change start - the browser's equivalent of Check for updates; see app-cache.ts */}
+        <Show when={appCacheResetAvailable(platform.platform)}>
+          <ForkAppCacheSection />
+        </Show>
+        {/* fork_change end */}
       </div>
     </>
   )

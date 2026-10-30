@@ -5,6 +5,7 @@ import { ServiceConfig } from "../src/services/service-config"
 import { OPENCODE_VERSION } from "../src/version"
 import { isolatedEnv } from "./fixture/environment"
 import { tmpdir } from "./fixture/tmpdir"
+import { APP_DIRNAME } from "@opencode/util/fork/brand" // fork_change - renamed state directory
 
 // The server owns the snapshot writer (packages/server/test/heap-dump.test.ts); these cover how the
 // command finds a server, what it prints, and that it never starts or replaces one.
@@ -69,7 +70,7 @@ test("fails without starting a server when none is registered", async () => {
 
   expect(result.stderr).toContain("No background server is running")
   expect(result.code).toBe(1)
-  expect(await Bun.file(path.join(root.path, "state", "opencode", ServiceConfig.filename())).exists()).toBe(false)
+  expect(await Bun.file(path.join(root.path, "state", APP_DIRNAME, ServiceConfig.filename())).exists()).toBe(false) // fork_change
 })
 
 test("explains when the server predates heap dumps", async () => {
@@ -99,7 +100,7 @@ function fake(handle: (request: Request) => Response) {
 }
 
 async function register(root: string, url: string) {
-  const file = path.join(root, "state", "opencode", ServiceConfig.filename())
+  const file = path.join(root, "state", APP_DIRNAME, ServiceConfig.filename()) // fork_change
   const info = { version: OPENCODE_VERSION, url, pid: process.pid, password: "secret" }
   await fs.mkdir(path.dirname(file), { recursive: true })
   await fs.writeFile(file, JSON.stringify(info))

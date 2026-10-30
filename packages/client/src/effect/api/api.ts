@@ -46,7 +46,7 @@ export type ServerInfoOutput = {
   readonly version: string
   readonly pid: number
   readonly urls: ReadonlyArray<string>
-  readonly paths: { readonly tmp: string }
+  readonly paths: { readonly tmp: string; readonly home?: string | undefined }
   readonly capabilities?: { readonly persistentPty?: boolean | undefined } | undefined
 }
 export type ServerInfoOperation<E = never> = () => Effect.Effect<ServerInfoOutput, E>
@@ -1669,6 +1669,10 @@ export type McpResourceCatalogOperation<E = never> = (
   input?: McpResourceCatalogInput,
 ) => Effect.Effect<McpResourceCatalogOutput, E>
 
+export type McpToolCatalogInput = { readonly location?: { readonly directory?: string | undefined } | undefined }
+export type McpToolCatalogOutput = { readonly location: Location.PublicRef; readonly data: ReadonlyArray<Mcp.ToolInfo> }
+export type McpToolCatalogOperation<E = never> = (input?: McpToolCatalogInput) => Effect.Effect<McpToolCatalogOutput, E>
+
 export type McpClientTokenInput = {
   readonly location?: { readonly directory?: string | undefined } | undefined
   readonly name: string
@@ -1684,6 +1688,7 @@ export interface McpApi<E = never> {
   readonly connect: McpConnectOperation<E>
   readonly disconnect: McpDisconnectOperation<E>
   readonly resource: { readonly catalog: McpResourceCatalogOperation<E> }
+  readonly tool: { readonly catalog: McpToolCatalogOperation<E> }
   readonly client: { readonly token: McpClientTokenOperation<E> }
 }
 

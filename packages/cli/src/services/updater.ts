@@ -10,6 +10,8 @@ import { stripVTControlCharacters } from "node:util"
 import { RetainedImage } from "./retained-image"
 import { action, parseReleaseVersion, type Policy } from "./updater-action"
 import { errorMessage } from "../util/error"
+import { CONFIG_FILENAMES, PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed product and config files
+import { forkUpdaterEnabled, forkUpgradeRefusal } from "../fork/policy" // fork_change - no self-update
 
 export const methods = ["curl", "npm", "pnpm", "bun", "yarn", "vp", "brew", "winget"] as const
 
@@ -162,7 +164,7 @@ const make = Effect.gen(function* () {
   const installedWinget = /[\\/]winget[\\/]packages[\\/]anomaly\.opencode_/i.test(executable)
 
   const readPolicy = Effect.fnUntraced(function* () {
-    const values = yield* Effect.forEach(["config.json", "opencode.json", "opencode.jsonc"], (name) =>
+    const values = yield* Effect.forEach(["config.json", ...CONFIG_FILENAMES /* fork_change */], (name) =>
       fs.readFileString(path.join(global.config, name)).pipe(
         Effect.map(decodePolicy),
         Effect.orElseSucceed(() => undefined),
@@ -273,6 +275,11 @@ const make = Effect.gen(function* () {
   }
 
   const release = Effect.fnUntraced(function* (method?: Method) {
+    // fork_change start - never ask upstream what the latest release is; see
+    // src/fork/policy.ts. Guarded here rather than only at the callers so no
+    // path — background check, `upgrade`, or a future one — can reach it.
+    if (!forkUpdaterEnabled()) return yield* Effect.fail(new Error(forkUpgradeRefusal()))
+    // fork_change end
     const distribution = method === "brew" ? "homebrew" : "npm"
     // Homebrew Core builds its formula on its own schedule, so the tap release does not describe it.
     const core = method === "brew" && installedFormula === "opencode"
@@ -332,6 +339,9 @@ const make = Effect.gen(function* () {
 
   // WinGet moderates every submission, so only its own index knows which release it can install.
   const wingetVersion = Effect.fnUntraced(function* () {
+    // fork_change start - WinGet only knows upstream's Anomaly.OpenCode package; see src/fork/policy.ts
+    if (!forkUpdaterEnabled()) return yield* Effect.fail(new Error(forkUpgradeRefusal()))
+    // fork_change end
     const failure = (detail: string, cause?: unknown) =>
       new UpgradeError(
         {
@@ -423,6 +433,10 @@ const make = Effect.gen(function* () {
   }
 
   const upgrade = Effect.fnUntraced(function* (method: Method, input: string) {
+    // fork_change start - winget and a Homebrew "opencode" formula skip release(), whose guard covers the rest;
+    // every package-manager path here would install upstream's CLI. See src/fork/policy.ts.
+    if (!forkUpdaterEnabled()) return yield* Effect.fail(new Error(forkUpgradeRefusal()))
+    // fork_change end
     if (!parseReleaseVersion(input)) return yield* Effect.fail(new Error(`Invalid version: ${input}`))
     const version = input.trim().replace(/^v/, "")
     const packageName =
@@ -473,6 +487,9 @@ const make = Effect.gen(function* () {
           )
         }
         if (method === "curl") {
+          // fork_change start - upstream's installer installs the public OpenCode CLI
+          if (!forkUpdaterEnabled()) return yield* Effect.fail(new Error(forkUpgradeRefusal()))
+          // fork_change end
           const bash = yield* installerBash()
           yield* fs.makeDirectory(global.cache, { recursive: true })
           const directory = yield* temporaryDirectory("update-")
@@ -531,6 +548,13 @@ const make = Effect.gen(function* () {
   })
 
   const inspect = Effect.fnUntraced(function* () {
+    // fork_change start - no automatic update check. Upstream's env opt-out is
+    // left below so the branch still merges; this is the unconditional one.
+    if (!forkUpdaterEnabled()) {
+      yield* Effect.logInfo("update check skipped", { reason: "fork-disabled", version: OPENCODE_VERSION })
+      return undefined
+    }
+    // fork_change end
     if (OPENCODE_LOCAL || ["1", "true"].includes(process.env.OPENCODE_DISABLE_AUTOUPDATE?.toLowerCase() ?? "")) {
       yield* Effect.logInfo("update check skipped", {
         reason: OPENCODE_LOCAL ? "local-install" : "disabled",
@@ -556,7 +580,7 @@ const make = Effect.gen(function* () {
       yield* Effect.logInfo("update check done", { action: "up-to-date" })
       return undefined
     }
-    yield* Effect.logInfo("OpenCode update available", { current, latest: version, action: next })
+    yield* Effect.logInfo(`${PRODUCT_NAME} update available`, { current, latest: version, action: next }) // fork_change
     return { policy, version }
   })
 
@@ -583,10 +607,14 @@ const make = Effect.gen(function* () {
   })
 
   const check = Effect.fn("cli.updater.check")(function* () {
+    // fork_change start - reuses upstream's "unavailable" shape, which every
+    // caller already renders, instead of surfacing a failed network call.
+    if (!forkUpdaterEnabled()) return { type: "unavailable" as const, message: forkUpgradeRefusal() }
+    // fork_change end
     if (OPENCODE_LOCAL)
       return {
         type: "unavailable" as const,
-        message: "This build runs from a source checkout. Use an installed OpenCode release to check for updates.",
+        message: `This build runs from a source checkout. Use an installed ${PRODUCT_NAME} release to check for updates.`, // fork_change
       }
     const detected = yield* method()
     if (!detected)

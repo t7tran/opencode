@@ -1,0 +1,4 @@
+# fork_change - new file: these tests boot core, whose plugin list ends with the
+# provider lock; see packages/util/src/fork/test-preload.ts
+[test]
+preload = ["@opencode/util/fork/test-preload"]

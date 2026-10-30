@@ -5,6 +5,7 @@ import path from "node:path"
 import { createMiniConnection, mergeInput as mergeInteractiveInput, resolveMiniTarget } from "../src/mini"
 import { mergeInput as mergeNonInteractiveInput, parseRunModel } from "../src/run/run"
 import { parseSessionTargetModel } from "../src/session-target"
+import { CLI_NAME, PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change - renamed binary and product
 
 async function cli(args: string[]) {
   const child = Bun.spawn([process.execPath, "run", "src/index.ts", ...args], {
@@ -128,7 +129,7 @@ describe("mini command", () => {
 
     expect(result.exitCode).toBe(0)
     expect(result.stdout).toMatch(/^  mini[ \t]+Start the minimal interactive interface\r?$/m)
-    expect(result.stdout).toMatch(/^  run[ \t]+Run OpenCode with a message\r?$/m)
+    expect(result.stdout).toMatch(new RegExp(`^  run[ \\t]+Run ${PRODUCT_NAME} with a message\\r?$`, "m")) // fork_change
   })
 
   test("exposes run without legacy interactive, attach, or command modes", async () => {
@@ -246,7 +247,7 @@ describe("mini command", () => {
       const result = await cli(args)
 
       expect(result.exitCode).toBe(1)
-      expect(result.stderr).toContain("opencode mini requires a TTY stdout")
+      expect(result.stderr).toContain(`${CLI_NAME} mini requires a TTY stdout`) // fork_change
     }
   })
 })

@@ -5,6 +5,7 @@ import { testRender } from "@opentui/solid"
 import type { Context } from "@opencode/plugin/tui/context"
 import { createStore, produce } from "solid-js/store"
 import { SidebarOnboarding } from "../../src/feature-plugins/sidebar/footer"
+import { lockedProvider } from "@opencode/util/fork/lock" // fork_change
 
 function context(options?: {
   dismissed?: boolean
@@ -86,7 +87,7 @@ test("sidebar shows onboarding without a connected integration", async () => {
   try {
     const frame = app.captureCharFrame()
     expect(frame).toContain("Getting started")
-    expect(frame).toContain("OpenCode includes free models")
+    expect(frame).toContain(`Connect ${lockedProvider().name} with your API key`) // fork_change - the lock's copy
     expect(frame).toContain("Connect provider")
     expect(frame).toContain("/connect")
   } finally {

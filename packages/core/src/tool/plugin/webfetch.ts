@@ -9,6 +9,7 @@ import { Mime } from "../../mime.js"
 import { Permission } from "../../permission.js"
 import { convertHTMLToMarkdown, MAX_MARKDOWN_BYTES } from "../html-markdown.js"
 import { collectBoundedResponseBody } from "../http-body.js"
+import { HOMEPAGE, PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change
 
 export const name = "webfetch"
 export const MAX_RESPONSE_BYTES = MAX_MARKDOWN_BYTES
@@ -56,8 +57,9 @@ const headers = (format: Format, userAgent: string) => ({
   "Accept-Language": "en-US,en;q=0.9",
 })
 
-const openCodeUserAgent =
-  "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; OpenCode-User/1.0; +https://opencode.ai"
+// fork_change start - upstream's points site operators at opencode.ai, not at the build that fetched
+const openCodeUserAgent = `Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ${PRODUCT_NAME}-User/1.0; +${HOMEPAGE}`
+// fork_change end
 
 const isCloudflareChallenge = (error: HttpClientError.HttpClientError) => {
   if (error.reason._tag !== "StatusCodeError") return false
@@ -125,7 +127,7 @@ export const Plugin = {
 
               const { body, contentType } = yield* Effect.gen(function* () {
                 const response = yield* execute(http, input.url, input.format).pipe(
-                  Effect.catchIf(isCloudflareChallenge, () => execute(http, input.url, input.format, "opencode")),
+                  Effect.catchIf(isCloudflareChallenge, () => execute(http, input.url, input.format, "genixcode")), // fork_change - renamed binary
                 )
                 const contentType = response.headers["content-type"] || ""
                 const mime = mimeFrom(contentType)

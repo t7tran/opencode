@@ -44,6 +44,7 @@ import { ACPError } from "./error"
 import { ACPReplay } from "./replay"
 import type { ACPSessions, Attached, SupportedMcpServer } from "./sessions"
 import type { ACPTurn } from "./turn"
+import { CLI_NAME, PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change
 
 const AuthMethodID = "opencode-login"
 
@@ -106,14 +107,16 @@ export function make(input: {
     initialize: Effect.fnUntraced(function* (params) {
       yield* Ref.set(input.capabilities, ACPCapabilities.parse(params.clientCapabilities))
       const authMethod: AuthMethod = {
-        description: "Run `opencode auth login` in the terminal",
-        name: "Login with opencode",
+        description: `Run \`${CLI_NAME} auth login\` in the terminal`, // fork_change - renamed binary
+        name: `Login with ${CLI_NAME}`, // fork_change - renamed binary
         id: AuthMethodID,
         ...(params.clientCapabilities?.auth?.terminal ? { type: "terminal" as const, args: ["--login"] } : {}),
       }
       if (params.clientCapabilities?._meta?.["terminal-auth"] === true) {
         authMethod._meta = {
-          "terminal-auth": { command: "opencode", args: ["auth", "login"], label: "OpenCode Login" },
+          // fork_change start - renamed binary: the client is told to run this command
+          "terminal-auth": { command: CLI_NAME, args: ["auth", "login"], label: `${PRODUCT_NAME} Login` },
+          // fork_change end
         }
       }
       return {
@@ -126,7 +129,7 @@ export function make(input: {
           _meta: { [ACPCapabilities.ChildSessionUpdates]: true },
         },
         authMethods: [authMethod],
-        agentInfo: { name: "OpenCode", version: OPENCODE_VERSION },
+        agentInfo: { name: PRODUCT_NAME, version: OPENCODE_VERSION }, // fork_change - renamed product
       }
     }),
     authenticate: Effect.fnUntraced(function* (params) {

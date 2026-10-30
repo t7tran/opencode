@@ -17,19 +17,23 @@ const rootDir = path.resolve(packageDir, "../..")
 
 const signScript = path.join(rootDir, "script", "sign-windows.ps1")
 
-// The Electron 42 packaging update briefly installed Linux launchers/icons under
-// "opencode-desktop". Keep that hidden desktop entry around so existing GNOME/KDE
-// pins still resolve after the canonical app id changes back to ai.opencode.desktop.
-const legacyDesktopEntry = path.join(packageDir, "resources", "linux", "opencode-desktop.desktop")
-
-const legacyDesktopEntryFpm = `${legacyDesktopEntry}=/usr/share/applications/opencode-desktop.desktop`
-
-// rpmbuild adds /usr/lib/.build-id links for every ELF file. The bundled Electron
-// binaries are byte-identical across apps on the same Electron version, so those
-// links collide with other Electron RPMs (Slack, Unity Hub, ...) and rpm/zypper
-// refuse to install or update. They only serve debuginfo lookup, so skip them.
-// fpm only accepts flags before the first src=dest mapping, so keep this first.
-const rpmNoBuildIdLinksFpm = "--rpm-rpmbuild-define=_build_id_links none"
+// fork_change start - the identity below is duplicated from
+// packages/util/src/fork/brand.ts as literals on purpose: electron-builder loads
+// this file with its own TypeScript loader, outside bun and outside the
+// workspace resolver, so a workspace import here is not safe to rely on.
+// electron-builder.config.test.ts asserts the two stay in step.
+//
+// Upstream's legacy "opencode-desktop" launcher entry is gone: it existed only
+// to keep GNOME/KDE pins working across an upstream app-id change, and this fork
+// never shipped under that id.
+const PRODUCT_NAME = "GenixCode"
+const APP_ID_BASE = "com.genixventures.genixcode"
+const PROTOCOL_SCHEME = "genixcode"
+const PACKAGE_NAME = "genixcode"
+// The bundled CLI sits in the app's resources as `genixcode-cli`, not upstream's
+// `opencode-cli`; main/service/desktop-cli.ts and scripts/utils.ts name it too.
+const CLI_NAME = "genixcode-cli"
+// fork_change end
 
 const metainfoFpm = (appId: string) =>
   `${path.join(packageDir, "resources", `${appId}.metainfo.xml`)}=/usr/share/metainfo/${appId}.metainfo.xml`
@@ -52,7 +56,7 @@ function macSignOptions(options: CustomMacSignOptions): CustomMacSignOptions {
     optionsForFile: (file) => {
       const defaults = options.optionsForFile?.(file)
 
-      if (file !== path.join(options.app, "Contents/Resources/opencode-cli")) return defaults ?? {}
+      if (file !== path.join(options.app, `Contents/Resources/${CLI_NAME}`)) return defaults ?? {} // fork_change - renamed bundled CLI
 
       // The Bun CLI loads bun-pty's native library; Electron and its helpers do not need this exception.
       return { ...defaults, entitlements: path.join(packageDir, "resources/entitlements.cli.plist") }
@@ -70,11 +74,13 @@ function resolveChannel() {
   return "dev"
 }
 
+// fork_change start - Genix application ids replace ai.opencode.desktop*
 const APP_IDS = {
-  dev: "ai.opencode.desktop.dev",
-  beta: "ai.opencode.desktop.beta",
-  prod: "ai.opencode.desktop",
+  dev: `${APP_ID_BASE}.dev`,
+  beta: `${APP_ID_BASE}.beta`,
+  prod: APP_ID_BASE,
 } as const
+// fork_change end
 
 // libappimage (used by AppImageLauncher) resolves the .desktop entry inside an
 // AppImage by globbing `*.desktop` at the squashfs root. If the main
@@ -93,14 +99,14 @@ const getBase = (appId: string): Configuration => {
   const target = getCurrentCli()
 
   return {
-    artifactName: "opencode-desktop-${os}-${arch}.${ext}",
+    artifactName: "genixcode-desktop-${os}-${arch}.${ext}", // fork_change - renamed artefacts
     directories: {
       output: "dist",
       buildResources: "resources",
     },
     // Linux launchers are .desktop files, so this is the desktop file name,
-    // not just the app id. For prod, app id "ai.opencode.desktop" becomes
-    // "ai.opencode.desktop.desktop".
+    // not just the app id. For prod, app id "com.genixventures.genixcode" becomes // fork_change
+    // "com.genixventures.genixcode.desktop". // fork_change - renamed app id
     // https://developer.gnome.org/documentation/guidelines/maintainer/integrating.html
     // https://www.electron.build/docs/linux/
     extraMetadata: {
@@ -109,7 +115,7 @@ const getBase = (appId: string): Configuration => {
     files: [
       "out/**/*",
       "resources/**/*",
-      "!resources/opencode-cli*",
+      `!resources/${CLI_NAME}*`, // fork_change - renamed bundled CLI
       // Keep only the target platform's node-pty prebuild when cross-packaging with --cpu=*.
       ...CLI_BINARIES.filter((item) => item.os !== target.os || item.cpu !== target.cpu).map(
         (item) => `!**/node_modules/@lydell/node-pty-${item.os}-${item.cpu}{,/**/*}`,
@@ -133,7 +139,10 @@ const getBase = (appId: string): Configuration => {
       {
         from: "resources/",
         to: "",
-        filter: ["opencode-cli", "opencode-cli.exe", "opencode-cli.version"],
+        // fork_change start - <cli>.channel rides along with the version; see
+        // scripts/utils.ts copyCliToResources and main/service/desktop-cli.ts.
+        filter: [CLI_NAME, `${CLI_NAME}.exe`, `${CLI_NAME}.version`, `${CLI_NAME}.channel`],
+        // fork_change end
       },
     ],
     afterPack: async (context) => {
@@ -144,15 +153,21 @@ const getBase = (appId: string): Configuration => {
 
       if (arch !== target.cpu) throw new Error(`Packaging ${arch} Electron with the ${target.target} CLI`)
       const resources = context.packager.getResourcesDir(context.appOutDir)
-      const cli = path.join(resources, context.electronPlatformName === "win32" ? "opencode-cli.exe" : "opencode-cli")
+      const cli = path.join(resources, context.electronPlatformName === "win32" ? `${CLI_NAME}.exe` : CLI_NAME) // fork_change - renamed bundled CLI
 
       const file = await stat(cli)
 
       if (!file.isFile() || file.size === 0) throw new Error(`Bundled CLI must be a non-empty file: ${cli}`)
       await NativeArch.verify(cli, arch)
-      const version = path.join(path.dirname(cli), "opencode-cli.version")
+      const version = path.join(path.dirname(cli), `${CLI_NAME}.version`) // fork_change - renamed bundled CLI
 
       if ((await stat(version)).size === 0) throw new Error(`Bundled CLI version must be a non-empty file: ${version}`)
+      // fork_change start - an empty or missing channel sends the desktop to the wrong
+      // registration file, which fails as a 120 s splash-screen hang rather than an
+      // error, so fail the pack instead.
+      const channel = path.join(path.dirname(cli), `${CLI_NAME}.channel`)
+      if ((await stat(channel)).size === 0) throw new Error(`Bundled CLI channel must be a non-empty file: ${channel}`)
+      // fork_change end
 
       if (context.electronPlatformName !== "win32") return
 
@@ -197,8 +212,8 @@ const getBase = (appId: string): Configuration => {
       target: ["dmg", "zip"],
     },
     protocols: {
-      name: "OpenCode",
-      schemes: ["opencode"],
+      name: PRODUCT_NAME, // fork_change
+      schemes: [PROTOCOL_SCHEME], // fork_change - genixcode:// replaces opencode://
     },
     win: {
       icon: `resources/icons/icon.ico`,
@@ -230,7 +245,14 @@ const getBase = (appId: string): Configuration => {
           StartupWMClass: appId,
         },
       },
-      target: ["AppImage", "deb", "rpm"],
+      // fork_change start - .deb only. Upstream also emits AppImage and rpm; the
+      // fork distributes desktop builds internally to Debian/Ubuntu machines, so
+      // the other two were build time and release weight nobody installed. Adding
+      // one back means listing it here and giving it a `packageName` in
+      // getConfig(): without one, electron-builder falls back to the sanitised
+      // product name, which is not a valid Debian package name.
+      target: ["deb"],
+      // fork_change end
     },
   }
 }
@@ -241,13 +263,18 @@ export function getConfig() {
   const base = getBase(appId)
 
   switch (channel) {
+    // fork_change start - no `publish` block on any channel. Upstream points beta
+    // and prod at its own update feed; leaving that in place would let a Genix
+    // build auto-update itself into upstream OpenCode. Fork desktop builds are
+    // distributed internally, so electron-updater has no feed (see
+    // packages/gui-extensions/src/updater/fork-policy.ts). The branded package name rides on `deb` now, which
+    // is the only Linux target the fork emits.
     case "dev": {
       return {
         ...base,
         appId,
-        productName: "OpenCode Dev",
-        deb: { fpm: [metainfoFpm(appId)] },
-        rpm: { packageName: "opencode-dev", fpm: [rpmNoBuildIdLinksFpm, metainfoFpm(appId)] },
+        productName: `${PRODUCT_NAME} Dev`,
+        deb: { packageName: `${PACKAGE_NAME}-dev`, fpm: [metainfoFpm(appId)] },
       }
     }
 
@@ -255,15 +282,9 @@ export function getConfig() {
       return {
         ...base,
         appId,
-        productName: "OpenCode Beta",
-        protocols: { name: "OpenCode Beta", schemes: ["opencode"] },
-        publish: {
-          provider: "generic",
-          url: "https://opencode.ai/update/api/beta/desktop/opencode/",
-          channel: "latest",
-        },
-        deb: { fpm: [metainfoFpm(appId)] },
-        rpm: { packageName: "opencode-beta", fpm: [rpmNoBuildIdLinksFpm, metainfoFpm(appId)] },
+        productName: `${PRODUCT_NAME} Beta`,
+        protocols: { name: `${PRODUCT_NAME} Beta`, schemes: [PROTOCOL_SCHEME] },
+        deb: { packageName: `${PACKAGE_NAME}-beta`, fpm: [metainfoFpm(appId)] },
       }
     }
 
@@ -271,17 +292,12 @@ export function getConfig() {
       return {
         ...base,
         appId,
-        productName: "OpenCode",
-        protocols: { name: "OpenCode", schemes: ["opencode"] },
-        publish: {
-          provider: "generic",
-          url: "https://opencode.ai/update/api/latest/desktop/opencode/",
-          channel: "latest",
-        },
-        deb: { fpm: [metainfoFpm(appId), legacyDesktopEntryFpm] },
-        rpm: { packageName: "opencode", fpm: [rpmNoBuildIdLinksFpm, metainfoFpm(appId), legacyDesktopEntryFpm] },
+        productName: PRODUCT_NAME,
+        protocols: { name: PRODUCT_NAME, schemes: [PROTOCOL_SCHEME] },
+        deb: { packageName: PACKAGE_NAME, fpm: [metainfoFpm(appId)] },
       }
     }
+    // fork_change end
   }
 }
 

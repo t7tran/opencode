@@ -6,6 +6,7 @@ import { useClipboard } from "../context/clipboard"
 import { useExit } from "../context/exit"
 import { useTuiApp } from "../context/runtime"
 import { describeOS, describeTerminal } from "../util/system"
+import { PRODUCT_NAME } from "@opencode/util/fork/brand" // fork_change
 
 export function ErrorComponent(props: { error: Error; reset: () => void; mode?: "dark" | "light" }) {
   const term = useTerminalDimensions()
@@ -43,11 +44,24 @@ export function ErrorComponent(props: { error: Error; reset: () => void; mode?: 
 
   const message = props.error.message || "An unknown error occurred."
   const stack = props.error.stack || "No stack trace available."
-  const issueURL = buildIssueURL(message, stack, app.version)
+  // fork_change start - upstream copies a pre-filled issue link for its public
+  // tracker, which would carry internal failure reports out of the company
+  // (FORK.md § What no longer reaches upstream). The same facts go to the
+  // clipboard as plain text for whoever supports this build instead.
+  const report = [
+    `${PRODUCT_NAME} ${app.version} TUI crash`,
+    `OS: ${describeOS()}`,
+    `Terminal: ${describeTerminal()}`,
+    "",
+    `Error: ${message}`,
+    "",
+    stack,
+  ].join("\n")
 
   const copyReport = () => {
     void clipboard
-      .write(issueURL.toString())
+      .write(report)
+  // fork_change end
       .then(() => setCopyState("copied"))
       .catch(() => setCopyState("failed"))
   }
@@ -117,7 +131,9 @@ export function ErrorComponent(props: { error: Error; reset: () => void; mode?: 
         {/* Headline */}
         <box flexDirection="column" alignItems="center" flexShrink={0}>
           <text attributes={TextAttributes.BOLD} fg={colors.text}>
-            OpenCode crashed
+            {/* fork_change start */}
+            {PRODUCT_NAME} crashed
+            {/* fork_change end */}
           </text>
           <Show when={showSubtext()}>
             <text fg={colors.muted}>An unexpected error stopped the session.</text>
@@ -204,55 +220,18 @@ export function ErrorComponent(props: { error: Error; reset: () => void; mode?: 
         <Show when={showFooter()}>
           <box flexDirection="column" alignItems="center" flexShrink={0}>
             <text fg={colors.muted}>
+              {/* fork_change start - no public tracker to send it to */}
               {copyState() === "copied"
-                ? "Report copied — paste it into a new GitHub issue."
+                ? "Report copied — send it to whoever supports this build."
                 : copyState() === "failed"
                   ? "Clipboard write failed. Try again or report the crash manually."
-                  : "Copy the report and open a GitHub issue to help us fix this."}
+                  : "Copy the report and send it to whoever supports this build."}
+              {/* fork_change end */}
             </text>
-            <text fg={colors.muted}>OpenCode {app.version}</text>
+            <text fg={colors.muted}>{PRODUCT_NAME} {app.version /* fork_change */}</text>
           </box>
         </Show>
       </box>
     </box>
   )
-}
-
-function buildIssueURL(message: string, stack: string, version: string) {
-  // Field keys match the ids in .github/ISSUE_TEMPLATE/bug-report.yml so the issue
-  // form opens pre-filled. Populating os/terminal/reproduce keeps the report past
-  // the contributing-guidelines compliance check, which pushes for system info.
-  const url = new URL("https://github.com/anomalyco/opencode/issues/new?template=bug-report.yml")
-  url.searchParams.set("title", `TUI crash: ${message}`)
-  url.searchParams.set("opencode-version", version)
-  url.searchParams.set("os", describeOS())
-  url.searchParams.set("terminal", describeTerminal())
-  url.searchParams.set(
-    "reproduce",
-    "Reported automatically from the OpenCode crash screen. If you can, describe what you were doing when it crashed.",
-  )
-
-  // Budget the stack against the fully URL-encoded length (not the raw length) so
-  // the final link stays under GitHub's practical limit; flag truncation so a
-  // clipped trace is obvious. searchParams.set handles encoding without throwing,
-  // so measuring url.toString() is both correct and safe on any input.
-  const MAX_URL_LENGTH = 6000
-  const marker = "\n… (truncated)"
-  const head = `The OpenCode TUI crashed with an unexpected error.\n\n**Error:** ${message}\n\n**Stack trace:**\n`
-  const setBody = (body: string) => url.searchParams.set("description", head + "```\n" + body + "\n```")
-
-  setBody(stack)
-  if (url.toString().length <= MAX_URL_LENGTH) return url
-
-  // Largest raw stack prefix whose encoded URL (with the marker) still fits.
-  let lo = 0
-  let hi = stack.length
-  while (lo < hi) {
-    const mid = Math.ceil((lo + hi) / 2)
-    setBody(stack.slice(0, mid) + marker)
-    if (url.toString().length <= MAX_URL_LENGTH) lo = mid
-    else hi = mid - 1
-  }
-  setBody(stack.slice(0, lo) + marker)
-  return url
 }
