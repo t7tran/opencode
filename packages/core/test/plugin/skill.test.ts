@@ -37,9 +37,11 @@ describe("SkillPlugin.Plugin", () => {
 
       expect(skills).toContainEqual(
         expect.objectContaining({
-          id: "opencode",
-          name: "OpenCode",
-          description: expect.stringContaining("any question about OpenCode itself"),
+          // fork_change start - renamed built-in skill
+          id: "genixcode",
+          name: "GenixCode",
+          description: expect.stringContaining("any question about GenixCode itself"),
+          // fork_change end
         }),
       )
       expect(skills).toContainEqual(

@@ -157,6 +157,12 @@ same treatment by hand, because the agent *runs* what they say. They are Markdow
 marker and the checker does not read them; a rebase that takes upstream's copy puts `opencode service
 status` back in front of the model.
 
+The skill guide is also registered under the brand now: `packages/core/src/plugin/skill.ts` uses
+`BRAND_SLUG` for its id and `PRODUCT_NAME` for its name, so the picker shows **GenixCode** and you attach
+it with `@genixcode`, where upstream has `OpenCode` and `@opencode`. Its description goes through
+`rebrand()`. Its Markdown body doesn't: rebranding that would rewrite the `opencode.ai` documentation
+links into dead ones. A skill permission rule written for `opencode` has to say `genixcode` now.
+
 The built-in tool namespace is the one the model sees most often. Upstream registers it as `opencode`,
 so the agent's code calls `tools.opencode.session_move` and friends. Ask the agent which MCP servers it
 can reach and it would list "opencode (5 tools)", because `execute` presents built-in namespaces right
