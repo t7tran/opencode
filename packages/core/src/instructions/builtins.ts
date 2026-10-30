@@ -3,6 +3,7 @@ export * as InstructionBuiltIns from "./builtins.js"
 import { makeLocationNode } from "@opencode/util/effect/app-node"
 import { Context, DateTime, Effect, Layer, Schema } from "effect"
 import { Global } from "@opencode/util/global"
+import { PRODUCT_NAME, PROJECT_CONFIG_DIRNAME } from "@opencode/util/fork/brand" // fork_change - config directory in env
 import { Location } from "../location.js"
 import { Instructions } from "./index.js"
 
@@ -40,6 +41,7 @@ const layer = Layer.effect(
                   `  Workspace root folder: ${location.project.directory}`,
                   `  Is directory a git repo: ${location.vcs?.type === "git" ? "yes" : "no"}`,
                   `  Platform: ${process.platform}`,
+                  `  ${PRODUCT_NAME} config directories (skills, commands, agents): ${global.config} globally, ${PROJECT_CONFIG_DIRNAME}/ per project`, // fork_change - config directory in env
                   `  Prefer ${global.tmp} over generic system temporary directories such as /tmp; it is pre-created and approved for external access.`,
                   "</env>",
                 ].join("\n"),

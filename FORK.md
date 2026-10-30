@@ -170,6 +170,20 @@ for `opencode_read_mcp_resource` won't match any more. It has to say `genixcode_
 | The two MCP resource tools and their permission actions | `packages/core/src/tool/plugin/mcp-resource.ts` |
 | Pins the names | `packages/core/test/mcp.test.ts`, `packages/core/test/tool-opencode.test.ts` |
 
+The system prompts used to say "You are OpenCode" too, and nothing told the model where this fork keeps
+its config. That's a bad pair. Type a skill name the composer doesn't turn into a skill, and the agent
+goes looking for a command file under `~/.config/opencode/`, the path it already knows from upstream.
+Rather than editing upstream's prompt `.txt` files, which would conflict every time upstream rewords
+one, they go through `rebrand()` when they're rendered. The environment block also names the real
+config directories now.
+
+| Concern | Where |
+|---|---|
+| Every built-in system prompt (the default and the per-model overrides in `plugin/system-prompt/`) | `SessionSystemPrompt.render` in `packages/core/src/session/system-prompt.ts` |
+| `/init`'s prompt, which names `opencode.json` | `packages/core/src/plugin/command.ts` — rebranded before `${path}` is filled in, so a checkout called `opencode` keeps its name |
+| Global and project config directories in `<env>` | `packages/core/src/instructions/builtins.ts` |
+| Pins them | `packages/core/test/session-system-prompt.test.ts`, `test/plugin/command.test.ts`, `test/instructions/builtins.test.ts` |
+
 Upstream v2 consolidated every outbound user agent into `App.useragent(app)`, so what was roughly a
 dozen scattered literals in v1 is now a **single line** in `packages/core/src/app.ts`. webfetch is
 the exception: it sends a browser-shaped string so sites serve it real pages, and that one is spelled

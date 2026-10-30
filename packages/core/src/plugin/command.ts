@@ -5,6 +5,7 @@ import { Effect, Stream } from "effect"
 import { Bus } from "../bus.js"
 import { Location } from "../location.js"
 import { Mcp } from "../mcp/index.js"
+import { rebrand } from "@opencode/util/fork/brand" // fork_change - renamed product and config file
 import PROMPT_INITIALIZE from "./command/initialize.txt"
 import PROMPT_REVIEW from "./command/review.txt"
 
@@ -34,7 +35,12 @@ export const Plugin = define({
             .prompt({
               ...input.prompt,
               sessionID: input.sessionID,
-              text: append(PROMPT_INITIALIZE.replace("${path}", location.project.directory), input.prompt.text),
+              // fork_change start - rebrand before filling in the path, so a checkout named "opencode" keeps its name
+              text: append(
+                rebrand(PROMPT_INITIALIZE).replace("${path}", location.project.directory),
+                input.prompt.text,
+              ),
+              // fork_change end
               delivery: input.delivery,
             })
             .pipe(Effect.asVoid),

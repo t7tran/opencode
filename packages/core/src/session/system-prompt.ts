@@ -1,5 +1,6 @@
 export * as SessionSystemPrompt from "./system-prompt.js"
 
+import { rebrand } from "@opencode/util/fork/brand" // fork_change - renamed product
 import PROMPT from "./runner/prompt/system.txt"
 
 export function make(tools: string[]) {
@@ -24,5 +25,10 @@ export function render(prompt: string, tools: string[]) {
       "- Use the edit tool for targeted changes to existing text files. It replaces the exact text in `oldString` with `newString`, and the values must differ. By default, `oldString` must occur exactly once. If it occurs multiple times, include more surrounding context to make it unique or set `replaceAll` to true to replace every occurrence.",
     )
   }
-  return prompt.replace("${OPENCODE_TOOL_GUIDANCE}", instructions.join("\n"))
+  // fork_change start - renamed product
+  // Every built-in system prompt passes through here, so upstream's .txt files stay untouched. The model would
+  // otherwise call itself OpenCode and look for skills and commands under upstream's config paths. The
+  // placeholder is filled first because rebrand() would rename it.
+  return rebrand(prompt.replace("${OPENCODE_TOOL_GUIDANCE}", instructions.join("\n")))
+  // fork_change end
 }
